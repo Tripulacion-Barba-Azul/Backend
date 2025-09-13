@@ -1,0 +1,5 @@
+"""Defines project settings"""
+
+
+
+
