@@ -44,3 +44,15 @@ class Game(Base):
         secondary="game_players_association",
         backref=None
     )
+
+    def __init__(self, 
+                 name: str, 
+                 min_players: int, 
+                 max_players: int, 
+                 owner: Player
+    ):
+        self.name = name
+        self.owner = owner
+        self.min_players = min_players
+        self.max_players = max_players
+        self.players = [owner]
