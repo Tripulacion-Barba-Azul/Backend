@@ -46,3 +46,20 @@ def get_manager(game_id : int):
 
 def remove_manager(game_id: int):
     games_ws.pop(game_id, None)
+
+@websocket_router.websocket("/ws/{game_id}")
+async def websocket_endpoint(websocket: WebSocket, game_id: int):
+    if not get_manager(game_id):
+        create_manager(game_id)
+
+    manager = get_manager(game_id)
+    await manager.connect(websocket)
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print(f"Received message from ws [Partida {game_id}] : {data}")
+    finally:
+        await manager.close_connection(websocket)
+        if manager.count() == 0:
+            remove_manager(game_id)
