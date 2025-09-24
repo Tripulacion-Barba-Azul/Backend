@@ -36,3 +36,13 @@ class WebsocketManage:
     def count(self) -> int:
         return len(self.active_connections)
 
+games_ws : dict[int, WebsocketManage] = {}
+
+def create_manager(game_id: int):
+    games_ws[game_id] = WebsocketManage()
+
+def get_manager(game_id : int):
+    return games_ws.get(game_id)
+
+def remove_manager(game_id: int):
+    games_ws.pop(game_id, None)
