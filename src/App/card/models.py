@@ -1,10 +1,10 @@
 """Card Models."""
 
-from sqlalchemy import Integer, String, ForeignKey, Boolean
-from sqlalchemy.orm import relationship, mapped_column
+from sqlalchemy import Integer, String, Boolean
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Mapped
 from App.models.db import Base
-from App.players.models import Player
+
 
 
 class Card(Base):
@@ -22,9 +22,7 @@ class Card(Base):
     playable_on_turn: Mapped[bool] = mapped_column(Boolean, nullable=True)
     number_to_set: Mapped[int] = mapped_column(Integer, nullable=True)
     playable: Mapped[bool] = mapped_column(Boolean, nullable=True)
-    player_id: Mapped[int] = mapped_column(Integer, ForeignKey('players.id'), nullable=True) 
-    player: Mapped["Player"] = relationship(back_populates="cards")
-
+                                         
 
     __mapper_args__ = {
         "polymorphic_on": type,            # usa la columna type para definir la subclase
