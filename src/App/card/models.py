@@ -1,6 +1,6 @@
 """Card Models."""
 
-from sqlalchemy import Column, Integer, String, Table, ForeignKey, Boolean
+from sqlalchemy import Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy.orm import Mapped
 from App.models.db import Base
@@ -16,14 +16,18 @@ class Card(Base):
     __tablename__ = "cards"
 
     id: Mapped [int] = mapped_column (Integer, primary_key=True, autoincrement=True)
-    name = Column (String, nullable=False)
-    effect = Column(String, nullable=False)
-    subclass: Mapped[str] = mapped_column(String, nullable=False)
-    playerId: Mapped[int] = mapped_column(Integer, ForeignKey('players.id')) 
+    name : Mapped[str] = mapped_column (String, nullable=False)
+    effect: Mapped[str]  = mapped_column(String, nullable=False)
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    playable_on_turn: Mapped[bool] = mapped_column(Boolean, nullable=True)
+    number_to_set: Mapped[int] = mapped_column(Integer, nullable=True)
+    playable: Mapped[bool] = mapped_column(Boolean, nullable=True)
+    player_id: Mapped[int] = mapped_column(Integer, ForeignKey('players.id'), nullable=True) 
     player: Mapped["Player"] = relationship(back_populates="cards")
 
+
     __mapper_args__ = {
-        "polymorphic_on": subclass,            # columna de subclase
+        "polymorphic_on": type,            # usa la columna type para definir la subclase
         "polymorphic_identity": "carta",   # identidad de la clase base
     }
 
@@ -33,12 +37,6 @@ class Devious(Card):
     Represent a Devious Card
 
     """
-
-    __tablename__ = "devious"
-
-    id: Mapped[int] = mapped_column(ForeignKey("cartas.id"), primary_key=True)
-    playable_on_turn: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    
 
     __mapper_args__ = {
         "polymorphic_identity": "devious",
@@ -51,13 +49,6 @@ class Detective(Card):
 
     """
 
-
-    __tablename__ = "detectives"
-
-    id: Mapped[int] = mapped_column(ForeignKey("cartas.id"), primary_key=True)
-    number_to_set: Mapped[int] = mapped_column(Integer, nullable=False)
-    playable_on_turn: Mapped[bool] = mapped_column(Boolean, nullable=False)
-
     __mapper_args__ = {
         "polymorphic_identity": "detective",
     }
@@ -68,11 +59,6 @@ class Event(Card):
     Represent a Event Card
 
     """
-
-    __tablename__ = "events"
-
-    id: Mapped[int] = mapped_column(ForeignKey("cartas.id"), primary_key=True)
-    playable_on_turn: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
     __mapper_args__ = {
         "polymorphic_identity": "event",
@@ -85,10 +71,6 @@ class Instant(Card):
     Represent a Instant Card
 
     """
-    __tablename__ = "instants"
-
-    id: Mapped[int] = mapped_column(ForeignKey("cartas.id"), primary_key=True)
-    playable: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
     __mapper_args__ = {
         "polymorphic_identity": "instant",

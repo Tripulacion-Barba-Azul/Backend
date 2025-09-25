@@ -19,10 +19,11 @@ class Card(Base):
     __tablename__ = "secrets"
 
     id: Mapped [int] = mapped_column (Integer, primary_key=True, autoincrement=True)
-    name = Column (String, nullable=False)
-    description = Column(String, nullable=False)
-    assassin = Column(Boolean, nullable=False)
-    acomplice = Column(Boolean, nullable=False)
-    playerId: Mapped[int] = mapped_column(Integer, ForeignKey('players.id')) 
+    name: Mapped[str]  = mapped_column (String, nullable=False)
+    description: Mapped[str]  = mapped_column(String, nullable=False)
+    assassin: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    acomplice: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    revealed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    player_id: Mapped[int] = mapped_column(Integer, ForeignKey('players.id'), nullable=True) 
     player: Mapped["Player"] = relationship(back_populates="secrets")
     
