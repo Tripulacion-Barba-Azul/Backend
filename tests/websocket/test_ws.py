@@ -8,5 +8,5 @@ def test_websocket():
     client = TestClient(app)
     with client.websocket_connect("/ws/1") as websocket:
 
-        data = websocket.receive_text()
-        assert data == "Connected to ws from game 1"
+        data = websocket.receive_json()
+        assert data == {"msj" : "Connected to ws from game 1"}

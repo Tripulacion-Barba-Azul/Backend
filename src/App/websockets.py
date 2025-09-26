@@ -18,18 +18,18 @@ class WebsocketManage:
             self.active_connections.remove(websocket)
 
 
-    async def send_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
+    async def send_message(self, message: dict, websocket: WebSocket):
+        await websocket.send_json(message)
 
-    async def broadcast(self, message: str):
+    async def broadcast(self, message: dict):
         for connection in self.active_connections[:]:
-            await connection.send_text(message)
+            await connection.send_json(message)
 
-    async def broadcast_except(self, message: str, skip_ws: WebSocket):
+    async def broadcast_except(self, message: dict, skip_ws: WebSocket):
         for connection in self.active_connections:
             if connection != skip_ws:
                 try:
-                    await connection.send_text(message)
+                    await connection.send_json(message)
                 except Exception:
                     self.active_connections.remove(connection)
 
@@ -56,7 +56,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: int):
     await manager.connect(websocket)
     
     try:
-        await manager.send_message(f"Connected to ws from game {game_id}", websocket)
+        await manager.send_message({"msj" : f"Connected to ws from game {game_id}"}, websocket)
         while True:
             data = await websocket.receive_text()
             print(f"Received message from ws [Game {game_id}] : {data}")
