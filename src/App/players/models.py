@@ -16,5 +16,5 @@ class Player(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    avatar: Mapped[str] = mapped_column(String)
+    avatar: Mapped[str] = mapped_column(String, nullable=True)
     birthday: Mapped[date] = mapped_column(Date, nullable=False)
