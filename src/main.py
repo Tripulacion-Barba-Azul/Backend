@@ -2,7 +2,6 @@
 
 from fastapi import FastAPI
 from App.models.db import Base, engine
-
 from App.websockets import websocket_router
 
 app = FastAPI()

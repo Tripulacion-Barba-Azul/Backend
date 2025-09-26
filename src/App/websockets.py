@@ -56,9 +56,12 @@ async def websocket_endpoint(websocket: WebSocket, game_id: int):
     await manager.connect(websocket)
     
     try:
+        await manager.send_message(f"Connected to ws from game {game_id}", websocket)
         while True:
             data = await websocket.receive_text()
-            print(f"Received message from ws [Partida {game_id}] : {data}")
+            print(f"Received message from ws [Game {game_id}] : {data}")
+    except WebSocketDisconnect:
+        print(f"Client disconnected from ws [Game {game_id}]")
     finally:
         await manager.close_connection(websocket)
         if manager.count() == 0:
