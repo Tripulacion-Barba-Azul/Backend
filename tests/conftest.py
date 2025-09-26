@@ -4,8 +4,6 @@ from sqlalchemy.orm import sessionmaker
 
 from App.models.db import Base
 
-
-
 @pytest.fixture(name="session", scope="function")
 def session_fixture():
     
