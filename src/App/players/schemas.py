@@ -15,3 +15,8 @@ class PlayerCreate(BaseModel):
             name=self.playerName,
             birthday=self.birthDate,
         )
+
+class PlayerInfo(BaseModel):
+    playerId: int
+    playerName: str
+    birthDate: date
