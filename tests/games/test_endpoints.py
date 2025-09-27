@@ -2,6 +2,23 @@ from datetime import date
 from fastapi.testclient import TestClient
 
 
+def test_get_games(client: TestClient, seed_games):
+    
+    response = client.get("/games")
+    data = response.json()
+
+    assert response.status_code == 200
+
+    assert isinstance(data, list)
+    assert len(data) == 2
+    
+    game1Rs = data[0]
+    game1 = seed_games["games"][0]
+
+    assert game1Rs["gameId"] == game1.id
+    assert game1Rs["ownerName"] == game1.owner.name
+
+
 def test_create_game_success(client: TestClient):
     
     player_info = {
