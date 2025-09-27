@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from App.games.schemas import GameCreate, GameInfo, GameLobbyInfo
+from App.games.schemas import GameCreate, GameInfo, GameLobbyInfo, GameWaitingInfo
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_info, db_game_2_game_lobby_info, db_game_2_game_wtg_info
 from App.models.db import get_db
@@ -16,7 +16,7 @@ async def get_games(db=Depends(get_db)) -> list[GameLobbyInfo]:
     ]
 
 @games_router.get(path="/{game_id}", status_code=status.HTTP_200_OK)
-async def get_game(game_id: int, db=Depends(get_db)):
+async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
     db_game = GameService(db).get_by_id(game_id)
     if not db_game:
         raise HTTPException(
