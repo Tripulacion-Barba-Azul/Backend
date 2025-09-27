@@ -1,6 +1,7 @@
 """Application main module."""
 
 from fastapi import FastAPI
+
 from App.models.db import Base, engine
 from api import api_router
 from App.websockets import websocket_router

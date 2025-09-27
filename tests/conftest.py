@@ -34,3 +34,4 @@ def client_fixture(session: Session):
     client = TestClient(app)  
     yield client  
     app.dependency_overrides.clear()
+
