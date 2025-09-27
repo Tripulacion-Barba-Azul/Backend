@@ -22,5 +22,5 @@ class GameInfo(BaseModel):
     ownerId: int
 
 class GameInfoPlayer(BaseModel):
-    gameID: int
+    gameId: int
     actualPlayerId: int

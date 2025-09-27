@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from App import players
 from App.games.dtos import GameDTO
-from App.games.models import Game
+from App.games.models import Game, Player
 from App.games.enums import GameStatus
 from App.players.dtos import PlayerDTO
 from App.players.services import PlayerService
@@ -43,7 +43,7 @@ class GameService:
             self, 
             game_id: int, 
             player_dto: PlayerDTO
-    ) -> Game:
+    ) -> tuple[Game | Player]:
 
         game: Game = self._db.query(Game).filter(Game.id == game_id).first()
         if not game:
@@ -63,4 +63,4 @@ class GameService:
         self._db.flush()
         self._db.commit()
 
-        return game
+        return game, new_player
