@@ -97,3 +97,20 @@ def test_join_game_success(client: TestClient):
         assert response.status_code == 200
         assert data["gameId"] == game_id
         assert data["actualPlayerId"] is not None
+
+def test_join_game_not_found(client: TestClient):
+
+    new_player_info = {
+                "playerName":"Capitan",
+                "birthDate":date(2001,4,5).strftime("%Y-%m-%d")
+    }
+
+    response = client.post(
+        f"/games/9999/join", 
+        json = new_player_info,
+    )
+
+    data = response.json()
+
+    assert response.status_code == 404
+    assert data["detail"] == "El juego con id 9999 no existe."
