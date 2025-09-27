@@ -5,6 +5,7 @@ from App.games.dtos import GameDTO
 from App.games.models import Game
 from App.players.dtos import PlayerDTO
 from App.players.services import PlayerService
+from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError
 
 
 class GameService:
@@ -36,3 +37,29 @@ class GameService:
         self._db.commit()
 
         return new_game
+    
+    def join(
+            self, 
+            game_id: int, 
+            player_dto: PlayerDTO
+    ) -> Game:
+
+        game: Game = self._db.query(Game).filter(Game.id == game_id).first()
+        if not game:
+            raise GameNotFoundError(f"El juego con id {game_id} no existe.")
+        
+        if len(game.players) >= game.max_players:
+            raise GameFullError("El juego ya ha alcanzado el número máximo de jugadores.")
+
+        if game.status != "waiting":
+            raise GameAlreadyStartedError("No se puede unir a un juego que ya ha comenzado.")
+
+        new_player = self._player_service.create(player_dto)
+        game.players.append(new_player)
+        game.num_players += 1
+
+        self._db.add(game)
+        self._db.flush()
+        self._db.commit()
+
+        return game
