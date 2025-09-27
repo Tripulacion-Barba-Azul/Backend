@@ -19,7 +19,7 @@ def test_get_games(client: TestClient, seed_games):
     assert game1Rs["gameId"] == game1.id
     assert game1Rs["ownerName"] == game1.owner.name
 
-def test_get_game_by_id_succes(client: TestClient, seed_games):
+def test_get_game_by_id_success(client: TestClient, seed_games):
     response = client.get("/games/1")
     data = response.json()
     game = seed_games["games"][0]
@@ -37,6 +37,10 @@ def test_get_game_by_id_succes(client: TestClient, seed_games):
     assert player_re["playerName"] == game.players[0].name
     assert player_re["birthDate"] == game.players[0].birthday.strftime('%Y-%m-%d')
 
+def test_get_game_by_id_not_found(client: TestClient, seed_games):
+    response = client.get("/games/9999")
+    assert response.status_code == 404
+    assert response.json() == {"detail": f"Game {id} does not exist"}
 
 def test_create_game_success(client: TestClient):
     
