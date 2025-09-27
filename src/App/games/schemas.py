@@ -20,3 +20,7 @@ class GameCreate(BaseModel):
 class GameInfo(BaseModel):
     gameId: int
     ownerId: int
+
+class GameInfoPlayer(BaseModel):
+    gameID: int
+    actualPlayerId: int
