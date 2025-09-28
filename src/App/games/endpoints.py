@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo
 from App.games.services import GameService
-from App.games.utils import db_game_2_game_info, db_game_2_game_info_player db_game_2_game_lobby_info, db_game_2_game_wtg_info
+from App.games.utils import db_game_2_game_info, db_game_2_game_info_player, db_game_2_game_lobby_info, db_game_2_game_wtg_info
 
 from App.models.db import get_db
 from App.players.schemas import PlayerCreate
@@ -75,4 +75,5 @@ async def join_game(
     if not manager:
         raise HTTPException(status_code=400, detail="No WebSocket manager for this game")
     await manager.broadcast({"event": "player_joined", "player": player_info.playerName})
+
     return db_game_2_game_info_player(joined_game, new_player)
