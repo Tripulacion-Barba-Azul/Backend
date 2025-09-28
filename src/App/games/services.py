@@ -1,3 +1,4 @@
+from App.games.enums import GameStatus
 from sqlalchemy.orm import Session
 
 from App import players
@@ -13,6 +14,12 @@ class GameService:
         self._db = db
         self._player_service = PlayerService(db)
 
+    def get_games(self) -> list[Game]:
+        query = self._db.query(Game).filter(Game.status==GameStatus.WAITING)
+        return query.all()
+    
+    def get_by_id(self, id: int) -> Game | None:
+        return self._db.query(Game).filter(Game.id == id).first()
 
     def create(
             self, 
