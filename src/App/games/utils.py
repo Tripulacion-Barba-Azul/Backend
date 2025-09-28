@@ -15,6 +15,7 @@ def db_game_2_game_info_player(db_game: Game, db_player: Player) -> GameInfoPlay
     return GameInfoPlayer(
         gameId=db_game.id,
         actualPlayerId=db_player.id,
+    )
 
 def db_game_2_game_lobby_info(db_game: Game) -> GameLobbyInfo:
     return GameLobbyInfo(
@@ -35,3 +36,4 @@ def db_game_2_game_wtg_info(db_game: Game) -> GameWaitingInfo:
         ownerId=db_game.owner_id,
         players=[db_player_2_player_info(db_player)
                for db_player in db_game.players]
+    )
