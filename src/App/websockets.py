@@ -1,6 +1,7 @@
 """Service websocket"""
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from App.exceptions import WebsocketManagerNotFoundError
 
 websocket_router = APIRouter()
 
@@ -50,7 +51,7 @@ def remove_manager(game_id: int):
 @websocket_router.websocket("/ws/{game_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: int):
     if not get_manager(game_id):
-        create_manager(game_id)
+        raise WebsocketManagerNotFoundError(f"No WebSocket manager for game {game_id}")
 
     manager = get_manager(game_id)
     await manager.connect(websocket)
