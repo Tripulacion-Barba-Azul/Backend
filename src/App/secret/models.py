@@ -1,8 +1,7 @@
 """Secret Models."""
 
-from sqlalchemy import  Integer, String, Enum as SqlEnum, ForeignKey, Boolean
-from sqlalchemy.orm import relationship, mapped_column
-from typing import List
+from sqlalchemy import  Integer, String, Enum as SqlEnum, Boolean
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Mapped
 from App.models.db import Base
 from App.secret.enums import SecretType
