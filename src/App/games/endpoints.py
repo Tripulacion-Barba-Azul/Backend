@@ -120,6 +120,8 @@ async def start_game(
                 name=player.name,
                 rol=str(player.rol)
             ))
+        
+        number_deck_cards = len(db_game.reposition_deck.cards)
 
         cards = []
         for player in db_game.players:
@@ -141,6 +143,7 @@ async def start_game(
 
         gameStartInfo = GameStartInfo(
             playerTurnId=player_turn_id,
+            numberOfRemainingCards=number_deck_cards,
             players=players,
             cards=cards,
             secrets=secrets

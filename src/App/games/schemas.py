@@ -50,6 +50,7 @@ class GameStartInfo(BaseModel):
     event: str = "game_started"
     turn: int = 1
     playerTurnId: int
+    numberOfRemainingCards: int
     players: list[PlayerGameInfo]
     cards: list[CardGameInfo]
     secrets: list[SecretGameInfo]
