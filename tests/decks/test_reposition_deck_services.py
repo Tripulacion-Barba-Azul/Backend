@@ -86,7 +86,7 @@ def test_reposition_deck_unsuccess(sample_game, session:Session):
             create_reposition_deck(sample_game.id,session)
 
 
-def test_draw_reposition_deck_sucess(sample_player,sample_game, session:Session):
+def test_draw_reposition_deck_sucess(sample_player, sample_game, session:Session):
     """Test de repartir mazo de reposicion"""
     create_reposition_deck(sample_game.id, session)
     sample_game.players.append(sample_player)
@@ -95,7 +95,12 @@ def test_draw_reposition_deck_sucess(sample_player,sample_game, session:Session)
     
     print(sample_player.cards)
     assert len(sample_player.cards) == 6
-
+    check_instant = False
+    i=0
+    while i<6 and not check_instant:
+        check_instant= (sample_player.cards[i].type == "instant")
+        i = i+1
+    assert check_instant
 
 
 
