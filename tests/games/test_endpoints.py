@@ -1,6 +1,8 @@
 from datetime import date
 from fastapi.testclient import TestClient
 
+from App.games.enums import GameStatus
+
 
 
 def test_get_games(client: TestClient, seed_games):
@@ -213,3 +215,57 @@ def test_join_game_full(client: TestClient):
 
         assert response.status_code == 400
         assert data["detail"] == "El juego ya ha alcanzado el número máximo de jugadores."
+
+
+def test_start_game_success(client: TestClient, seed_games):
+    
+    # Create a game to join
+    player_info = {
+                "playerName":"Barba Azul",
+                "birthDate":date(2000,1,1).strftime("%Y-%m-%d")
+    }
+
+    game_info = {
+                "gameName":"Tripulación de Barba Azul",
+                "minPlayers":2,
+                "maxPlayers":4
+    }
+    
+    response = client.post(
+        "/games", 
+        json = {
+            "player_info": player_info,
+            "game_info": game_info,
+        },
+    )
+    data = response.json()
+    game_id = data["gameId"]
+    owner_id = data["ownerId"]
+    with client.websocket_connect(f"/ws/{game_id}") as websocket:
+        
+        new_player = {
+            "playerName": "Barba Negra",
+            "birthDate": date(2001, 4, 5).strftime("%Y-%m-%d"),
+        }
+        client.post(f"/games/{game_id}/join", json=new_player)
+        result = websocket.receive_json()
+        result = websocket.receive_json()
+        
+        response = client.post(f"/games/{game_id}/start", params={"owner_id": owner_id})
+        data = response.json()
+        
+        result = websocket.receive_json()
+    
+        assert result["event"] == "game_started"
+        assert result["turn"] == 1
+        assert len(result["players"]) == 2
+    
+    assert response.status_code == 200
+    assert data["gameId"] == game_id
+    assert data["ownerId"] == owner_id
+
+def test_start_game_not_found(client: TestClient):
+    response = client.post("/games/999/start", params={"owner_id": 1})
+    detail = response.json()["detail"]
+    assert response.status_code == 404
+    assert detail == "Se lanza cuando no se encuentra un juego con el id especificado."

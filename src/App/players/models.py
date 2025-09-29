@@ -1,11 +1,13 @@
 """Players Models."""
 
 from datetime import date
-from sqlalchemy import Integer, Table, String , Date, ForeignKey, Column
+from sqlalchemy import (Integer, Table, String , Date, ForeignKey, 
+        Column, Enum as SqlEnum)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List
 from App.models.db import Base
 from App.card.models import Card
+from App.players.enums import PlayerRol
 from App.secret.models import Secret
 
 player_cards_association = Table(
@@ -36,6 +38,12 @@ class Player(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     avatar: Mapped[str] = mapped_column(String, nullable=True)
     birthday: Mapped[date] = mapped_column(Date, nullable=False)
+    order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    rol: Mapped[PlayerRol] = mapped_column(
+        SqlEnum(PlayerRol), 
+            default=PlayerRol.DETECTIVE,
+            nullable=False
+    )
     cards: Mapped[List[Card]] = relationship("Card",
                                              secondary="player_cards_association",
                                              backref="players")

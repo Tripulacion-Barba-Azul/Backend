@@ -38,7 +38,6 @@ class Game(Base):
     max_players: Mapped[int] = mapped_column(Integer, nullable=False)
     num_players: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     turn_number: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    players_order: Mapped[str] = mapped_column(String, default="", nullable=False) # order of players.id as String
 
     owner: Mapped[Player] = relationship(Player, foreign_keys=[owner_id])
     players: Mapped[list[Player]] = relationship(

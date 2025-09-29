@@ -1,10 +1,10 @@
+import secrets
 from sqlalchemy.orm import Session
 
 from App.secret.models import Secret
 from App.games.models import Game
 from App.games.models import Player
 from App.secret.enums import SecretType
-import copy
 import random
 
 generic_secrets=[
@@ -26,7 +26,7 @@ generic_secrets=[
 
 assassin_secret = ("You are the murderer",
                    "If this card is revealed, you are caugth and lost the game",
-                    SecretType.ASSASSIN)
+                    SecretType.MURDERER)
 
 accomplice_secret = ("You are the acomplice",
                      "If the Murderer escapes, you bpth win the game"
@@ -44,7 +44,10 @@ def get_secret(secret_id, db:Session):
     else:
         return secret
 
-
+def get_secrets_by_player(player_id, db:Session) -> list[Secret]:
+    player = db.query(Player).filter_by(id = player_id).first()
+    secrets = player.secrets
+    return secrets
 
 
 

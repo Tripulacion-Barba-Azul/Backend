@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field
 
+from App.card.schemas import CardGameInfo
 from App.games.dtos import GameDTO
-from App.players.schemas import PlayerInfo
+from App.players.schemas import PlayerGameInfo, PlayerInfo
+from App.secret.schemas import SecretGameInfo
 
 class GameCreate(BaseModel):
     """
@@ -42,3 +44,13 @@ class GameWaitingInfo(BaseModel):
     maxPlayers: int
     ownerId: int
     players: list[PlayerInfo]
+
+
+class GameStartInfo(BaseModel):
+    event: str = "game_started"
+    turn: int = 1
+    playerTurnId: int
+    numberOfRemainingCards: int
+    players: list[PlayerGameInfo]
+    cards: list[CardGameInfo]
+    secrets: list[SecretGameInfo]
