@@ -17,3 +17,4 @@ class PlayerService:
         self._db.flush()
         self._db.commit()
         return new_player
+    
