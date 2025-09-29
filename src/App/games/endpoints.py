@@ -149,7 +149,7 @@ async def start_game(
             secrets=secrets
         )
         manager = get_manager(db_game.id)
-        await manager.broadcast(gameStartInfo.model_dump_json()) # type: ignore
+        await manager.broadcast(gameStartInfo.model_dump()) # type: ignore
 
         return db_game_2_game_info(db_game)
     except GameNotFoundError as e:
