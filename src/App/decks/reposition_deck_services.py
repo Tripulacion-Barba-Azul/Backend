@@ -78,7 +78,7 @@ def create_reposition_deck(game_id: int, db: Session):
     db.commit()
     db.refresh(rep_deck)
 
-    #
+    
     for cantidad, card_name, card_effect, number_to_set in detective_cards:
         for i in range(cantidad):
             deck.append(create_detective_card(card_name, card_effect, number_to_set, db))
@@ -106,19 +106,16 @@ def create_reposition_deck(game_id: int, db: Session):
         not_so_fast_cards.append(create_instant_card("Not so Fast!", "", db))
 
     
-    for i in range(player_number):
+    for i, player in enumerate(game.players):
         card = not_so_fast_cards[i]
-        
-        for player in game.players:
-            if i < player_number: 
-                relate_card_player(player.id, card.id, db, commit=False)
+        relate_card_player(player.id, card.id, db, commit=False)
 
     
     for i in range(player_number, 10):
         deck.append(not_so_fast_cards[i])
 
-    random.shuffle(deck)
     rep_deck.cards = deck
+    
 
     db.commit()
     db.refresh(rep_deck)
@@ -140,18 +137,21 @@ def draw_reposition_deck(game_id, db: Session):
     
     
     players = game.players
-    cards_needed = 6 * len(players)
+    cards_needed = 5 * len(players)
     
     if len(rep_deck.cards) < cards_needed:
-        raise ValueError(f"Not enough cards in reposition deck. Needed: {cards_needed}, Available: {len(rep_deck.cards)}")
+        raise ValueError(f"Not enough cards in reposition deck")
     
-    
+    deck_copy = rep_deck.cards.copy()
+    random.shuffle(deck_copy)
+
 
     for player in players:
-        while len(player.cards) < 6:
-            card = rep_deck.cards[0]
-            relate_card_player(player.id, card.id, db, commit=False)               
+        while len(player.cards) < 6: 
+            card = deck_copy.pop(0)
+            relate_card_player(player.id, card.id, db, commit=False)
             unrelate_card_reposition_deck(rep_deck.id, card.id, db, commit=False)
+
     
     db.commit()
     
