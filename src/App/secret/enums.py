@@ -2,5 +2,5 @@ from enum import Enum
 
 class SecretType(Enum):
     GENERIC = "generic"
-    ASSASSIN = "assassin"
+    MURDERER = "murderer"
     ACCOMPLICE = "accomplice"
