@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, relationship, mapped_column
 from App.models.db import Base
 from App.games.enums import GameStatus
 from App.players.models import Player
+from App.decks.reposition_deck_model import RepositionDeck
 
 
 game_players_association = Table(
@@ -15,6 +16,7 @@ game_players_association = Table(
         Column("game_id", ForeignKey("games.id"), primary_key=True),
         Column("player_id", ForeignKey("players.id"), primary_key=True),
 )
+
 
 class Game(Base):
     """
@@ -43,6 +45,13 @@ class Game(Base):
         Player,
         secondary="game_players_association",
         backref=None
+    )
+
+    reposition_deck: Mapped["RepositionDeck"] = relationship(
+        "RepositionDeck",
+        back_populates="game", 
+        uselist=False,
+        cascade="all, delete-orphan"
     )
 
     def __init__(self, 
