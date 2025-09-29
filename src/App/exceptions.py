@@ -17,3 +17,10 @@ class GameAlreadyStartedError(Exception):
 class WebsocketManagerNotFoundError(Exception):
     """Se lanza cuando no se encuentra un manejador de websockets para un juego."""
     pass
+
+class NotTheOwnerOfTheGame(Exception):
+    """Not the owner of the game, GO AWAY."""
+
+class NotEnoughPlayers(Exception):
+    """"Number of players lower than minimun required."""
+

@@ -20,3 +20,8 @@ class PlayerInfo(BaseModel):
     playerId: int
     playerName: str
     birthDate: date
+
+class PlayerGameInfo(BaseModel):
+    id: int
+    name: str
+    rol: str
