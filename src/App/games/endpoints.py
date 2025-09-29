@@ -38,16 +38,16 @@ async def create_game(
     db=Depends(get_db)
 ) -> GameInfo:
     try:
+        created_game = GameService(db).create(
+            player_dto=player_info.to_dto(),
+            game_dto=game_info.to_dto()
+        )
+
         create_manager(created_game.id)
         manager= get_manager(created_game.id)
         if not manager:
             raise WebsocketManagerNotFoundError(status_code=400, detail="No WebSocket manager for this game")
         await manager.broadcast({"event": "player_joined", "player": player_info.playerName})
-        
-        created_game = GameService(db).create(
-            player_dto=player_info.to_dto(),
-            game_dto=game_info.to_dto()
-        )
         
     except WebsocketManagerNotFoundError as e:
         raise HTTPException(
@@ -68,15 +68,12 @@ async def join_game(
     db=Depends(get_db)
 ) -> GameInfoPlayer:
     try:
-        manager = get_manager(game_id)
-        if not manager:
-            raise HTTPException(status_code=400, detail="No WebSocket manager for this game")
-        await manager.broadcast({"event": "player_joined", "player": player_info.playerName})
-        
         joined_game, new_player = GameService(db).join(
             game_id=game_id,
             player_dto=player_info.to_dto()
         )
+        manager = get_manager(game_id)
+        await manager.broadcast({"event": "player_joined", "player": player_info.playerName})
 
     except GameNotFoundError as e:
         raise HTTPException(
