@@ -162,4 +162,5 @@ cython_debug/
 #.idea/
 response
 
-src/contacts.db
+# Generic database files
+*.db
