@@ -1,6 +1,7 @@
 """Service websocket"""
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocket
 from App.exceptions import WebsocketManagerNotFoundError
 from App.games.services import GameService
 from App.models.db import get_db
@@ -17,9 +18,9 @@ class WebsocketManage:
 
     async def close_connection(self, websocket: WebSocket):
         if websocket in self.active_connections:
-            await websocket.close()
+            if not websocket.client_state.name == "DISCONNECTED":
+                await websocket.close()
             self.active_connections.remove(websocket)
-
 
     async def send_message(self, message: dict, websocket: WebSocket):
         await websocket.send_json(message)
