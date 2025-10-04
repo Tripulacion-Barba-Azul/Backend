@@ -87,7 +87,14 @@ async def join_game(
         )
 
         manager = get_manager(game_id)
-        await manager.broadcast({"event": "player_joined", "player": player_info.playerName}) # type: ignore
+        
+        if manager:
+            await manager.broadcast({
+                "event": "player_joined", 
+                "player": player_info.playerName
+            })
+        else:
+            print(f"No clients connected to game {game_id}, cannot broadcast player joined event.")
 
     except GameNotFoundError as e:
         raise HTTPException(
