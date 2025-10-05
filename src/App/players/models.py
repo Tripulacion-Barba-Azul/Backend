@@ -9,7 +9,7 @@ from App.models.db import Base
 from App.card.models import Card
 from App.players.enums import PlayerRol
 from App.secret.models import Secret
-from App.rounds.enums import turnStatus
+from App.rounds.enums import TurnStatus
 
 player_cards_association = Table(
         "player_cards_association",
@@ -52,7 +52,7 @@ class Player(Base):
                                              secondary="player_secrets_association",
                                              backref="players")
     turn_status: Mapped[TurnStatus] = mapped_column(
-        SqlEnum(turnStatus),
-        default=turnStatus.WAITING,
+        SqlEnum(TurnStatus),
+        default=TurnStatus.WAITING,
         nullable=False
     )

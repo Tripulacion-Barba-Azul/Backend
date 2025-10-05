@@ -11,6 +11,7 @@ from App.players.enums import PlayerRol
 from App.players.services import PlayerService
 from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame
 from App.players.utils import sort_players
+from App.rounds.enums import TurnStatus
 from App.secret.enums import SecretType
 from App.secret.services import create_and_draw_secrets
 
@@ -132,8 +133,13 @@ class GameService:
         for p in db_game.players:
             if p.order == player_order_number:
                 player = p
+                p.turn_status = TurnStatus.PLAYING
+                
+                self._db.add(p)
+                self._db.flush()
+                self._db.commit()
         
-        return player.id # type: ignore
+        return player.id
         
 
 
