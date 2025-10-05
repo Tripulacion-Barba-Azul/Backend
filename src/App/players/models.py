@@ -51,7 +51,7 @@ class Player(Base):
     secrets: Mapped[List[Secret]] = relationship("Secret",
                                              secondary="player_secrets_association",
                                              backref="players")
-    turn_status: Mapped[turnStatus] = mapped_column(
+    turn_status: Mapped[TurnStatus] = mapped_column(
         SqlEnum(turnStatus),
         default=turnStatus.WAITING,
         nullable=False

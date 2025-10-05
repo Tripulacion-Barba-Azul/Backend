@@ -1,6 +1,6 @@
 from enum import Enum
 
-class turnStatus(Enum):
+class TurnStatus(Enum):
     WAITING = "waiting"
     PLAYING = "playing"
     DISCARDING = "discarding"
