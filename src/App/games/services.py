@@ -11,7 +11,7 @@ from App.players.enums import PlayerRol
 from App.players.services import PlayerService
 from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame
 from App.players.utils import sort_players
-from App.rounds.enums import TurnStatus
+from App.play.enums import TurnStatus
 from App.secret.enums import SecretType
 from App.secret.services import create_and_draw_secrets
 
