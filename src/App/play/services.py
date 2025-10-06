@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from App.exceptions import GameNotFoundError, NotPlayersTurnError, PlayerNotFoundError
 from App.games.models import Game
 from App.players.models import Player
-from App.rounds.enums import TurnStatus
+from App.play.enums import TurnStatus
 
 class RoundService:
 
