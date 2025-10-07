@@ -1,26 +1,25 @@
 """Exceptions"""
 
 class GameNotFoundError(Exception):
-    """Se lanza cuando no se encuentra un juego con el id especificado."""
-    pass
-
+    """It is raised when no game is found with the specified ID."""
 
 class GameFullError(Exception):
-    """Se lanza cuando un juego ya alcanzó el número máximo de jugadores."""
-    pass
-
+    """It is raised when a game has reached the maximum number of players."""
 
 class GameAlreadyStartedError(Exception):
-    """Se lanza cuando se intenta unir a un juego que ya ha comenzado."""
-    pass
+    """It is raised when trying to join a game that has already started."""
 
 class WebsocketManagerNotFoundError(Exception):
-    """Se lanza cuando no se encuentra un manejador de websockets para un juego."""
-    pass
+    """It is raised when no websocket manager is found for a game."""
 
 class NotTheOwnerOfTheGame(Exception):
     """Not the owner of the game, GO AWAY."""
 
 class NotEnoughPlayers(Exception):
-    """"Number of players lower than minimun required."""
+    """It is raised when the number of players is lower than the minimum required."""
 
+class PlayerNotFoundError(Exception):
+    """It is raised when no player is found with the specified ID."""
+    
+class NotPlayersTurnError(Exception):
+    """It is raised when a player tries to play out of their turn."""
