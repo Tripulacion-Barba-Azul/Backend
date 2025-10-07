@@ -4,7 +4,7 @@ from App.card.schemas import CardGameInfo
 from App.card.services import get_cards_by_player
 from App.exceptions import NotPlayersTurnError, PlayerNotFoundError, WebsocketManagerNotFoundError
 from App.games.services import GameService
-from App.play.schemas import PlayCardInfo
+from App.play.schemas import PlayCard, PlayCardInfo
 from App.models.db import get_db
 from App.play.services import RoundService
 from App.players.schemas import PlayerGameInfo
@@ -15,10 +15,11 @@ play_router = APIRouter()
 @play_router.post(path="/{game_id}/actions/play-card", status_code=200)
 async def play_card(
     game_id: int,
-    player_id: int,
-    cards: list[int],
+    turn_info: PlayCard,
     db=Depends(get_db)):
 
+    player_id = turn_info.playerId
+    cards = turn_info.cards
     playerInGame = GameService(db).player_in_game(game_id, player_id)
 
     if cards == [] and playerInGame:
@@ -48,9 +49,10 @@ async def play_card(
                 cards=cards
             )
                 
-            manager = get_manager(game_id)
-            if manager:
-                await manager.broadcast(cardPlayInfo.model_dump())
+            manager = get_manager(game.id)
+            await manager.broadcast(cardPlayInfo.model_dump())
+            
+            return {}
             
         except PlayerNotFoundError as e:
             raise HTTPException(
@@ -60,7 +62,7 @@ async def play_card(
         except NotPlayersTurnError as e:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e),
+                detail=f"It's not the turn of player {player_id}",
             )
 
     elif not playerInGame:
