@@ -141,7 +141,17 @@ class GameService:
         
         return player.id
         
-
+    def player_in_game(self, game_id: int, player_id: int) -> bool:
+        db_game: Game | None = self._db.query(Game).filter(Game.id == game_id).first()
+        if not db_game:
+            raise GameNotFoundError("Se lanza cuando no se encuentra un juego con el id especificado.")
+        
+        b = False
+        for p in db_game.players:
+            if p.id == player_id:
+                b = True
+        
+        return b
 
 
 

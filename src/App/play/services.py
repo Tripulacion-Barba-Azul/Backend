@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from App.exceptions import GameNotFoundError, NotPlayersTurnError, PlayerNotFoundError
 from App.games.models import Game
 from App.games.services import GameService
-from App.models import db
 from App.players.models import Player
 from App.play.enums import TurnStatus
 
@@ -17,11 +16,11 @@ class RoundService:
             game_id: int,
             player_id: int,
         ) -> Game:
-        game: Game | None = self._db.query(Game).filter(Game.id == game_id).first()
+        game: Game | None = GameService(self._db).get_by_id(game_id)
         if not game:
             raise GameNotFoundError(f"No game found {game_id}")
-        
-        player = GameService(db).select_player_turn(game.id)
+
+        player: Player | None = self._db.query(Player).filter(Player.id == player_id).first()
         if not player:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         if player.turn_status != TurnStatus.PLAYING:

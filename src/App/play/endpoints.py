@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from App.card.schemas import CardGameInfo
 from App.card.services import get_cards_by_player
 from App.exceptions import NotPlayersTurnError, PlayerNotFoundError, WebsocketManagerNotFoundError
+from App.games.services import GameService
 from App.play.schemas import PlayCardInfo
 from App.models.db import get_db
 from App.play.services import RoundService
@@ -17,9 +18,12 @@ async def play_card(
     player_id: int,
     cards: list[int],
     db=Depends(get_db)):
-    
-    if not cards:
+
+    playerInGame = GameService(db).player_in_game(game_id, player_id)
+
+    if cards == [] and playerInGame:
         try:
+            
             game = RoundService(db).no_action(game_id, player_id)
             
             cards = []
@@ -45,7 +49,8 @@ async def play_card(
             )
                 
             manager = get_manager(game_id)
-            await manager.broadcast(cardPlayInfo.model_dump())
+            if manager:
+                await manager.broadcast(cardPlayInfo.model_dump())
             
         except PlayerNotFoundError as e:
             raise HTTPException(
@@ -57,8 +62,14 @@ async def play_card(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=str(e),
             )
+
+    elif not playerInGame:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The player is not in the game.",
+        )
             
-    else:
+    elif cards != []:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Playing cards is not implemented yet.",
