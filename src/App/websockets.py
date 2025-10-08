@@ -1,76 +1,77 @@
 """Service websocket"""
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
-from starlette.websockets import WebSocket
-from App.exceptions import WebsocketManagerNotFoundError
-from App.games.services import GameService
-from App.models.db import get_db
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 
 websocket_router = APIRouter()
 
-class WebsocketManage:
+class GameConnectionPool:
+    
+    active_connections: dict[int, WebSocket]
+
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
+        self.active_connections = {}
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, player_id: int):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        self.active_connections[player_id] = websocket
 
-    async def close_connection(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            if not websocket.client_state.name == "DISCONNECTED":
-                await websocket.close()
-            self.active_connections.remove(websocket)
+    def disconnect(self, player_id: int):
+        if player_id in self.active_connections:
+            self.active_connections.pop(player_id)
 
-    async def send_message(self, message: dict, websocket: WebSocket):
-        await websocket.send_json(message)
+    def get_connection(self, player_id: int) -> WebSocket | None:
+        return self.active_connections.get(player_id)
+
+    async def send_message(self, message: dict, player_id: int):
+        websocket = self.get_connection(player_id)
+        if websocket:
+            await websocket.send_json(message)
 
     async def broadcast(self, message: dict):
-        for connection in self.active_connections[:]:
-            await connection.send_json(message)
+        for websocket in self.active_connections.values():
+            await websocket.send_json(message)
 
-    async def broadcast_except(self, message: dict, skip_ws: WebSocket):
-        for connection in self.active_connections:
-            if connection != skip_ws:
-                try:
-                    await connection.send_json(message)
-                except Exception:
-                    self.active_connections.remove(connection)
+class ConnectionManager:
+    def __init__(self):
+        self.games: dict[int, GameConnectionPool] = {}
 
-    def count(self) -> int:
-        return len(self.active_connections)
+    def get_game_pool(self, game_id: int) -> GameConnectionPool:
+        if game_id not in self.games:
+            self.games[game_id] = GameConnectionPool()
+        return self.games[game_id]
 
-games_ws : dict[int, WebsocketManage] = {}
+    async def connect(self, game_id: int, player_id: int, websocket: WebSocket):
+        game_pool = self.get_game_pool(game_id)
+        await game_pool.connect(websocket, player_id)
 
-def create_manager(game_id: int):
-    games_ws[game_id] = WebsocketManage()
+    def disconnect(self, game_id: int, player_id: int):
+        game_pool = self.games.get(game_id)
+        if not game_pool:
+            return
+        game_pool.disconnect(player_id)
 
-def get_manager(game_id : int):
-    return games_ws.get(game_id)
+        if not game_pool.active_connections:
+            self.games.pop(game_id)
 
-def remove_manager(game_id: int):
-    games_ws.pop(game_id, None)
+    async def send_to_player(self, game_id: int, player_id: int, message: dict):
+        game_pool = self.games.get(game_id)
+        if game_pool:
+            await game_pool.send_message(message, player_id)
 
-@websocket_router.websocket("/ws/{game_id}")
-async def websocket_endpoint(websocket: WebSocket, game_id: int, db=Depends(get_db)):
-    if not get_manager(game_id):
-        get_by_id = GameService(db).get_by_id(game_id)
-        if get_by_id:
-            create_manager(game_id)
-        else:
-            raise WebsocketManagerNotFoundError(f"No WebSocket manager for game {game_id}")
+    async def broadcast(self, game_id: int, message: dict):
+        game_pool = self.games.get(game_id)
+        if game_pool:
+            await game_pool.broadcast(message)
 
-    manager = get_manager(game_id)
-    await manager.connect(websocket)
-    
+
+manager = ConnectionManager()
+
+@websocket_router.websocket("/ws/{game_id}/{player_id}")
+async def websocket_endpoint(websocket: WebSocket, game_id: int, player_id: int):
+    await manager.connect(game_id, player_id, websocket)
     try:
-        await manager.send_message({"msj" : f"Connected to ws from game {game_id}"}, websocket)
         while True:
-            data = await websocket.receive_text()
-            print(f"Received message from ws [Game {game_id}] : {data}")
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        print(f"Client disconnected from ws [Game {game_id}]")
-    finally:
-        await manager.close_connection(websocket)
-        if manager.count() == 0:
-            remove_manager(game_id)
+        manager.disconnect(game_id, player_id)
