@@ -65,4 +65,3 @@ class GamePublicInfo(BaseModel):
     draftCards:list[CardPublicInfo] = []
     discardPileCount: int = 1
     players: list[PlayerPublicInfo]
-       

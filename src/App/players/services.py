@@ -34,4 +34,15 @@ class PlayerService:
         cards = player.cards
         return cards
     
+    def discard_card(self, player_id, card):
+        player = self._db.query(Player).filter_by(id = player_id).first()
+        if not player:
+            raise ValueError(f"Player {player_id} does not exist")
+        if card not in player.cards:
+            raise ValueError(f"Card {card.id} is not in player {player_id}'s hand")
+        player.cards.remove(card)
+        self._db.commit()
+        self._db.refresh(player)
+        return card
+    
     
