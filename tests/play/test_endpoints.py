@@ -29,7 +29,7 @@ def test_no_action(client: TestClient, seed_games):
     data = response.json()
     game_id = data["gameId"]
     owner_id = data["ownerId"]
-    with client.websocket_connect(f"/ws/{game_id}") as websocket:
+    with client.websocket_connect(f"/ws/{game_id}/{1}") as websocket:
         
         new_player = {
             "playerName": "Barba Negra",
@@ -37,7 +37,7 @@ def test_no_action(client: TestClient, seed_games):
         }
         client.post(f"/games/{game_id}/join", json=new_player)
         result = websocket.receive_json()
-        result = websocket.receive_json()
+
         
         response = client.post(f"/games/{game_id}/start", params={"owner_id": owner_id})
         data = response.json()
