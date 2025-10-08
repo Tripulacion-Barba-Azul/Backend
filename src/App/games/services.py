@@ -1,6 +1,6 @@
 from App.card.schemas import CardGameInfo
 from App.games.utils import db_game_2_game_public_info
-from App.decks.reposition_deck_services import create_reposition_deck, draw_reposition_deck
+from App.decks.reposition_deck_services import RepositionDeckService
 from App.games.enums import GameStatus
 from App.games.schemas import GameStartInfo
 from App.players.schemas import PlayerGameInfo
@@ -131,8 +131,8 @@ class GameService:
         self._db.commit()
 
         # inicializa mazo
-        create_reposition_deck(game_id, self._db)
-        draw_reposition_deck(game_id, self._db)
+        RepositionDeckService(self._db).create_reposition_deck(game_id)
+        RepositionDeckService(self._db).draw_reposition_deck(game_id)
 
         return db_game
             

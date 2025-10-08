@@ -6,8 +6,7 @@ from datetime import date
 from App.card.models import Card
 from App.games.models import Game
 from App.players.models import Player
-from App.decks.reposition_deck_services import *
-
+from App.decks.reposition_deck_services import RepositionDeckService
 
 
 @pytest.fixture
@@ -46,7 +45,7 @@ def sample_reposition_deck(session):
 def test_get_existing_reposition_deck(session:Session, sample_reposition_deck):
         """Test obtener un RepositionDeck existente"""
         
-        rep_deck = get_reposition_deck(sample_reposition_deck.id, session)
+        rep_deck = RepositionDeckService(session).get_reposition_deck(sample_reposition_deck.id)
         
         assert rep_deck is not None
         assert rep_deck.id == sample_reposition_deck.id
@@ -57,19 +56,19 @@ def test_get_nonexistent_reposition_deck(session:Session):
         """Test que al intentar obtener un deck inexistente lanza error"""
         
         with pytest.raises(ValueError, match="Deck with id:999 dont exist"):
-            get_reposition_deck(999, session)
+            RepositionDeckService(session).get_reposition_deck(999)
 
 
 
 def test_create_repposition_deck_success_less_2(sample_game, session:Session):
     """Test de crear mazo de reposicion"""
     game = sample_game
-    rep_deck = create_reposition_deck(game.id,session)
+    rep_deck =  RepositionDeckService(session).create_reposition_deck(game.id)
 
     assert rep_deck is not None 
     assert rep_deck.game_id == game.id
 
-    detective_count = len(session.query(Detective).filter_by(type = "detective").all())
+    detective_count = len(session.query(Card).filter_by(type = "detective").all())
     devious_count = len(session.query(Card).filter_by(type = "devious").all())
     instant_count = len(session.query(Card).filter_by(type = "instant").all())
     event_count = len(session.query(Card).filter_by(type = "event").all())
@@ -79,17 +78,18 @@ def test_create_repposition_deck_success_less_2(sample_game, session:Session):
     assert instant_count == 10 
     assert event_count == 19
 
+
 def test_create_repposition_deck_success_more_2(sample_game, session:Session):
     """Test de crear mazo de reposicion"""
     game = sample_game
     game.players.append(Player(name="Jugador1", avatar="avatar1", birthday=date(1990,1,1)))
     game.players.append(Player(name="Jugador2", avatar="avatar2", birthday=date(1990,1,1)))
-    rep_deck = create_reposition_deck(game.id,session)
+    rep_deck = RepositionDeckService(session).create_reposition_deck(game.id)
 
     assert rep_deck is not None 
     assert rep_deck.game_id == game.id
 
-    detective_count = len(session.query(Detective).filter_by(type = "detective").all())
+    detective_count = len(session.query(Card).filter_by(type = "detective").all())
     devious_count = len(session.query(Card).filter_by(type = "devious").all())
     instant_count = len(session.query(Card).filter_by(type = "instant").all())
     event_count = len(session.query(Card).filter_by(type = "event").all())
@@ -101,20 +101,20 @@ def test_create_repposition_deck_success_more_2(sample_game, session:Session):
 
 
 def test_reposition_deck_unsuccess(sample_game, session:Session):
+
     """Test que al crear un deck a una partida con un deck creado lanza error"""
-    rep_deck1 = create_reposition_deck(sample_game.id,session)
+    rep_deck1 = RepositionDeckService(session).create_reposition_deck(sample_game.id)
     with pytest.raises(ValueError, match=f"Game {sample_game.id} already has a reposition deck"):
-            create_reposition_deck(sample_game.id,session)
+            RepositionDeckService(session).create_reposition_deck(sample_game.id)
 
 
 def test_draw_reposition_deck_sucess(sample_player, sample_game, session:Session):
     """Test de repartir mazo de reposicion"""
-    create_reposition_deck(sample_game.id, session)
-    sample_game.players.append(sample_player)
-    draw_reposition_deck(sample_game.id, session)
 
-    
-    print(sample_player.cards)
+    RepositionDeckService(session).create_reposition_deck(sample_game.id)
+    sample_game.players.append(sample_player)
+    RepositionDeckService(session).draw_reposition_deck(sample_game.id)
+
     assert len(sample_player.cards) == 6
     check_instant = False
     i=0
