@@ -4,8 +4,9 @@ from sqlalchemy import (
     Column, Table, Integer, String, ForeignKey, Enum as SqlEnum
     )
 from sqlalchemy.orm import Mapped, relationship, mapped_column
+from App.decks.discard_deck_model import DiscardDeck
 from App.models.db import Base
-from App.games.enums import GameStatus
+from App.games.enums import ActionStatus, GameStatus
 from App.players.models import Player
 from App.decks.reposition_deck_model import RepositionDeck
 
@@ -33,12 +34,19 @@ class Game(Base):
             default=GameStatus.WAITING,
             nullable=False
     )
+    action_status: Mapped[ActionStatus] = mapped_column(
+            SqlEnum(ActionStatus),
+            default=ActionStatus.BLOCKED,
+            nullable=False
+    )
     owner_id: Mapped[int] = mapped_column(Integer, ForeignKey('players.id'), nullable=False)
     min_players: Mapped[int] = mapped_column(Integer, nullable=False)
     max_players: Mapped[int] = mapped_column(Integer, nullable=False)
     num_players: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     turn_number: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-
+    action_status: Mapped[ActionStatus] = mapped_column(SqlEnum(ActionStatus),
+                                                        default=ActionStatus.BLOCKED,
+                                                        nullable=False)
     owner: Mapped[Player] = relationship(Player, foreign_keys=[owner_id])
     players: Mapped[list[Player]] = relationship(
         Player,
@@ -46,8 +54,14 @@ class Game(Base):
         backref=None
     )
 
-    reposition_deck: Mapped["RepositionDeck"] = relationship(
+    reposition_deck: Mapped[RepositionDeck] = relationship(
         "RepositionDeck",
+        back_populates="game", 
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    discard_deck: Mapped[DiscardDeck] = relationship(
+        "DiscardDeck",
         back_populates="game", 
         uselist=False,
         cascade="all, delete-orphan"

@@ -1,13 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from App.card.schemas import CardGameInfo
-from App.card.services import get_cards_by_player
-from App.exceptions import NotPlayersTurnError, PlayerNotFoundError, WebsocketManagerNotFoundError
+from App.exceptions import NotPlayersTurnError, PlayerNotFoundError
 from App.games.services import GameService
+from App.games.utils import db_game_2_game_public_info
 from App.play.schemas import PlayCard, PlayCardInfo
 from App.models.db import get_db
-from App.play.services import RoundService
+
+from App.play.services import PlayService
+from App.players.models import Player
 from App.players.schemas import PlayerGameInfo
+from App.players.services import PlayerService
+from App.players.utils import db_player_2_player_private_info
 from App.websockets import manager
 
 play_router = APIRouter()
@@ -18,39 +22,26 @@ async def play_card(
     turn_info: PlayCard,
     db=Depends(get_db)):
 
+    game = GameService(db).get_by_id(game_id)
     player_id = turn_info.playerId
     cards = turn_info.cards
-    playerInGame = GameService(db).player_in_game(game_id, player_id)
+    isPlayerInGame = GameService(db).player_in_game(game_id, player_id)
 
-    if cards == [] and playerInGame:
+    player = db.query(Player).filter(Player.id == player_id).first()
+
+    if cards == [] and isPlayerInGame:
         try:
             
-            game = RoundService(db).no_action(game_id, player_id)
+            game = PlayService(db).no_action(game_id, player_id)
             
-            cards = []
-            for player in game.players:
-                for card in get_cards_by_player(player.id, db):
-                    cards.append(CardGameInfo(
-                        cardOwnerID=player.id,
-                        cardID=card.id,
-                        cardName=card.name
-                    ))
-                    
-            players = []
-            for player in game.players:
-                players.append(PlayerGameInfo(
-                    id=player.id,
-                    name=player.name,
-                    rol=str(player.rol)
-                ))
-                
-            cardPlayInfo = PlayCardInfo(
-                players=players,
-                cards=cards
+            gamePublictInfo = db_game_2_game_public_info(game)
+            await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            playerPrivateInfo = db_player_2_player_private_info(player)
+            await manager.send_to_player(
+                game_id=game.id, 
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
             )
-
-            await manager.broadcast(game.id,cardPlayInfo.model_dump())
-            
             return {}
             
         except PlayerNotFoundError as e:
@@ -64,7 +55,7 @@ async def play_card(
                 detail=f"It's not the turn of player {player_id}",
             )
 
-    elif not playerInGame:
+    elif not isPlayerInGame:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The player is not in the game.",

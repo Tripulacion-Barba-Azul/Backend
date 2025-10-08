@@ -44,12 +44,6 @@ def get_secret(secret_id, db:Session):
     else:
         return secret
 
-def get_secrets_by_player(player_id, db:Session) -> list[Secret]:
-    player = db.query(Player).filter_by(id = player_id).first()
-    secrets = player.secrets
-    return secrets
-
-
 
 def create_secret(new_name, new_description, new_type, db:Session, commit=False):
     new_secret = Secret(

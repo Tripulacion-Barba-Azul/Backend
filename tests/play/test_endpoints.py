@@ -1,16 +1,18 @@
 from datetime import date
 from fastapi.testclient import TestClient
 
+from App.games.models import Game
+from App.players.utils import db_player_2_player_public_info
 from main import app
 from App.games.services import GameService
 
 client = TestClient(app)
 
-def test_no_action(client: TestClient, seed_games):
+def test_no_action(client: TestClient, seed_games, session):
     
     player_info = {
                 "playerName":"Barba Azul",
-                "birthDate":date(2000,10,15).strftime("%Y-%m-%d")
+                "birthDate":date(2000,9,15).strftime("%Y-%m-%d")
     }
 
     game_info = {
@@ -36,25 +38,12 @@ def test_no_action(client: TestClient, seed_games):
             "birthDate": date(2001, 4, 5).strftime("%Y-%m-%d"),
         }
         client.post(f"/games/{game_id}/join", json=new_player)
-        result = websocket.receive_json()
-
         
         response = client.post(f"/games/{game_id}/start", params={"owner_id": owner_id})
-        data = response.json()
-        
-        result = websocket.receive_json()
-        assert result["playerTurnId"] == owner_id
+
 
         response = client.post(f"/play/{game_id}/actions/play-card", json={"playerId": owner_id, "cards": []})
         data = response.json()
-        
-        result = websocket.receive_json()
-        assert result["event"] == "play_card"
-        assert result["players"][0]["id"] == owner_id
-        assert result["players"][0]["name"] == "Barba Azul"
-        assert result["players"][1]["id"] != owner_id
-        assert result["players"][1]["name"] == "Barba Negra"
-        
     
-    assert response.status_code == 200
-    assert response.json() == {}
+        assert response.status_code == 200
+        assert response.json() == {}

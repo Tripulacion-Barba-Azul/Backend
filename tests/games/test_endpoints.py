@@ -1,5 +1,6 @@
 from datetime import date
 from fastapi.testclient import TestClient
+from App.games.enums import GameStatus
 from App.websockets import manager
 
 
@@ -243,7 +244,7 @@ def test_start_game_success(client: TestClient, seed_games):
         
         new_player = {
             "playerName": "Barba Negra",
-            "birthDate": date(2001, 4, 5).strftime("%Y-%m-%d"),
+            "birthDate": date(2001, 4, 5).strftime("%Y-%m-%d")
         }
         client.post(f"/games/{game_id}/join", json=new_player)
         result = websocket.receive_json()
@@ -252,9 +253,8 @@ def test_start_game_success(client: TestClient, seed_games):
         data = response.json()
         
         result = websocket.receive_json()
-    
-        assert result["event"] == "game_started"
-        assert result["turn"] == 1
+        
+        assert result["gameStatus"] == GameStatus.IN_PROGRESS.value
         assert len(result["players"]) == 2
     
     assert response.status_code == 200

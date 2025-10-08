@@ -4,19 +4,20 @@ from App.exceptions import GameNotFoundError, NotPlayersTurnError, PlayerNotFoun
 from App.games.models import Game
 from App.games.services import GameService
 from App.players.models import Player
-from App.play.enums import TurnStatus
+from App.players.enums import TurnStatus
 
-class RoundService:
+class PlayService:
 
     def __init__(self, db: Session):
         self._db = db
+        self._game_service = GameService(db)
         
     def no_action(
             self,
             game_id: int,
             player_id: int,
         ) -> Game:
-        game: Game | None = GameService(self._db).get_by_id(game_id)
+        game: Game | None = self._game_service.get_by_id(game_id)
         if not game:
             raise GameNotFoundError(f"No game found {game_id}")
 

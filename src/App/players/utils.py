@@ -1,8 +1,15 @@
 from datetime import date
 import random
+
+from sqlalchemy.orm import Session
 from App import players
+from App.card.utils import db_card_2_card_private_info
+from App.games.models import Game
+from App.models import db
+from App.players.enums import PlayerRole
 from App.players.models import Player
-from App.players.schemas import PlayerInfo
+from App.players.schemas import AllyInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo
+from App.secret.utils import db_secret_2_secret_private_info, db_secret_2_secret_public_info
 
 
 def db_player_2_player_info(db_player: Player) -> PlayerInfo:
@@ -43,3 +50,43 @@ def sort_players(players: list[Player]):
     players = [selected_player] + remaining_players
     
     return players
+
+def db_player_2_player_public_info(db_player: Player) -> PlayerPublicInfo:
+    return PlayerPublicInfo(
+        id=db_player.id,
+        name=db_player.name,
+        avatar=db_player.avatar,
+        turnOrder=db_player.turn_order,
+        turnStatus=db_player.turn_status.value,
+        cardCount=len(db_player.cards),
+        secrets=[db_secret_2_secret_public_info(secret) 
+                for secret in db_player.secrets
+            ],
+        sets=[] #falta implementar sets
+    )
+
+def db_player_2_player_private_info(db_player: Player) -> PlayerPrivateInfo:
+
+    ally = None
+
+    if db_player.ally:
+        
+        if db_player.role == PlayerRole.MURDERER:
+            allyRole = PlayerRole.ACCOMPLICE.value
+        else:
+            allyRole = PlayerRole.MURDERER.value
+
+        ally = AllyInfo(
+            id=db_player.ally,
+            role=allyRole
+        )
+        
+    return PlayerPrivateInfo(
+        cards=[db_card_2_card_private_info(card) for card in db_player.cards],
+        secrets=[db_secret_2_secret_private_info(secret) 
+                for secret in db_player.secrets
+            ],
+        role=db_player.role.value,
+        ally=ally
+    )
+    

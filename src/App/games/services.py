@@ -1,5 +1,10 @@
-from App.decks.reposition_deck_services import create_reposition_deck, draw_reposition_deck
+from App.card.schemas import CardGameInfo
+from App.games.utils import db_game_2_game_public_info
+from App.decks.reposition_deck_services import RepositionDeckService
 from App.games.enums import GameStatus
+from App.games.schemas import GameStartInfo
+from App.players.schemas import PlayerGameInfo
+from App.secret.schemas import SecretGameInfo
 from sqlalchemy.orm import Session
 
 from App import players
@@ -7,11 +12,10 @@ from App.games.dtos import GameDTO
 from App.games.models import Game, Player
 from App.games.enums import GameStatus
 from App.players.dtos import PlayerDTO
-from App.players.enums import PlayerRol
+from App.players.enums import PlayerRole, TurnStatus
 from App.players.services import PlayerService
 from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame
 from App.players.utils import sort_players
-from App.play.enums import TurnStatus
 from App.secret.enums import SecretType
 from App.secret.services import create_and_draw_secrets
 
@@ -79,7 +83,7 @@ class GameService:
         return game, new_player
     
 
-    def start(
+    def start_game(
             self,
             game_id: int,
             owner_id: int
@@ -104,22 +108,31 @@ class GameService:
         # ordenar jugadores
         players = sort_players(db_game.players)
         for idx, player in enumerate(players):
-            player.order = idx + 1
+            player.turn_order = idx + 1
 
+        self.select_player_turn(game_id)
         # asignar roles jugador
         create_and_draw_secrets(game_id, self._db)
+        murderer = None
+        accomplice = None
         for player in players:
             for secret in player.secrets:
                 if secret.type == SecretType.MURDERER:
-                    player.rol = PlayerRol.MURDERER
+                    player.role = PlayerRole.MURDERER
+                    murderer = player
                 elif secret.type == SecretType.ACCOMPLICE:
-                    player.rol = PlayerRol.ACCOMPLICE
+                    player.role = PlayerRole.ACCOMPLICE
+                    accomplice = player
+
+        if accomplice and murderer:
+            murderer.ally = accomplice.id
+            accomplice.ally = murderer.id        
 
         self._db.commit()
 
         # inicializa mazo
-        create_reposition_deck(game_id, self._db)
-        draw_reposition_deck(game_id, self._db)
+        RepositionDeckService(self._db).create_reposition_deck(game_id)
+        RepositionDeckService(self._db).draw_reposition_deck(game_id)
 
         return db_game
             
@@ -131,7 +144,7 @@ class GameService:
         player_order_number = (db_game.turn_number-1) % db_game.num_players + 1
 
         for p in db_game.players:
-            if p.order == player_order_number:
+            if p.turn_order == player_order_number:
                 player = p
                 p.turn_status = TurnStatus.PLAYING
                 
@@ -152,6 +165,4 @@ class GameService:
                 b = True
         
         return b
-
-
 
