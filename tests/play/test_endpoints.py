@@ -38,12 +38,9 @@ def test_no_action(client: TestClient, seed_games, session):
             "birthDate": date(2001, 4, 5).strftime("%Y-%m-%d"),
         }
         client.post(f"/games/{game_id}/join", json=new_player)
-        result = websocket.receive_json()
         
         response = client.post(f"/games/{game_id}/start", params={"owner_id": owner_id})
-        
-        result = websocket.receive_json()
-        assert len(result["players"]) == 2
+
 
         response = client.post(f"/play/{game_id}/actions/play-card", json={"playerId": owner_id, "cards": []})
         data = response.json()

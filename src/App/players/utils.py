@@ -67,7 +67,7 @@ def db_player_2_player_public_info(db_player: Player) -> PlayerPublicInfo:
 
 def db_player_2_player_private_info(db_player: Player) -> PlayerPrivateInfo:
 
-    ally = None        
+    ally = None
 
     if db_player.ally:
         
