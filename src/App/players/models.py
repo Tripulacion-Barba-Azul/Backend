@@ -39,7 +39,7 @@ class Player(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     avatar: Mapped[str] = mapped_column(String, nullable=True)
     birthday: Mapped[date] = mapped_column(Date, nullable=False)
-    order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    turn_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     rol: Mapped[PlayerRol] = mapped_column(
         SqlEnum(PlayerRol), 
             default=PlayerRol.DETECTIVE,

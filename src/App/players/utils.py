@@ -2,7 +2,8 @@ from datetime import date
 import random
 from App import players
 from App.players.models import Player
-from App.players.schemas import PlayerInfo
+from App.players.schemas import PlayerInfo, PlayerPublicInfo
+from App.secret.utils import db_secret_2_secret_public_info
 
 
 def db_player_2_player_info(db_player: Player) -> PlayerInfo:
@@ -43,3 +44,15 @@ def sort_players(players: list[Player]):
     players = [selected_player] + remaining_players
     
     return players
+
+def db_player_2_player_public_info(db_player: Player) -> PlayerPublicInfo:
+    return PlayerPublicInfo(
+        id=db_player.id,
+        name=db_player.name,
+        avatar=db_player.avatar,
+        turnOrder=db_player.turn_order,
+        turnStatus=db_player.turn_status,
+        cardCount=len(db_player.cards),
+        secrets=[db_secret_2_secret_public_info(secret) for secret in db_player.secrets],
+        sets=[] #falta implementar sets
+    )

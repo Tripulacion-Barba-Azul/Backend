@@ -12,11 +12,6 @@ def get_card(card_id, db:Session):
     else:
         return card
 
-def get_cards_by_player(player_id, db:Session) -> list[Card]:
-    player = db.query(Player).filter_by(id = player_id).first()
-    cards = player.cards
-    return cards
-
 def create_devious_card(card_name, card_effect, db:Session):
     new_devious = Devious(
                             name = card_name,

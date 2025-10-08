@@ -98,44 +98,13 @@ async def start_game(
     try:
         db_game = GameService(db).start(game_id, owner_id)
 
-        player_turn_id = GameService(db).select_player_turn(db_game.id)
-        players = []
-        for player in db_game.players:
-            players.append(PlayerGameInfo(
-                id=player.id,
-                name=player.name,
-                rol=str(player.rol)
-            ))
+        gameStartInfo = GameService(db).game_public_info(game_id)
+
+
+
         
-        number_deck_cards = len(db_game.reposition_deck.cards)
-
-        cards = []
-        for player in db_game.players:
-            for card in get_cards_by_player(player.id, db):
-                cards.append(CardGameInfo(
-                    cardOwnerID=player.id,
-                    cardID=card.id,
-                    cardName=card.name
-                ))
-        
-        secrets = []
-        for player in db_game.players:
-            for secret in get_secrets_by_player(player.id, db):
-                secrets.append(SecretGameInfo(
-                    secretOwnerID=player.id,
-                    secretName=secret.name,
-                    revealed=secret.revealed
-                ))
-
-        gameStartInfo = GameStartInfo(
-            playerTurnId=player_turn_id,
-            numberOfRemainingCards=number_deck_cards,
-            players=players,
-            cards=cards,
-            secrets=secrets
-        )
-
         await manager.broadcast(db_game.id,gameStartInfo.model_dump())
+
 
         return db_game_2_game_info(db_game)
     except GameNotFoundError as e:

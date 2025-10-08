@@ -5,3 +5,8 @@ class SecretGameInfo(BaseModel):
     secretName: str
     revealed: bool
 
+class SecretPublicInfo(BaseModel):
+    id: int
+    revealed: bool = False
+    name: str = None
+        

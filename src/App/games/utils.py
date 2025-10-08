@@ -1,8 +1,8 @@
 from App.games.models import Game
 
-from App.games.schemas import GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo
+from App.games.schemas import GameInfo, GameInfoPlayer, GameLobbyInfo, GamePublicInfo, GameWaitingInfo
 from App.players.models import Player
-from App.players.utils import db_player_2_player_info
+from App.players.utils import db_player_2_player_info, db_player_2_player_public_info
 
 
 def db_game_2_game_info(db_game: Game) -> GameInfo:
@@ -36,4 +36,16 @@ def db_game_2_game_wtg_info(db_game: Game) -> GameWaitingInfo:
         ownerId=db_game.owner_id,
         players=[db_player_2_player_info(db_player)
                for db_player in db_game.players]
+    )
+
+
+def db_game_2_game_public_info(db_game: Game) -> GamePublicInfo:
+    return GamePublicInfo(
+        actionStatus=db_game.action_status,
+        gameStatus=db_game.game_status,
+        regularDeckCount=len(db_game.regular_deck),
+        discardPileTop=db_game.discard_deck.cards.index(0),
+        draftCards= [], #falta implementar draft cards
+        discardPileCount= len(db_game.discard_deck.cards),
+        players=[db_player_2_player_public_info(player) for player in db_game.players]
     )

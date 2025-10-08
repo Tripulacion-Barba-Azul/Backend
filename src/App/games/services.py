@@ -1,5 +1,11 @@
+from App.card.schemas import CardGameInfo
+from App.games.utils import db_game_2_game_public_info
+from App.players.services import get_cards_by_player, get_secrets_by_player
 from App.decks.reposition_deck_services import create_reposition_deck, draw_reposition_deck
 from App.games.enums import GameStatus
+from App.games.schemas import GameStartInfo
+from App.players.schemas import PlayerGameInfo
+from App.secret.schemas import SecretGameInfo
 from sqlalchemy.orm import Session
 
 from App import players
@@ -155,3 +161,16 @@ class GameService:
 
 
 
+    def game_public_info(self, game_id:int):
+
+        db_game: Game | None = self._db.query(Game).filter(Game.id == game_id).first()
+        if not db_game:
+            raise GameNotFoundError("Se lanza cuando no se encuentra un juego con el id especificado.")
+        
+        
+
+        gamePublicInfo = db_game_2_game_public_info(db_game)
+        return gamePublicInfo
+    
+
+    
