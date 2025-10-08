@@ -47,7 +47,7 @@ def db_game_2_game_public_info(db_game: Game) -> GamePublicInfo:
         actionStatus=db_game.action_status.value,
         gameStatus=db_game.status.value,
         regularDeckCount=len(db_game.reposition_deck.cards),
-        discardPileTop=None,
+        discardPileTop=db_card_2_card_info(db_game.discard_deck.cards[-1]),
         draftCards= [], #falta implementar draft cards
         discardPileCount= 1,
         players=[db_player_2_player_public_info(player) for player in db_game.players]

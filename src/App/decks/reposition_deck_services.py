@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
 
+from App.decks.discard_deck_model import DiscardDeck
+from App.decks.discard_deck_service import DiscardDeckService
 from App.decks.reposition_deck_model import RepositionDeck
 from App.games.models import Game
 from App.card.services import CardService
@@ -34,7 +36,7 @@ class RepositionDeckService:
 
     def relate_reposition_deck_game(self, deck_id, game_id):
 
-        rep_deck = RepositionDeckService(self._db).get_reposition_deck(deck_id)
+        rep_deck = self.get_reposition_deck(deck_id)
         game = self._db.query(Game).filter_by(id = game_id).first()
 
         if game == None:
@@ -112,7 +114,7 @@ class RepositionDeckService:
         for player in game.players:
             self._db.refresh(player)
 
-        RepositionDeckService(self._db).relate_reposition_deck_game(rep_deck.id, game_id)
+        self.relate_reposition_deck_game(rep_deck.id, game_id)
         return rep_deck
 
 
@@ -147,6 +149,15 @@ class RepositionDeckService:
         self._db.refresh(rep_deck)
         for player in players:
             self._db.refresh(player)
+
+        card = rep_deck.cards[-1]
+
+        CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=False)
+
+        
+        discard_pile = DiscardDeckService(self._db).create_discard_deck()
+        DiscardDeckService(self._db).relate_card_to_discard_deck(discard_pile.id, card)
+        DiscardDeckService(self._db).relate_discard_deck_game(discard_pile.id, game.id)
 
 
 

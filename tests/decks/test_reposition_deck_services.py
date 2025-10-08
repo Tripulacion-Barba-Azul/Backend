@@ -122,6 +122,7 @@ def test_draw_reposition_deck_sucess(sample_player, sample_game, session:Session
         check_instant= (sample_player.cards[i].type == "instant")
         i = i+1
     assert check_instant
+    assert sample_game.discard_deck is not None
 
 
 
