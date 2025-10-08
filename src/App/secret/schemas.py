@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from sqlalchemy import null
 
 class SecretGameInfo(BaseModel):
     secretOwnerID: int
@@ -8,5 +9,10 @@ class SecretGameInfo(BaseModel):
 class SecretPublicInfo(BaseModel):
     id: int
     revealed: bool = False
-    name: str = None
-        
+    name: str | None = None
+
+class SecretPrivateInfo(BaseModel):
+    id: int
+    name: str
+    revealed: bool = False
+    

@@ -11,7 +11,8 @@ from App.games.utils import (
     db_game_2_game_wtg_info
 )
 from App.models.db import get_db
-from App.players.schemas import PlayerCreate
+from App.players.schemas import PlayerCreate, PlayerPrivateInfo
+from App.players.utils import db_player_2_player_private_info
 from App.websockets import manager
 from App.exceptions import (
     GameNotFoundError,
@@ -94,7 +95,7 @@ async def start_game(
     try:
         db_game = GameService(db).start_game(game_id, owner_id)
         gameStartInfo = db_game_2_game_public_info(db_game)
-    
+
     except GameNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -115,7 +116,15 @@ async def start_game(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
         )
-    
     await manager.broadcast(db_game.id, gameStartInfo.model_dump())
 
+    for player in db_game.players:
+        playerPrivateInfo = db_player_2_player_private_info(player)
+
+        await manager.send_to_player(
+            game_id=db_game.id, 
+            player_id=player.id,
+            message=playerPrivateInfo.model_dump()
+        )
+    
     return db_game_2_game_info(db_game)

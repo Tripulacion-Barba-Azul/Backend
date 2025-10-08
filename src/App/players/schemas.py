@@ -1,9 +1,10 @@
 from datetime import date
 from pydantic import BaseModel
 
+from App.card.schemas import CardPrivateInfo
 from App.players.dtos import PlayerDTO
 from App.players.enums import TurnStatus
-from App.secret.schemas import SecretPublicInfo
+from App.secret.schemas import SecretPrivateInfo, SecretPublicInfo
 from App.sets.schemas import SetPublicInfo
 
 class PlayerCreate(BaseModel):
@@ -38,3 +39,14 @@ class PlayerPublicInfo(BaseModel):
     cardCount: int
     secrets: list[SecretPublicInfo]
     sets: list[SetPublicInfo] = []
+
+
+class AllyInfo(BaseModel):
+    id: int
+    role: str
+
+class PlayerPrivateInfo(BaseModel):
+    cards: list[CardPrivateInfo]
+    secrets: list[SecretPrivateInfo]
+    role: str
+    ally: AllyInfo | None = None

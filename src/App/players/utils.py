@@ -1,9 +1,15 @@
 from datetime import date
 import random
+
+from sqlalchemy.orm import Session
 from App import players
+from App.card.utils import db_card_2_card_private_info
+from App.games.models import Game
+from App.models import db
+from App.players.enums import PlayerRole
 from App.players.models import Player
-from App.players.schemas import PlayerInfo, PlayerPublicInfo
-from App.secret.utils import db_secret_2_secret_public_info
+from App.players.schemas import AllyInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo
+from App.secret.utils import db_secret_2_secret_private_info, db_secret_2_secret_public_info
 
 
 def db_player_2_player_info(db_player: Player) -> PlayerInfo:
@@ -58,3 +64,29 @@ def db_player_2_player_public_info(db_player: Player) -> PlayerPublicInfo:
             ],
         sets=[] #falta implementar sets
     )
+
+def db_player_2_player_private_info(db_player: Player) -> PlayerPrivateInfo:
+
+    ally = None        
+
+    if db_player.ally:
+        
+        if db_player.role == PlayerRole.MURDERER:
+            allyRole = PlayerRole.ACCOMPLICE.value
+        else:
+            allyRole = PlayerRole.MURDERER.value
+
+        ally = AllyInfo(
+            id=db_player.ally,
+            role=allyRole
+        )
+        
+    return PlayerPrivateInfo(
+        cards=[db_card_2_card_private_info(card) for card in db_player.cards],
+        secrets=[db_secret_2_secret_private_info(secret) 
+                for secret in db_player.secrets
+            ],
+        role=db_player.role.value,
+        ally=ally
+    )
+    

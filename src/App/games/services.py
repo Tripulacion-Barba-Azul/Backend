@@ -12,7 +12,7 @@ from App.games.dtos import GameDTO
 from App.games.models import Game, Player
 from App.games.enums import GameStatus
 from App.players.dtos import PlayerDTO
-from App.players.enums import PlayerRol, TurnStatus
+from App.players.enums import PlayerRole, TurnStatus
 from App.players.services import PlayerService
 from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame
 from App.players.utils import sort_players
@@ -113,12 +113,20 @@ class GameService:
         self.select_player_turn(game_id)
         # asignar roles jugador
         create_and_draw_secrets(game_id, self._db)
+        murderer = None
+        accomplice = None
         for player in players:
             for secret in player.secrets:
                 if secret.type == SecretType.MURDERER:
-                    player.rol = PlayerRol.MURDERER
+                    player.role = PlayerRole.MURDERER
+                    murderer = player
                 elif secret.type == SecretType.ACCOMPLICE:
-                    player.rol = PlayerRol.ACCOMPLICE
+                    player.role = PlayerRole.ACCOMPLICE
+                    accomplice = player
+
+        if accomplice and murderer:
+            murderer.ally = accomplice.id
+            accomplice.ally = murderer.id        
 
         self._db.commit()
 

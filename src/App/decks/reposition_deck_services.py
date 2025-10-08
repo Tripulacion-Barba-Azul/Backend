@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 
 from App.decks.reposition_deck_model import RepositionDeck
 from App.games.models import Game
-from App.players.models import Player
 from App.card.services import *
 from App.games.models import Game
 import random
@@ -130,13 +129,13 @@ def create_reposition_deck(game_id: int, db: Session):
 
 def draw_reposition_deck(game_id, db: Session):
     game = db.query(Game).filter_by(id=game_id).first()
-    rep_deck = game.reposition_deck
+    rep_deck = game.reposition_deck # type: ignore
 
     if rep_deck is None:
         raise ValueError(f"Game {game_id} doesn't have a reposition deck")    
     
     
-    players = game.players
+    players = game.players # type: ignore
     cards_needed = 5 * len(players)
     
     if len(rep_deck.cards) < cards_needed:

@@ -41,7 +41,7 @@ async def play_card(
                 players.append(PlayerGameInfo(
                     id=player.id,
                     name=player.name,
-                    rol=str(player.rol)
+                    rol=str(player.role)
                 ))
                 
             cardPlayInfo = PlayCardInfo(

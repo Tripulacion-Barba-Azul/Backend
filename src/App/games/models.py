@@ -34,6 +34,11 @@ class Game(Base):
             default=GameStatus.WAITING,
             nullable=False
     )
+    action_status: Mapped[ActionStatus] = mapped_column(
+            SqlEnum(ActionStatus),
+            default=ActionStatus.BLOCKED,
+            nullable=False
+    )
     owner_id: Mapped[int] = mapped_column(Integer, ForeignKey('players.id'), nullable=False)
     min_players: Mapped[int] = mapped_column(Integer, nullable=False)
     max_players: Mapped[int] = mapped_column(Integer, nullable=False)
