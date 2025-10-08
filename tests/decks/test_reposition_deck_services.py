@@ -63,7 +63,7 @@ def test_get_nonexistent_reposition_deck(session:Session):
 def test_create_repposition_deck_success_less_2(sample_game, session:Session):
     """Test de crear mazo de reposicion"""
     game = sample_game
-    rep_deck =  RepositionDeckService(session).create_reposition_deck(game.id)
+    rep_deck = RepositionDeckService(session).create_reposition_deck(game.id)
 
     assert rep_deck is not None 
     assert rep_deck.game_id == game.id

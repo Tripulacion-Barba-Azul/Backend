@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from App.decks.reposition_deck_model import RepositionDeck
 from App.games.models import Game
-from App.card.services import *
+from App.card.services import CardService
 from App.games.models import Game
 import random
 from App.decks.constants import (
@@ -56,6 +56,7 @@ class RepositionDeckService:
         self._db.refresh(rep_deck)
 
         game = self._db.query(Game).filter_by(id=game_id).first()
+
         if game is None:
             raise ValueError(f"Game with id {game_id} does not exist") 
 
@@ -66,37 +67,37 @@ class RepositionDeckService:
         
         for cantidad, card_name, card_effect, number_to_set in detective_cards:
             for i in range(cantidad):
-                deck.append(create_detective_card(card_name, card_effect, number_to_set, self._db))
+                deck.append(CardService(self._db).create_detective_card(card_name, card_effect, number_to_set))
 
         if player_number >2:  
 
             for cantidad, card_name, card_effect in event_cards:
                 for j in range(cantidad):
-                    deck.append(create_event_card(card_name, card_effect, self._db))
+                    deck.append(CardService(self._db).create_event_card(card_name, card_effect))
             
             for cantidad, card_name, card_effect in devious_cards:
                 for n in range(cantidad):
-                    deck.append(create_devious_card(card_name, card_effect, self._db))
+                    deck.append(CardService(self._db).create_devious_card(card_name, card_effect))
 
         else:
             for cantidad, card_name, card_effect in event_cards_2:
                 for j in range(cantidad):
-                    deck.append(create_event_card(card_name, card_effect, self._db))
+                    deck.append(CardService(self._db).create_event_card(card_name, card_effect))
             
             for cantidad, card_name, card_effect in devious_cards_2:
                 for n in range(cantidad):
-                    deck.append(create_devious_card(card_name, card_effect, self._db))
+                    deck.append(CardService(self._db).create_devious_card(card_name, card_effect))
 
 
         
         not_so_fast_cards = list()
         for m in range(10):
-            not_so_fast_cards.append(create_instant_card("Not so Fast!", "", self._db))
+            not_so_fast_cards.append(CardService(self._db).create_instant_card("Not so Fast!", ""))
 
         
         for i, player in enumerate(game.players):
             card = not_so_fast_cards[i]
-            relate_card_player(player.id, card.id, self._db, commit=False)
+            CardService(self._db).relate_card_player(player.id, card.id, commit=False)
 
         
         for i in range(player_number, 10):
@@ -137,8 +138,8 @@ class RepositionDeckService:
         for player in players:
             while len(player.cards) < 6: 
                 card = deck_copy.pop(0)
-                relate_card_player(player.id, card.id, self._db, commit=False)
-                unrelate_card_reposition_deck(rep_deck.id, card.id, self._db, commit=False)
+                CardService(self._db).relate_card_player(player.id, card.id, commit=False)
+                CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=False)
 
         
         self._db.commit()
