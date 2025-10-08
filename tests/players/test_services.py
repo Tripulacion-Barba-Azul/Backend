@@ -26,7 +26,7 @@ def test_create_player_service(session: Session):
 
 def test_discard_card_service(session: Session, seed_game_player2_discard):
 
-    game = seed_game_player2_discard
+    game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
 
     card = player.cards[2]
