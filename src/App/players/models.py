@@ -7,9 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List
 from App.models.db import Base
 from App.card.models import Card
-from App.players.enums import PlayerRol
+from App.players.enums import PlayerRol, TurnStatus
 from App.secret.models import Secret
-from App.play.enums import TurnStatus
 
 player_cards_association = Table(
         "player_cards_association",
@@ -37,7 +36,7 @@ class Player(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    avatar: Mapped[str] = mapped_column(String, nullable=True)
+    avatar: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     birthday: Mapped[date] = mapped_column(Date, nullable=False)
     turn_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     rol: Mapped[PlayerRol] = mapped_column(

@@ -34,7 +34,7 @@ class PlayerPublicInfo(BaseModel):
     name: str
     avatar: int
     turnOrder: int
-    turnStatus: TurnStatus
+    turnStatus: str
     cardCount: int
     secrets: list[SecretPublicInfo]
-    sets:list[SetPublicInfo] = None
+    sets: list[SetPublicInfo] = []

@@ -1,3 +1,4 @@
+from App.card.utils import db_card_2_card_info
 from App.games.models import Game
 
 from App.games.schemas import GameInfo, GameInfoPlayer, GameLobbyInfo, GamePublicInfo, GameWaitingInfo
@@ -40,12 +41,13 @@ def db_game_2_game_wtg_info(db_game: Game) -> GameWaitingInfo:
 
 
 def db_game_2_game_public_info(db_game: Game) -> GamePublicInfo:
+
     return GamePublicInfo(
-        actionStatus=db_game.action_status,
-        gameStatus=db_game.game_status,
-        regularDeckCount=len(db_game.regular_deck),
-        discardPileTop=db_game.discard_deck.cards.index(0),
+        actionStatus=db_game.action_status.value,
+        gameStatus=db_game.status.value,
+        regularDeckCount=len(db_game.reposition_deck.cards),
+        discardPileTop=None,
         draftCards= [], #falta implementar draft cards
-        discardPileCount= len(db_game.discard_deck.cards),
+        discardPileCount= 1,
         players=[db_player_2_player_public_info(player) for player in db_game.players]
     )

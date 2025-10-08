@@ -4,7 +4,7 @@ from App.exceptions import GameNotFoundError, NotPlayersTurnError, PlayerNotFoun
 from App.games.models import Game
 from App.games.services import GameService
 from App.players.models import Player
-from App.play.enums import TurnStatus
+from App.players.enums import TurnStatus
 
 class RoundService:
 

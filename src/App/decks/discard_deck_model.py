@@ -11,9 +11,8 @@ from App.card.models import Card
 discard_cards_association = Table(
         "discard_cards_association",
         Base.metadata,
-        Column("reposition_deck_id", ForeignKey("reposition_deck.id"), primary_key=True),
+        Column("discard_deck_id", ForeignKey("discard_deck.id"), primary_key=True),
         Column("card_id", ForeignKey("cards.id"), primary_key=True),
-        Column("order", autoincrement=True),
         extend_existing=True
 )
 
@@ -26,12 +25,12 @@ class DiscardDeck(Base):
     __tablename__ = 'discard_deck'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     cards: Mapped[List[Card]] = relationship("Card",
-                                             secondary="reposition_cards_association",
-                                             backref="reposition_deck")
+                                             secondary="discard_cards_association",
+                                             backref="discard_deck")
     game_id: Mapped[int] = mapped_column(Integer, ForeignKey('games.id'), unique=True, nullable = True)
     
-    game: Mapped["Game"] = relationship(
+    game: Mapped["Game"] = relationship( # type: ignore
         "Game",
-        back_populates="reposition_deck",
+        back_populates="discard_deck",
         uselist=False
     )

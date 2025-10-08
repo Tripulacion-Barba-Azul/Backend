@@ -22,10 +22,14 @@ class PlayerService:
     
     def get_secrets(self, player_id) -> list[Secret]:
         player = self._db.query(Player).filter_by(id = player_id).first()
+        if not player:
+            raise Exception(f"Player {player_id} does not exist")
         secrets = player.secrets
         return secrets
     
     def get_cards(self, player_id) -> list[Card]:
         player = self._db.query(Player).filter_by(id = player_id).first()
+        if not player:
+            raise Exception(f"Player {player_id} does not exist")
         cards = player.cards
         return cards

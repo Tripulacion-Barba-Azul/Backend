@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from App.card.schemas import CardGameInfo
-from App.card.services import get_cards_by_player
-from App.exceptions import NotPlayersTurnError, PlayerNotFoundError, WebsocketManagerNotFoundError
+from App.exceptions import NotPlayersTurnError, PlayerNotFoundError
 from App.games.services import GameService
 from App.play.schemas import PlayCard, PlayCardInfo
 from App.models.db import get_db
 from App.play.services import RoundService
 from App.players.schemas import PlayerGameInfo
+from App.players.services import PlayerService
 from App.websockets import manager
 
 play_router = APIRouter()
@@ -29,7 +29,7 @@ async def play_card(
             
             cards = []
             for player in game.players:
-                for card in get_cards_by_player(player.id, db):
+                for card in PlayerService(db).get_cards(player.id):
                     cards.append(CardGameInfo(
                         cardOwnerID=player.id,
                         cardID=card.id,

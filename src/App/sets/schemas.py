@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from App.card.dtos import CardPublicInfo
+from App.card.schemas import CardPublicInfo
 
 class SetPublicInfo(BaseModel):
     setName: str

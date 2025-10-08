@@ -51,8 +51,10 @@ def db_player_2_player_public_info(db_player: Player) -> PlayerPublicInfo:
         name=db_player.name,
         avatar=db_player.avatar,
         turnOrder=db_player.turn_order,
-        turnStatus=db_player.turn_status,
+        turnStatus=db_player.turn_status.value,
         cardCount=len(db_player.cards),
-        secrets=[db_secret_2_secret_public_info(secret) for secret in db_player.secrets],
+        secrets=[db_secret_2_secret_public_info(secret) 
+                for secret in db_player.secrets
+            ],
         sets=[] #falta implementar sets
     )

@@ -1,9 +1,7 @@
 """Reposition Deck Models."""
 
-from datetime import date
 from sqlalchemy import Integer, Table, ForeignKey, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import List
 from App.models.db import Base
 from App.card.models import Card
 
@@ -24,12 +22,12 @@ class RepositionDeck(Base):
 
     __tablename__ = 'reposition_deck'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    cards: Mapped[List[Card]] = relationship("Card",
+    cards: Mapped[list[Card]] = relationship("Card",
                                              secondary="reposition_cards_association",
                                              backref="reposition_deck")
     game_id: Mapped[int] = mapped_column(Integer, ForeignKey('games.id'), unique=True, nullable = True)
     
-    game: Mapped["Game"] = relationship(
+    game: Mapped["Game"] = relationship( # type: ignore
         "Game",
         back_populates="reposition_deck",
         uselist=False

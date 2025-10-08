@@ -1,20 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from App.card.schemas import CardGameInfo
-from App.card.services import get_cards_by_player
-from App.games.models import Game
-from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameStartInfo, GameWaitingInfo
+
+from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo
 from App.games.services import GameService
 from App.games.utils import (
     db_game_2_game_info,
     db_game_2_game_info_player,
     db_game_2_game_lobby_info,
+    db_game_2_game_public_info,
     db_game_2_game_wtg_info
 )
 from App.models.db import get_db
-from App.players.schemas import PlayerCreate, PlayerGameInfo
-from App.secret.schemas import SecretGameInfo
-from App.secret.services import get_secrets_by_player
+from App.players.schemas import PlayerCreate
 from App.websockets import manager
 from App.exceptions import (
     GameNotFoundError,
@@ -22,7 +19,6 @@ from App.exceptions import (
     GameAlreadyStartedError,
     NotEnoughPlayers,
     NotTheOwnerOfTheGame,
-    WebsocketManagerNotFoundError
 )
 
 games_router = APIRouter()
@@ -96,17 +92,9 @@ async def start_game(
     db=Depends(get_db)
 ) -> GameInfo:
     try:
-        db_game = GameService(db).start(game_id, owner_id)
-
-        gameStartInfo = GameService(db).game_public_info(game_id)
-
-
-
-        
-        await manager.broadcast(db_game.id,gameStartInfo.model_dump())
-
-
-        return db_game_2_game_info(db_game)
+        db_game = GameService(db).start_game(game_id, owner_id)
+        gameStartInfo = db_game_2_game_public_info(db_game)
+    
     except GameNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -127,3 +115,7 @@ async def start_game(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
         )
+    
+    await manager.broadcast(db_game.id, gameStartInfo.model_dump())
+
+    return db_game_2_game_info(db_game)

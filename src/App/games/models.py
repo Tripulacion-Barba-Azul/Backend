@@ -55,7 +55,7 @@ class Game(Base):
         uselist=False,
         cascade="all, delete-orphan"
     )
-    discard_deck:Mapped[DiscardDeck] = relationship(
+    discard_deck: Mapped[DiscardDeck] = relationship(
         "DiscardDeck",
         back_populates="game", 
         uselist=False,

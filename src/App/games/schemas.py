@@ -58,10 +58,10 @@ class GameStartInfo(BaseModel):
 
 
 class GamePublicInfo(BaseModel):
-    actionStatus: ActionStatus  #”blocked” | “unblocked”
-    gameStatus: GameStatus  #“waiting” | “inProgress” | “finished”
+    actionStatus: str  #”blocked” | “unblocked”
+    gameStatus: str  #“waiting” | “inProgress” | “finished”
     regularDeckCount: int
-    discardPileTop: CardPublicInfo
+    discardPileTop: CardPublicInfo | None
     draftCards:list[CardPublicInfo] = []
     discardPileCount: int = 1
     players: list[PlayerPublicInfo]

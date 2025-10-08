@@ -137,11 +137,11 @@ def relate_card_player(player_id, card_id, db: Session, commit=False):
 
 
 def unrelate_card_player(card_id, player_id, db:Session):
-    player = db.query(Player).fliter_by(id = player_id).first()
+    player = db.query(Player).filter_by(id = player_id).first()
     card = get_card(card_id, db)
 
-    if card in player.cards:
-        player.cards.remove(card)
+    if card in player.cards: # type: ignore
+        player.cards.remove(card) # type: ignore
         db.commit
         db.refresh(player)
         db.refresh(card)
