@@ -139,7 +139,7 @@ class GameService:
                 self._db.flush()
                 self._db.commit()
         
-        return player.id
+        return player.id # type: ignore
         
     def player_in_game(self, game_id: int, player_id: int) -> bool:
         db_game: Game | None = self._db.query(Game).filter(Game.id == game_id).first()
