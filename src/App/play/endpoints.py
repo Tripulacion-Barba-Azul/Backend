@@ -68,7 +68,7 @@ async def play_card(
         )
 
 
-@play_router.post(path="/play/{game_id}/actions/discard", status_code=200)
+@play_router.post(path="/{game_id}/actions/discard", status_code=200)
 async def discard_cards(
     game_id: int,
     turn_info: PlayCard,
