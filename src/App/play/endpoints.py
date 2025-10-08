@@ -8,7 +8,7 @@ from App.play.schemas import PlayCard, PlayCardInfo
 from App.models.db import get_db
 from App.play.services import RoundService
 from App.players.schemas import PlayerGameInfo
-from App.websockets import get_manager
+from App.websockets import manager
 
 play_router = APIRouter()
 
@@ -48,9 +48,8 @@ async def play_card(
                 players=players,
                 cards=cards
             )
-                
-            manager = get_manager(game.id)
-            await manager.broadcast(cardPlayInfo.model_dump())
+
+            await manager.broadcast(game.id,cardPlayInfo.model_dump())
             
             return {}
             

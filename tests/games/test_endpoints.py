@@ -1,7 +1,6 @@
 from datetime import date
 from fastapi.testclient import TestClient
-
-from App.games.enums import GameStatus
+from App.websockets import manager
 
 
 
@@ -119,9 +118,9 @@ def test_join_game_success(client: TestClient):
 
     data = response.json()
     game_id = data["gameId"]
-    with client.websocket_connect(f"/ws/{game_id}") as websocket:
-        result = websocket.receive_json()
-        assert result == {"msj" : f"Connected to ws from game {game_id}"}
+    
+    with client.websocket_connect(f"/ws/{game_id}/{1}") as websocket:
+        
 
         # Join the created game
         new_player_info = {
@@ -133,9 +132,10 @@ def test_join_game_success(client: TestClient):
             f"/games/{game_id}/join", 
             json = new_player_info,
         )
+        result = websocket.receive_json()
+        assert result == {"event": "player_joined", "player": "Capitan"}
 
         data = response.json()
-
         assert response.status_code == 200
         assert data["gameId"] == game_id
         assert data["actualPlayerId"] is not None
@@ -181,40 +181,38 @@ def test_join_game_full(client: TestClient):
 
     data = response.json()
     game_id = data["gameId"]
-    with client.websocket_connect(f"/ws/{game_id}") as websocket:
-        result = websocket.receive_json()
-        assert result == {"msj" : f"Connected to ws from game {game_id}"}
 
-        # Join the created game
-        new_player_info = {
-                    "playerName":"Capitan",
-                    "birthDate":date(2001,4,5).strftime("%Y-%m-%d")
-        }
+    # Join the created game
+    new_player_info = {
+                "playerName":"Capitan",
+                "birthDate":date(2001,4,5).strftime("%Y-%m-%d")
+    }
 
-        response = client.post(
-            f"/games/{game_id}/join", 
-            json = new_player_info,
-        )
+    response = client.post(
+        f"/games/{game_id}/join", 
+        json = new_player_info,
+    )
 
-        data = response.json()
+    data = response.json()
 
-        assert response.status_code == 200
+    assert response.status_code == 200
 
-        # Try to join the created game with a third player
-        second_player_info = {
-                    "playerName":"Oficial",
-                    "birthDate":date(1999,12,31).strftime("%Y-%m-%d")
-        }
+    # Try to join the created game with a third player
+    second_player_info = {
+                "playerName":"Oficial",
+                "birthDate":date(1999,12,31).strftime("%Y-%m-%d")
+    }
 
-        response = client.post(
-            f"/games/{game_id}/join", 
-            json = second_player_info,
-        )
+    response = client.post(
+        f"/games/{game_id}/join", 
+        json = second_player_info,
+    )
 
-        data = response.json()
+    data = response.json()
 
-        assert response.status_code == 400
-        assert data["detail"] == "El juego ya ha alcanzado el número máximo de jugadores."
+    assert response.status_code == 400
+    assert data["detail"] == "El juego ya ha alcanzado el número máximo de jugadores."
+
 
 
 def test_start_game_success(client: TestClient, seed_games):
@@ -241,14 +239,13 @@ def test_start_game_success(client: TestClient, seed_games):
     data = response.json()
     game_id = data["gameId"]
     owner_id = data["ownerId"]
-    with client.websocket_connect(f"/ws/{game_id}") as websocket:
+    with client.websocket_connect(f"/ws/{game_id}/{owner_id}") as websocket:
         
         new_player = {
             "playerName": "Barba Negra",
             "birthDate": date(2001, 4, 5).strftime("%Y-%m-%d"),
         }
         client.post(f"/games/{game_id}/join", json=new_player)
-        result = websocket.receive_json()
         result = websocket.receive_json()
         
         response = client.post(f"/games/{game_id}/start", params={"owner_id": owner_id})
