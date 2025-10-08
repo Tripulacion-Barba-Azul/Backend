@@ -61,9 +61,29 @@ def test_get_nonexistent_reposition_deck(session:Session):
 
 
 
-def test_create_repposition_deck_success(sample_game, session:Session):
+def test_create_repposition_deck_success_less_2(sample_game, session:Session):
     """Test de crear mazo de reposicion"""
     game = sample_game
+    rep_deck = create_reposition_deck(game.id,session)
+
+    assert rep_deck is not None 
+    assert rep_deck.game_id == game.id
+
+    detective_count = len(session.query(Detective).filter_by(type = "detective").all())
+    devious_count = len(session.query(Card).filter_by(type = "devious").all())
+    instant_count = len(session.query(Card).filter_by(type = "instant").all())
+    event_count = len(session.query(Card).filter_by(type = "event").all())
+
+    assert detective_count == 25
+    assert devious_count == 3
+    assert instant_count == 10 
+    assert event_count == 19
+
+def test_create_repposition_deck_success_more_2(sample_game, session:Session):
+    """Test de crear mazo de reposicion"""
+    game = sample_game
+    game.players.append(Player(name="Jugador1", avatar="avatar1", birthday=date(1990,1,1)))
+    game.players.append(Player(name="Jugador2", avatar="avatar2", birthday=date(1990,1,1)))
     rep_deck = create_reposition_deck(game.id,session)
 
     assert rep_deck is not None 
@@ -78,6 +98,7 @@ def test_create_repposition_deck_success(sample_game, session:Session):
     assert devious_count == 4
     assert instant_count == 10 
     assert event_count == 22
+
 
 def test_reposition_deck_unsuccess(sample_game, session:Session):
     """Test que al crear un deck a una partida con un deck creado lanza error"""

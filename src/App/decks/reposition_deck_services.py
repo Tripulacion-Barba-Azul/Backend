@@ -62,6 +62,16 @@ event_cards = [
 
 ]
 
+event_cards_2= [
+    (2, "Another Victim",""),
+    (1, "Cards off the table", ""),
+    (3, "Dead Card Folly", ""),
+    (3, "Look in to the Ashes", ""),
+    (3, "Card Trade", ""),
+    (2, "And There was One More...",""),
+    (3, "Delay the Muderer's Escape", ""),
+    (2, "Early Train to Paddington", "")
+]
 
 
 devious_cards =[
@@ -69,6 +79,9 @@ devious_cards =[
     (3, "Social Faux Pas", "")
 ]
 
+devious_cards_2 =[
+    (3, "Social Faux Pas", "")
+]
 
 def create_reposition_deck(game_id: int, db: Session):
     deck = list()
@@ -76,19 +89,6 @@ def create_reposition_deck(game_id: int, db: Session):
     db.add(rep_deck)
     db.commit()
     db.refresh(rep_deck)
-
-    
-    for cantidad, card_name, card_effect, number_to_set in detective_cards:
-        for i in range(cantidad):
-            deck.append(create_detective_card(card_name, card_effect, number_to_set, db))
-            
-    for cantidad, card_name, card_effect in event_cards:
-        for j in range(cantidad):
-            deck.append(create_event_card(card_name, card_effect, db))
-    
-    for cantidad, card_name, card_effect in devious_cards:
-        for n in range(cantidad):
-            deck.append(create_devious_card(card_name, card_effect, db))
 
     game = db.query(Game).filter_by(id=game_id).first()
     if game is None:
@@ -98,6 +98,30 @@ def create_reposition_deck(game_id: int, db: Session):
         raise ValueError(f"Game {game_id} already has a reposition deck")
     
     player_number = len(game.players)
+    
+    for cantidad, card_name, card_effect, number_to_set in detective_cards:
+        for i in range(cantidad):
+            deck.append(create_detective_card(card_name, card_effect, number_to_set, db))
+
+    if player_number >2:  
+
+        for cantidad, card_name, card_effect in event_cards:
+            for j in range(cantidad):
+                deck.append(create_event_card(card_name, card_effect, db))
+        
+        for cantidad, card_name, card_effect in devious_cards:
+            for n in range(cantidad):
+                deck.append(create_devious_card(card_name, card_effect, db))
+
+    else:
+        for cantidad, card_name, card_effect in event_cards_2:
+            for j in range(cantidad):
+                deck.append(create_event_card(card_name, card_effect, db))
+        
+        for cantidad, card_name, card_effect in devious_cards_2:
+            for n in range(cantidad):
+                deck.append(create_devious_card(card_name, card_effect, db))
+
 
     
     not_so_fast_cards = list()
