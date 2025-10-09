@@ -1,15 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from App.card.schemas import CardGameInfo
-<<<<<<< HEAD
 from App.exceptions import (
-    DeckNotFoundError,
     NotPlayersTurnError,
-    PlayerHave6CardsError,
-    PlayerNotFoundError)
-=======
-from App.exceptions import NotPlayersTurnError, ObligatoryDiscardError, PlayerNotFoundError
->>>>>>> develop
+    ObligatoryDiscardError,
+    PlayerNotFoundError,
+    DeckNotFoundError,
+    PlayerHave6CardsError)
+
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_public_info
 from App.play.schemas import DrawCardInfo, PlayCard, PlayCardInfo
@@ -123,7 +121,6 @@ async def discard_cards(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-
 
 
 @play_router.post(path="/{game_id}/actions/draw-card", status_code=200)
