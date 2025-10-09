@@ -24,6 +24,9 @@ class PlayerNotFoundError(Exception):
 class NotPlayersTurnError(Exception):
     """It is raised when a player tries to play out of their turn."""
 
+class ObligatoryDiscardError(Exception):
+    """It is raised when a player must discard but does not."""
+
 class PlayerHave6CardsError(Exception):
     """It is raised when a player tries to draw a card but already has 6 cards."""
 

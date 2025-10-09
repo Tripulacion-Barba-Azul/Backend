@@ -1,4 +1,5 @@
 from datetime import date
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from App.players.dtos import PlayerDTO
@@ -21,3 +22,16 @@ def test_create_player_service(session: Session):
     assert db_player.id is not None
     assert db_player.name == "Barba Azul"
     assert db_player.birthday == date(2000,1,1)
+
+
+def test_discard_card_service(session: Session, seed_game_player2_discard):
+
+    game = seed_game_player2_discard[0]
+    player = seed_game_player2_discard[1]
+
+    card = player.cards[2]
+
+    discarded_card = PlayerService(session).discard_card(player.id, card)    
+
+    assert discarded_card.id == card.id
+    assert discarded_card not in player.cards
