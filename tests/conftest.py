@@ -7,7 +7,12 @@ from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from App.models.db import Base, get_db
+from App.games.dtos import GameDTO
+from App.games.services import GameService
+from App.players.dtos import PlayerDTO
 from main import app
+
+from .game_fixtures import *
 
 @pytest.fixture(name="session", scope="function")
 def session_fixture():
