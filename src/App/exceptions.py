@@ -23,3 +23,9 @@ class PlayerNotFoundError(Exception):
     
 class NotPlayersTurnError(Exception):
     """It is raised when a player tries to play out of their turn."""
+
+class PlayerHave6CardsError(Exception):
+    """It is raised when a player tries to draw a card but already has 6 cards."""
+
+class DeckNotFoundError(Exception):
+    """It is raised when no deck is found with the specified ID."""

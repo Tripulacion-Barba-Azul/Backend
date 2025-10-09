@@ -72,6 +72,7 @@ async def join_game(
         )
 
         await manager.broadcast(joined_game.id,{"event": "player_joined", "player": player_info.playerName})
+        
     except GameNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
