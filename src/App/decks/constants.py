@@ -1,7 +1,7 @@
 detective_cards = [
     (3,"Hercule Poirot", "", 3),
     (3, "Miss Marple", "", 3),
-    (2, "Mr Sattertwhaite", "",2),
+    (2, "Mr Satterthwaite", "",2),
     (3,"Ariadne Oliver","", 0),
     (2,"Tuppence Beresford", "",2),
     (2,"Tommy Beresford", "",2),

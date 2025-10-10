@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from App.card.schemas import CardGameInfo
 from App.exceptions import (
+    GameNotFoundError,
     NotPlayersTurnError,
     ObligatoryDiscardError,
     PlayerNotFoundError,
@@ -132,28 +133,31 @@ async def draw_card(
     db=Depends(get_db)
     ):
     game = GameService(db).get_by_id(game_id)
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
     player_id = action.playerId
     isPlayerInGame = GameService(db).player_in_game(game_id, player_id) 
- 
     if not isPlayerInGame:  
             raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=PlayerNotFoundError,
+            detail=f"Player {player_id} not found in game {game_id}",
         )
     
     player = db.query(Player).filter(Player.id == player_id).first()
 
-    
-    
     try:
         card = PlayService(db).draw_card_from_deck(game_id, player_id)
 
-        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        if len(player.cards) == 6:
+            PlayService(db).end_turn(game_id, player_id)
 
-        await manager.broadcast(game.id, gamePublictInfo.model_dump())
+        gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id, gamePublicInfo.model_dump())
 
         playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
-
         await manager.send_to_player(
             game_id=game.id,
             player_id=player.id,
