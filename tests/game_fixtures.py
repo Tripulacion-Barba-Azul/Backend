@@ -41,3 +41,12 @@ def seed_game_player2_discard(session: Session, seed_started_game):
     PlayService(session).no_action(game.id, player.id)
     
     return game, player
+
+@pytest.fixture(name="seed_game_player2_draw")
+def seed_game_player2_draw(session: Session, seed_game_player2_discard):
+    game = seed_game_player2_discard[0]
+    player = seed_game_player2_discard[1]
+    cards_id = [card.id for card in player.cards]
+    PlayService(session).discard(game, player.id, cards_id)
+    
+    return game, player

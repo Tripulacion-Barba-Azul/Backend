@@ -251,15 +251,32 @@ def test_start_game_success(client: TestClient, seed_games):
         
         response = client.post(f"/games/{game_id}/start", params={"owner_id": owner_id})
         data = response.json()
+
         
-        result = websocket.receive_json()
+        public_update_received = False
+        private_update_received = False
         
-        assert result["gameStatus"] == GameStatus.IN_PROGRESS.value
-        assert len(result["players"]) == 2
+        
+        for _ in range(2):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                assert payload["gameStatus"] == GameStatus.IN_PROGRESS.value
+                assert len(payload["players"]) == 2
+                public_update_received = True
+            elif result.get("event") == "privateUpdate":
+                # Aquí podrías añadir aserciones para el estado privado si fuera necesario
+                private_update_received = True
+                assert payload["role"] is not None
+                assert len(payload["cards"]) == 6
+                assert len(payload["secrets"]) == 3
+
+        assert public_update_received
+        assert private_update_received
     
     assert response.status_code == 200
-    assert data["gameId"] == game_id
-    assert data["ownerId"] == owner_id
+        
+    
 
 def test_start_game_not_found(client: TestClient):
     response = client.post("/games/999/start", params={"owner_id": 1})

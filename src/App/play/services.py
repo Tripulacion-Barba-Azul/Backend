@@ -80,7 +80,7 @@ class PlayService:
         self._db.commit()
 
 
-     def draw_card_from_deck(self, game_id, player_id):
+    def draw_card_from_deck(self, game_id, player_id):
 
         game = self._db.query(Game).filter_by(id=game_id).first()
         rep_deck = game.reposition_deck

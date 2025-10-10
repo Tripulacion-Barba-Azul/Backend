@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 
-from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo
+from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
     db_game_2_game_info,
@@ -95,7 +95,7 @@ async def start_game(
 ) -> GameInfo:
     try:
         db_game = GameService(db).start_game(game_id, owner_id)
-        gameStartInfo = db_game_2_game_public_info(db_game)
+        gameStartInfo = PublicUpdate(payload = db_game_2_game_public_info(db_game))
 
     except GameNotFoundError as e:
         raise HTTPException(
@@ -120,7 +120,7 @@ async def start_game(
     await manager.broadcast(db_game.id, gameStartInfo.model_dump())
 
     for player in db_game.players:
-        playerPrivateInfo = db_player_2_player_private_info(player)
+        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
 
         await manager.send_to_player(
             game_id=db_game.id, 

@@ -8,6 +8,7 @@ from App.exceptions import (
     DeckNotFoundError,
     PlayerHave6CardsError)
 
+from App.games.schemas import PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_public_info
 from App.play.schemas import DrawCardInfo, PlayCard, PlayCardInfo
@@ -39,10 +40,11 @@ async def play_card(
         try:
             
             game = PlayService(db).no_action(game_id, player_id)
-            
-            gamePublictInfo = db_game_2_game_public_info(game)
+
+            gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
-            playerPrivateInfo = db_player_2_player_private_info(player)
+            
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
             await manager.send_to_player(
                 game_id=game.id, 
                 player_id=player.id,
@@ -90,11 +92,11 @@ async def discard_cards(
 
     try:
         PlayService(db).discard(game, turn_info.playerId, turn_info.cards)
-        gamePublictInfo = db_game_2_game_public_info(game)
+        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         for player in game.players:
-            playerPrivateInfo = db_player_2_player_private_info(player)
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
 
             await manager.send_to_player(
                 game_id=game.id, 
@@ -145,41 +147,36 @@ async def draw_card(
     
     try:
         card = PlayService(db).draw_card_from_deck(game_id, player_id)
-        gamePublictInfo = db_game_2_game_public_info(game)
 
-        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
 
-        playerPrivateInfo = db_player_2_player_private_info(player)
+        await manager.broadcast(game.id, gamePublictInfo.model_dump())
+
+        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
 
         await manager.send_to_player(
-            game_id=game.id, 
+            game_id=game.id,
             player_id=player.id,
             message=playerPrivateInfo.model_dump()
         )
-        cardInfo = CardGameInfo(
-            cardOwnerID=player.id,
-            cardID = card.id,
-            cardName = card.name
-        )
-        return cardInfo.model_dump()
-    
+        
     except NotPlayersTurnError as e:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=str(e)
-            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
     except PlayerHave6CardsError as e:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=str(e),
-            )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
     except PlayerNotFoundError as e:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
     except DeckNotFoundError as e:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
