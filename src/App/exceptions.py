@@ -30,5 +30,8 @@ class ObligatoryDiscardError(Exception):
 class PlayerHave6CardsError(Exception):
     """It is raised when a player tries to draw a card but already has 6 cards."""
 
+class PlayerNeedSixCardsError(Exception):
+    """It is raised when a player tries to end their turn without having six cards."""
+
 class DeckNotFoundError(Exception):
     """It is raised when no deck is found with the specified ID."""
