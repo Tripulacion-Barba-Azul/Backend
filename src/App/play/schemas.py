@@ -12,3 +12,6 @@ class PlayCardInfo(BaseModel):
 class PlayCard(BaseModel):
     playerId: int
     cards: list[int]
+
+class DrawCardInfo(BaseModel):
+    playerId: int

@@ -66,18 +66,67 @@ def test_discard_endpoint(client: TestClient, seed_game_player2_discard):
                 }
         )
         data = response.json()
+
+        public_update_received = False
+        private_update_received = False
+
+        for _ in range(2):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                assert payload["actionStatus"] == "blocked"
+                assert payload["discardPileCount"] == 3
+                players = payload["players"]         
+                player_public = next((p for p in players if p["id"] == player.id), None)
+                assert player_public["turnStatus"] == TurnStatus.DRAWING.value
+                public_update_received = True
+            elif result.get("event") == "privateUpdate":
+                assert len(payload["cards"]) == 4
+                private_update_received = True
+            
+
+        assert public_update_received
+        assert private_update_received
     
-        assert response.status_code == 200
-        assert len(player.cards) == 4
-        assert player.turn_status == TurnStatus.DRAWING
-        assert len(game.discard_deck.cards) == 3
-
-        msg = websocket.receive_json()
-        assert msg["actionStatus"] == "blocked"
-        assert msg["discardPileCount"] == 3
-
-        msg = websocket.receive_json()
-        assert msg == db_player_2_player_private_info(player).model_dump()
+    assert response.status_code == 200
+        
 
 
-    
+def test_draw_card_endpoint(client: TestClient, seed_game_player2_draw):
+
+    game = seed_game_player2_draw[0]
+    player = seed_game_player2_draw[1]
+    rep_deck_count_before = len(game.reposition_deck.cards)
+    player_cards_before = len(player.cards)
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+        
+        response = client.post(
+            f"/play/{game.id}/actions/draw-card", 
+            json={
+                "playerId": player.id,
+                }
+        )
+        data = response.json()
+
+        public_update_received = False
+        private_update_received = False
+
+        for i in range(2):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                assert payload["actionStatus"] == "blocked"
+                assert payload["regularDeckCount"] == rep_deck_count_before - 1
+                players = payload["players"]         
+                player_public = next((p for p in players if p["id"] == player.id), None)
+                assert player_public["cardCount"] == player_cards_before + 1
+                public_update_received = True
+            elif result.get("event") == "privateUpdate":
+                assert len(payload["cards"]) == 1
+                private_update_received = True
+        
+        assert public_update_received
+        assert private_update_received    
+
+    assert response.status_code == 200

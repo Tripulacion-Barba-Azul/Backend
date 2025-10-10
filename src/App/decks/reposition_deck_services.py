@@ -14,6 +14,7 @@ from App.decks.constants import (
     event_cards_2,
     devious_cards_2
 )
+from App.players.models import Player
 
 
 class RepositionDeckService:
@@ -161,3 +162,4 @@ class RepositionDeckService:
 
 
 
+    

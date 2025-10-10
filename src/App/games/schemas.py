@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from App.card.schemas import CardGameInfo, CardPublicInfo
 from App.games.dtos import GameDTO
 from App.games.enums import ActionStatus, GameStatus
-from App.players.schemas import PlayerGameInfo, PlayerInfo, PlayerPublicInfo
+from App.players.schemas import PlayerGameInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo
 from App.secret.schemas import SecretGameInfo
 
 class GameCreate(BaseModel):
@@ -65,3 +65,11 @@ class GamePublicInfo(BaseModel):
     draftCards:list[CardPublicInfo] = []
     discardPileCount: int = 1
     players: list[PlayerPublicInfo]
+
+class PublicUpdate(BaseModel):
+    event: str = "publicUpdate"
+    payload: GamePublicInfo
+
+class PrivateUpdate(BaseModel):
+    event: str = "privateUpdate"
+    payload: PlayerPrivateInfo
