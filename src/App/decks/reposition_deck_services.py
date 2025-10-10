@@ -151,7 +151,7 @@ class RepositionDeckService:
         for player in players:
             self._db.refresh(player)
 
-        card = rep_deck.cards[-1]
+        card = deck_copy[0]
 
         CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=False)
 

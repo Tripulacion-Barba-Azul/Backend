@@ -1,3 +1,4 @@
+import random
 from sqlalchemy.orm import Session
 
 
@@ -99,7 +100,9 @@ class PlayService:
         if len(player.cards) == 6:
             raise PlayerHave6CardsError(f"Player {player_id} already has 6 cards")
 
-        card = rep_deck.cards[0]
+        cards = rep_deck.cards.copy()
+        random.shuffle(cards)
+        card = cards[0]
 
         CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=False)
         CardService(self._db).relate_card_player(player_id, card.id, commit=False)
