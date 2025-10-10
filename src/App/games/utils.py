@@ -3,7 +3,9 @@ from App.card.utils import db_card_2_card_info
 from App.games.models import Game
 
 from App.games.schemas import GameInfo, GameInfoPlayer, GameLobbyInfo, GamePublicInfo, GameWaitingInfo
+from App.players.enums import PlayerRole
 from App.players.models import Player
+from App.players.schemas import PlayerWinInfo
 from App.players.utils import db_player_2_player_info, db_player_2_player_public_info
 
 
@@ -52,3 +54,9 @@ def db_game_2_game_public_info(db_game: Game) -> GamePublicInfo:
         discardPileCount= len(db_game.discard_deck.cards),
         players=[db_player_2_player_public_info(player) for player in db_game.players]
     )
+    
+def db_game_2_game_detectives_win(db_game: Game) -> list[PlayerWinInfo]:
+    return [PlayerWinInfo(
+                name=player.name,
+                role=player.role
+            ) for player in db_game.players if player.role == PlayerRole.DETECTIVE]

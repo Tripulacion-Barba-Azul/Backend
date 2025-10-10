@@ -29,6 +29,10 @@ class PlayerGameInfo(BaseModel):
     id: int
     name: str
     rol: str
+    
+class PlayerWinInfo(BaseModel):
+    name: str
+    role: str
 
 class PlayerPublicInfo(BaseModel):
     id: int

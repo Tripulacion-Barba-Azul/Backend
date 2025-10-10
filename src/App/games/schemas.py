@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from App.card.schemas import CardGameInfo, CardPublicInfo
 from App.games.dtos import GameDTO
 from App.games.enums import ActionStatus, GameStatus
-from App.players.schemas import PlayerGameInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo
+from App.players.schemas import PlayerGameInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo, PlayerWinInfo
 from App.secret.schemas import SecretGameInfo
 
 class GameCreate(BaseModel):
@@ -73,3 +73,7 @@ class PublicUpdate(BaseModel):
 class PrivateUpdate(BaseModel):
     event: str = "privateUpdate"
     payload: PlayerPrivateInfo
+
+class GameEndInfo(BaseModel):
+    event: str = "gameEnded"
+    players: list[PlayerWinInfo]
