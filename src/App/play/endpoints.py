@@ -154,8 +154,8 @@ async def draw_card(
         if len(player.cards) == 6:
             PlayService(db).end_turn(game_id, player_id)
 
-        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-        await manager.broadcast(game.id, gamePublictInfo.model_dump())
+        gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id, gamePublicInfo.model_dump())
 
         playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
         await manager.send_to_player(
