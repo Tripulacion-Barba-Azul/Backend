@@ -76,4 +76,4 @@ class PrivateUpdate(BaseModel):
 
 class GameEndInfo(BaseModel):
     event: str = "gameEnded"
-    players: list[PlayerWinInfo]
+    payload: list[PlayerWinInfo]

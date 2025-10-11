@@ -154,7 +154,7 @@ async def draw_card(
 
         game = PlayService(db).end_game(game_id)
         if game.status == GameStatus.FINISHED:
-            gameEndInfo = GameEndInfo(payload = db_game_2_game_detectives_win(game))
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_win(game))
             await manager.broadcast(game.id, gameEndInfo.model_dump())
             return {"message": "The game has ended"}
 

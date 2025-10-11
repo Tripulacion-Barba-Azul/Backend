@@ -58,5 +58,5 @@ def db_game_2_game_public_info(db_game: Game) -> GamePublicInfo:
 def db_game_2_game_detectives_win(db_game: Game) -> list[PlayerWinInfo]:
     return [PlayerWinInfo(
                 name=player.name,
-                role=player.role
+                role=player.role.value
             ) for player in db_game.players if player.role == PlayerRole.DETECTIVE]
