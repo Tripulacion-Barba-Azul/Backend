@@ -93,7 +93,7 @@ class CardService:
 
 
 
-    def relate_card_with_reposition_deck(self, deck_id, card_id):
+    def relate_card_reposition_deck(self, deck_id, card_id, commit=False):
         card = CardService(self._db).get_card(card_id)
         reposition_deck = self._db.query(RepositionDeck).filter_by(id = deck_id).first()
 
@@ -102,6 +102,8 @@ class CardService:
                 f"Reposition Deck with id {deck_id} dont exist"
             )
         else:
+            reposition_deck.number_of_cards += 1
+            card.order = reposition_deck.number_of_cards
             reposition_deck.cards.append(card)
             self._db.commit()
             self._db.refresh(reposition_deck)
@@ -120,6 +122,7 @@ class CardService:
             raise ValueError(f"Card {card_id} not in reposition deck {deck_id}")
         
         reposition_deck.cards.remove(card)
+        reposition_deck.number_of_cards -= 1
 
         if commit:
             self._db.commit()

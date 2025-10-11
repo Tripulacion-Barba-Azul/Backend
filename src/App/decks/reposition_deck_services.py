@@ -106,8 +106,12 @@ class RepositionDeckService:
         for i in range(player_number, 10):
             deck.append(not_so_fast_cards[i])
 
-        rep_deck.cards = deck
-        
+        random.shuffle(deck)
+
+        for card in deck:
+            CardService(self._db).relate_card_reposition_deck(rep_deck.id, card.id, commit=False)
+
+
 
         self._db.commit()
         self._db.refresh(rep_deck)
@@ -134,13 +138,11 @@ class RepositionDeckService:
         if len(rep_deck.cards) < cards_needed:
             raise ValueError(f"Not enough cards in reposition deck")
         
-        deck_copy = rep_deck.cards.copy()
-        random.shuffle(deck_copy)
 
 
         for player in players:
             while len(player.cards) < 6: 
-                card = deck_copy.pop(0)
+                card = max(rep_deck.cards, key=lambda c: c.order)  # type: ignore
                 CardService(self._db).relate_card_player(player.id, card.id, commit=False)
                 CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=False)
 
@@ -151,14 +153,17 @@ class RepositionDeckService:
         for player in players:
             self._db.refresh(player)
 
-        card = rep_deck.cards[-1]
+        if rep_deck.cards != []:
+            card = max(rep_deck.cards, key=lambda c: c.order)
 
-        CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=False)
+        CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=True)
 
         
         discard_pile = DiscardDeckService(self._db).create_discard_deck()
         DiscardDeckService(self._db).relate_card_to_discard_deck(discard_pile.id, card)
         DiscardDeckService(self._db).relate_discard_deck_game(discard_pile.id, game.id)
+
+        self._db.refresh(discard_pile)
 
 
 

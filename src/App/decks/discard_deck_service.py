@@ -39,7 +39,10 @@ class DiscardDeckService:
         self._db.refresh(game)
 
     def relate_card_to_discard_deck(self, deck_id, card):
+
         discard_deck = self.get_discard_deck(deck_id)
+        discard_deck.number_of_cards += 1
+        card.order = discard_deck.number_of_cards
         discard_deck.cards.append(card)
         self._db.commit()
         self._db.refresh(discard_deck)

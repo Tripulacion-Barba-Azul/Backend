@@ -1,3 +1,4 @@
+import random
 from sqlalchemy.orm import Session
 
 
@@ -99,10 +100,10 @@ class PlayService:
         if len(player.cards) == 6:
             raise PlayerHave6CardsError(f"Player {player_id} already has 6 cards")
 
-        card = rep_deck.cards[0]
+        card = max(rep_deck.cards, key=lambda c: c.order)  # type: ignore
 
-        CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=False)
-        CardService(self._db).relate_card_player(player_id, card.id, commit=False)
+        CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=True)
+        CardService(self._db).relate_card_player(player_id, card.id, commit=True)
 
         self._db.commit()
         self._db.refresh(rep_deck)
