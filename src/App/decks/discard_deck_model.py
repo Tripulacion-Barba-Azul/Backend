@@ -34,3 +34,4 @@ class DiscardDeck(Base):
         back_populates="discard_deck",
         uselist=False
     )
+    number_of_cards: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
