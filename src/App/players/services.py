@@ -13,6 +13,7 @@ class PlayerService:
     def create(self, player_dto: PlayerDTO) -> Player:
         new_player = Player(
             name=player_dto.name,
+            avatar=player_dto.avatar,
             birthday=player_dto.birthday
         )
         self._db.add(new_player)

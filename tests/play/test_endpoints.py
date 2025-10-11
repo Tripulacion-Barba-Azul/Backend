@@ -13,6 +13,7 @@ def test_no_action(client: TestClient, seed_games, session):
     
     player_info = {
                 "playerName":"Barba Azul",
+                "avatar": 1,
                 "birthDate":date(2000,9,15).strftime("%Y-%m-%d")
     }
 
@@ -36,6 +37,7 @@ def test_no_action(client: TestClient, seed_games, session):
         
         new_player = {
             "playerName": "Barba Negra",
+            "avatar": 2,
             "birthDate": date(2001, 4, 5).strftime("%Y-%m-%d"),
         }
         client.post(f"/games/{game_id}/join", json=new_player)

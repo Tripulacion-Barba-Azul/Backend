@@ -11,7 +11,7 @@ from App.players.dtos import PlayerDTO
 @pytest.fixture(name="seed_started_game")
 def seed_started_game(session: Session):
     def _create(num_players: int):
-        owner = PlayerDTO(name="Barba Azul", birthday=date(1980,10,10))
+        owner = PlayerDTO(name="Barba Azul",avatar=1, birthday=date(1980,10,10))
         game_dto = GameDTO(
             name=f"Tripulación de Barba Azul ({num_players})",
             min_players=2,
@@ -22,6 +22,7 @@ def seed_started_game(session: Session):
         for i in range(2, num_players + 1):
             player = PlayerDTO(
                 name=f"Player {i}",
+                avatar=1,
                 birthday=date(1990+i,(7+i) % 13,13+i) # Player 2 always start,
             )
             GameService(session).join(game_id=game.id, player_dto=player)

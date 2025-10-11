@@ -12,11 +12,13 @@ class PlayerCreate(BaseModel):
     Schema for creating a new player
     """
     playerName: str
+    avatar: int
     birthDate: date
 
     def to_dto(self) -> PlayerDTO:
         return PlayerDTO(
             name=self.playerName,
+            avatar=self.avatar,
             birthday=self.birthDate,
         )
 

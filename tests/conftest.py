@@ -46,7 +46,7 @@ def client_fixture(session: Session):
 
 @pytest.fixture(name="seed_games")
 def seed_games_fixture(session: Session):
-    player1 = Player(name = "Barba Azul", avatar = "", birthday = date(2000,1,1))
+    player1 = Player(name = "Barba Azul", avatar = 1, birthday = date(2000,1,1))
     game1 = Game(
         name = "Tripulación de Barba Azul",
         min_players = 2,
@@ -54,7 +54,7 @@ def seed_games_fixture(session: Session):
         owner = player1,
     )
 
-    player2 = Player(name = "Barba Negra", avatar = "", birthday = date(2000,1,1))
+    player2 = Player(name = "Barba Negra", avatar = 2, birthday = date(2000,1,1))
     game2 = Game(
         name = "Tripulación de Barba Negra",
         min_players = 2,

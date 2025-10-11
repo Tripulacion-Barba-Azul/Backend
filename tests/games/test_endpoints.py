@@ -48,6 +48,7 @@ def test_create_game_success(client: TestClient):
     
     player_info = {
                 "playerName":"Barba Azul",
+                "avatar": 1,
                 "birthDate":date(2000,1,1).strftime("%Y-%m-%d")
     }
 
@@ -75,6 +76,7 @@ def test_create_game_invalid_data(client: TestClient):
 
     player_info = {
                 "playerName":"Barba Azul",
+                "avatar": 1,
                 "birthDate":date(2000,1,1).strftime("%Y-%m-%d")
     }
     game_info = {
@@ -100,6 +102,7 @@ def test_join_game_success(client: TestClient):
     # Create a game to join
     player_info = {
                 "playerName":"Barba Azul",
+                "avatar": 1,
                 "birthDate":date(2000,1,1).strftime("%Y-%m-%d")
     }
 
@@ -126,6 +129,7 @@ def test_join_game_success(client: TestClient):
         # Join the created game
         new_player_info = {
                     "playerName":"Capitan",
+                    "avatar": 1,
                     "birthDate":date(2001,4,5).strftime("%Y-%m-%d")
         }
 
@@ -145,6 +149,7 @@ def test_join_game_not_found(client: TestClient):
 
     new_player_info = {
                 "playerName":"Capitan",
+                "avatar": 1,
                 "birthDate":date(2001,4,5).strftime("%Y-%m-%d")
     }
 
@@ -163,6 +168,7 @@ def test_join_game_full(client: TestClient):
         # Create a game to join
     player_info = {
                 "playerName":"Barba Azul",
+                "avatar": 1,
                 "birthDate":date(2000,1,1).strftime("%Y-%m-%d")
     }
 
@@ -186,6 +192,7 @@ def test_join_game_full(client: TestClient):
     # Join the created game
     new_player_info = {
                 "playerName":"Capitan",
+                "avatar": 1,
                 "birthDate":date(2001,4,5).strftime("%Y-%m-%d")
     }
 
@@ -201,6 +208,7 @@ def test_join_game_full(client: TestClient):
     # Try to join the created game with a third player
     second_player_info = {
                 "playerName":"Oficial",
+                "avatar": 2,
                 "birthDate":date(1999,12,31).strftime("%Y-%m-%d")
     }
 
@@ -221,6 +229,7 @@ def test_start_game_success(client: TestClient, seed_games):
     # Create a game to join
     player_info = {
                 "playerName":"Barba Azul",
+                "avatar": 1,
                 "birthDate":date(2000,1,1).strftime("%Y-%m-%d")
     }
 
@@ -244,6 +253,7 @@ def test_start_game_success(client: TestClient, seed_games):
         
         new_player = {
             "playerName": "Barba Negra",
+            "avatar": 2,
             "birthDate": date(2001, 4, 5).strftime("%Y-%m-%d")
         }
         client.post(f"/games/{game_id}/join", json=new_player)

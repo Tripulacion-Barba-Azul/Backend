@@ -12,6 +12,7 @@ def test_create_player_service(session: Session):
 
     player_dto = PlayerDTO(
         name="Barba Azul",
+        avatar=1,
         birthday=date(2000,1,1)
     )
     player_service.create(player_dto)
@@ -21,6 +22,7 @@ def test_create_player_service(session: Session):
     assert db_player is not None
     assert db_player.id is not None
     assert db_player.name == "Barba Azul"
+    assert db_player.avatar == 1
     assert db_player.birthday == date(2000,1,1)
 
 
