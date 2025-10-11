@@ -9,9 +9,10 @@ from App.exceptions import (
     DeckNotFoundError,
     PlayerHave6CardsError)
 
-from App.games.schemas import PrivateUpdate, PublicUpdate
+from App.games.enums import GameStatus
+from App.games.schemas import GameEndInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
-from App.games.utils import db_game_2_game_public_info
+from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
 from App.play.schemas import DrawCardInfo, PlayCard, PlayCardInfo
 from App.models.db import get_db
 
@@ -149,7 +150,13 @@ async def draw_card(
     player = db.query(Player).filter(Player.id == player_id).first()
 
     try:
-        card = PlayService(db).draw_card_from_deck(game_id, player_id)
+        PlayService(db).draw_card_from_deck(game_id, player_id)
+
+        game = PlayService(db).end_game(game_id)
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_win(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
 
         if len(player.cards) == 6:
             PlayService(db).end_turn(game_id, player_id)

@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 
+from App.games.enums import GameStatus
 from App.games.models import Game
+from App.games.services import GameService
 from App.play.services import PlayService
 from App.players.enums import TurnStatus
 
@@ -72,3 +74,41 @@ def test_end_turn_need_six_cards_error(session: Session, seed_game_player2_disca
         assert False
     except Exception as e:
         assert str(e) == f"Player {player.id} needs to have six cards to end turn"
+
+def test_end_game_not_finished(session: Session, seed_game_player2_discard):
+    game = seed_game_player2_discard[0]
+    player = seed_game_player2_discard[1]
+    card = player.cards[0]
+
+    PlayService(session).discard(game, player.id, [card.id])
+    PlayService(session).draw_card_from_deck(game.id, player.id)
+    
+    PlayService(session).end_turn(game.id, player.id) 
+
+    assert player.turn_status == TurnStatus.WAITING
+    assert game.turn_number == 2
+
+    PlayService(session).end_game(game.id)
+    assert game.status == GameStatus.IN_PROGRESS
+    
+def test_end_game_(session: Session, seed_game_player2_discard):
+    game = seed_game_player2_discard[0]
+    player = seed_game_player2_discard[1]
+    card = player.cards[0]
+
+    PlayService(session).discard(game, player.id, [card.id])
+    PlayService(session).draw_card_from_deck(game.id, player.id)
+    
+    PlayService(session).end_turn(game.id, player.id) 
+
+    assert player.turn_status == TurnStatus.WAITING
+    assert game.turn_number == 2
+
+    game = GameService(session).get_by_id(game.id)
+    game.reposition_deck.cards = []
+    session.add(game)
+    session.flush()
+    session.commit()
+
+    PlayService(session).end_game(game.id)
+    assert game.status == GameStatus.FINISHED

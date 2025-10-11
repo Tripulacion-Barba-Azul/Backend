@@ -16,6 +16,7 @@ from App.exceptions import (
     DeckNotFoundError)
 from App.games.models import Game
 from App.games.services import GameService
+from App.games.enums import GameStatus
 from App.players.models import Player
 from App.players.enums import TurnStatus
 from App.players.services import PlayerService
@@ -140,3 +141,18 @@ class PlayService:
         self._db.commit()
 
         return game, player
+    
+    def end_game(self, game_id: int) -> Game:
+        game: Game | None = self._game_service.get_by_id(game_id)
+        if not game:
+            raise GameNotFoundError(f"No game found {game_id}")
+
+        deck = game.reposition_deck
+        if len(deck.cards) == 0:
+            game.status = GameStatus.FINISHED
+            
+        self._db.add(game)
+        self._db.flush()
+        self._db.commit()
+
+        return game
