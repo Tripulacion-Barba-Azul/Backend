@@ -15,6 +15,7 @@ def test_create_game_service(session: Session):
 
     player_dto = PlayerDTO(
         name="Barba Azul",
+        avatar=1,
         birthday=date(2000,1,1)
     )
 
