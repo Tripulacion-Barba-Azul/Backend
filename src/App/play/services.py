@@ -1,13 +1,11 @@
-import random
 from sqlalchemy.orm import Session
 
-
-from App import card
 from App.card.services import CardService
 from App.decks.discard_deck_service import DiscardDeckService
 from App.card.services import CardService
 from App.exceptions import (
-    GameNotFoundError, 
+    GameNotFoundError,
+    InvalididDetectiveSet,
     NotPlayersTurnError,
     ObligatoryDiscardError,
     PlayerNeedSixCardsError,
@@ -20,6 +18,7 @@ from App.games.enums import GameStatus
 from App.players.models import Player
 from App.players.enums import TurnStatus
 from App.players.services import PlayerService
+from App.sets.services import DetectiveSetService
 
 class PlayService:
 
@@ -29,6 +28,7 @@ class PlayService:
         self._player_service = PlayerService(db)
         self._card_service = CardService(db)
         self._discard_deck_service = DiscardDeckService(db)
+        self._detective_set_service = DetectiveSetService(db)
         
     def no_action(
             self,
@@ -52,6 +52,31 @@ class PlayService:
         self._db.commit()
         
         return game
+    
+    def play_set(self, player_id, card_ids):
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        cards = player.cards
+        
+                
+        if player.turn_status != TurnStatus.PLAYING:
+            raise NotPlayersTurnError(f"It's not the turn of player {player_id}")
+        
+        set_type = self._detective_set_service.validate_play_set(cards)
+        if not set_type:
+            raise InvalididDetectiveSet("Not a valid detective set. Learn the rules little cheater.")
+
+        new_set = self._detective_set_service.create_detective_set(player_id, card_ids, set_type)
+
+        player.turn_status = TurnStatus.DISCARDING
+
+        self._db.flush()
+        self._db.commit()
+
+        return new_set
     
 
     def discard(

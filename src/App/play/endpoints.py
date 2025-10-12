@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from App.card.schemas import CardGameInfo
 from App.exceptions import (
     GameNotFoundError,
+    InvalididDetectiveSet,
+    NotCardInHand,
     NotPlayersTurnError,
     ObligatoryDiscardError,
     PlayerNotFoundError,
@@ -32,15 +34,42 @@ async def play_card(
     db=Depends(get_db)):
 
     game = GameService(db).get_by_id(game_id)
+
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+
     player_id = turn_info.playerId
     cards_id = turn_info.cards
     isPlayerInGame = GameService(db).player_in_game(game_id, player_id)
 
+    if not isPlayerInGame:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The player is not in the game.",
+        )
+
     player = db.query(Player).filter(Player.id == player_id).first()
 
-    if cards_id == [] and isPlayerInGame:
-        try:
+    try:
+        if len(cards_id) > 1:
+            played_set = PlayService(db).play_set(player_id, cards_id)
+
+            gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id,gamePublictInfo.model_dump())
             
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+            await manager.send_to_player(
+                game_id=game.id, 
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+
+            return [card.id for card in played_set.cards]
+        elif cards_id == []:
+                    
             game = PlayService(db).no_action(game_id, player_id)
 
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
@@ -53,29 +82,27 @@ async def play_card(
                 message=playerPrivateInfo.model_dump()
             )
             return {}
-            
-        except PlayerNotFoundError as e:
-            raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-        except NotPlayersTurnError as e:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"It's not the turn of player {player_id}",
-            )
-
-    elif not isPlayerInGame:
+        
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=str(e),
+    )
+    except NotPlayersTurnError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="The player is not in the game.",
-        )
-            
-    elif cards_id != []:
+            detail=f"It's not the turn of player {player_id}",
+    )
+    except NotCardInHand as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="That card does not belong to the player.",
+    )
+    except InvalididDetectiveSet as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Playing cards is not implemented yet.",
-        )
+            detail="Not a valid detective set. Learn the rules little cheater.",
+    )
 
 
 @play_router.post(path="/{game_id}/actions/discard", status_code=200)

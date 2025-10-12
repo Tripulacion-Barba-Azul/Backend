@@ -4,9 +4,12 @@ from sqlalchemy.orm import Session
 from App.card.models import Card, Detective
 from App.players.services import PlayerService
 from App.sets.enums import DetectiveSetType
+from App.exceptions import NotCardInHand, PlayerNotFoundError
+from App.players.models import Player
+from App.sets.models import DetectiveSet
 
 
-class SetService:
+class DetectiveSetService:
 
     def __init__(self, db: Session):
         self._db = db
@@ -53,6 +56,27 @@ class SetService:
         
         return None
       
+
+    def create_detective_set(self, player_id: int, card_ids: list[int], set_type: DetectiveSetType):
+    
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        cards_to_set = [card for card in player.cards if card.id in card_ids]
+
+        if len(cards_to_set) != len(card_ids):
+            raise NotCardInHand("That card does not belong to the player.")
+        
+        new_set = DetectiveSet(
+            type=set_type,
+            player=player,
+            cards=cards_to_set
+        )
+        self._db.add(new_set)
+        self._db.commit()
+
+        return new_set
         
 
 def no_ariadne_oliver(cards: list[Card]) -> bool:

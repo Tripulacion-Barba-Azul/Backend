@@ -35,3 +35,9 @@ class PlayerNeedSixCardsError(Exception):
 
 class DeckNotFoundError(Exception):
     """It is raised when no deck is found with the specified ID."""
+
+class NotCardInHand(Exception):
+    """That card does not belong to the player."""
+
+class InvalididDetectiveSet(Exception):
+    """Not a valid detective set. Learn the rules little cheater."""

@@ -10,6 +10,7 @@ from App.players.enums import PlayerRole
 from App.players.models import Player
 from App.players.schemas import AllyInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo
 from App.secret.utils import db_secret_2_secret_private_info, db_secret_2_secret_public_info
+from App.sets.utils import db_dset_2_set_public_info
 
 
 def db_player_2_player_info(db_player: Player) -> PlayerInfo:
@@ -62,7 +63,7 @@ def db_player_2_player_public_info(db_player: Player) -> PlayerPublicInfo:
         secrets=[db_secret_2_secret_public_info(secret) 
                 for secret in db_player.secrets
             ],
-        sets=[] #falta implementar sets
+        sets= [db_dset_2_set_public_info(dset) for dset in db_player.sets]
     )
 
 def db_player_2_player_private_info(db_player: Player) -> PlayerPrivateInfo:
