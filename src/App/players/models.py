@@ -9,6 +9,7 @@ from App.models.db import Base
 from App.card.models import Card
 from App.players.enums import PlayerRole, TurnStatus
 from App.secret.models import Secret
+from App.sets.models import DetectiveSet
 
 player_cards_association = Table(
         "player_cards_association",
@@ -23,8 +24,6 @@ player_secrets_association = Table(
         Column("player_id", ForeignKey("players.id"), primary_key=True),
         Column("secret_id", ForeignKey("secrets.id"), primary_key=True),
 )
-
-
 
 class Player(Base):
     """
@@ -56,3 +55,8 @@ class Player(Base):
         nullable=False
     )
     ally: Mapped[int] = mapped_column(Integer, ForeignKey('players.id'), nullable=True)
+    sets: Mapped[list[DetectiveSet]] = relationship(
+        "DetectiveSet",
+        back_populates="player"
+    )
+

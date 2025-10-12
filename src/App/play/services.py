@@ -101,6 +101,9 @@ class PlayService:
         if len(player.cards) == 6:
             raise PlayerHave6CardsError(f"Player {player_id} already has 6 cards")
 
+        if rep_deck.number_of_cards == 0:
+            return None
+
         card = max(rep_deck.cards, key=lambda c: c.order)  # type: ignore
 
         CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=True)

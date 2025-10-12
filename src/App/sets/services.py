@@ -1,0 +1,168 @@
+from types import NoneType
+from sqlalchemy.orm import Session
+
+from App.card.models import Card, Detective
+from App.players.services import PlayerService
+from App.sets.enums import DetectiveSetType
+
+
+class SetService:
+
+    def __init__(self, db: Session):
+        self._db = db
+        self._player_service = PlayerService(db)
+
+
+    def validate_play_set(self, cards: list[Card]) -> DetectiveSetType | None:
+        
+        if not all(isinstance(c, Detective) for c in cards):
+            return None
+        
+        if not no_ariadne_oliver(cards):
+            return None
+        
+        if not not_all_wildcards(cards):
+            return None
+        
+        if validate_hercule_poirot_set(cards):
+            return DetectiveSetType.HERCULE_POIROT
+        
+        if validate_miss_marple_set(cards):
+            return DetectiveSetType.MISS_MARPLE
+        
+        if validate_mr_satterthwaite_set(cards):
+            return DetectiveSetType.MR_SATTERTHWAITE
+        
+        if validate_satterthquin_set(cards):
+            return DetectiveSetType.SATTERTHQUIN
+        
+        if validate_parker_pyne_set(cards):
+            return DetectiveSetType.PARKER_PYNE
+        
+        if validate_lady_eileen_brent_set(cards):
+            return DetectiveSetType.LADY_EILEEN_BRENT
+        
+        if validate_tommy_beresford_set(cards):
+            return DetectiveSetType.TOMMY_BERESFORD
+        
+        if validate_tuppence_beresford_set(cards):
+            return DetectiveSetType.TUPPENCE_BERESFORD
+        
+        if validate_siblings_beresford(cards):
+            return DetectiveSetType.SIBLINGS_BERESFORD
+        
+        return None
+      
+        
+
+def no_ariadne_oliver(cards: list[Card]) -> bool:
+
+    card_names = [card.name for card in cards]
+    return "Ariadne Oliver" not in card_names
+
+def not_all_wildcards(cards: list[Card]) -> bool:
+    card_names = [card.name for card in cards]
+    return not all(name == "Harley Quin" for name in card_names)
+
+
+def validate_hercule_poirot_set(cards: list[Card]) -> bool:
+
+    if len(cards) < 3:
+        return False
+    
+    detectives = [card.name for card in cards if card.name not in ["Hercule Poirot","Harley Quin"]]
+    if detectives:
+        return False
+
+    return True
+    
+def validate_miss_marple_set(cards: list[Card]) -> bool:
+
+    if len(cards) < 3:
+        return False
+    
+    detectives = [card.name for card in cards if card.name not in ["Miss Marple","Harley Quin"]]
+    if detectives:
+        return False
+
+    return True
+
+def validate_mr_satterthwaite_set(cards: list[Card]) -> bool:
+
+    if len(cards) < 2:
+        return False
+    
+    detectives = [card.name for card in cards if card.name not in ["Mr Satterthwaite"]]
+    if detectives:
+        return False
+
+    return True
+
+def validate_satterthquin_set(cards: list[Card]) -> bool:
+
+    if len(cards) < 2:
+        return False
+    
+    if "Harley Quin" not in [card.name for card in cards]:
+        return False
+
+    detectives = [card.name for card in cards if card.name not in ["Mr Satterthwaite","Harley Quin"]]
+    if detectives:
+        return False
+
+    return True
+
+def validate_parker_pyne_set(cards: list[Card]) -> bool:
+
+    if len(cards) < 2:
+        return False
+    
+    detectives = [card.name for card in cards if card.name not in ["Parker Pyne","Harley Quin"]]
+    if detectives:
+        return False
+
+    return True
+
+def validate_lady_eileen_brent_set(cards: list[Card]) -> bool:
+
+    if len(cards) < 2:
+        return False
+    
+    detectives = [card.name for card in cards if card.name not in ["Lady Eileen Brent","Harley Quin"]]
+    if detectives:
+        return False
+
+    return True
+
+def validate_tommy_beresford_set(cards: list[Card]) -> bool:
+
+    if len(cards) < 2:
+        return False
+    
+    detectives = [card.name for card in cards if card.name not in ["Tommy Beresford","Harley Quin"]]
+    if detectives:
+        return False
+
+    return True
+
+def validate_tuppence_beresford_set(cards: list[Card]) -> bool:
+
+    if len(cards) < 2:
+        return False
+    
+    detectives = [card.name for card in cards if card.name not in ["Tuppence Beresford","Harley Quin"]]
+    if detectives:
+        return False
+
+    return True
+
+def validate_siblings_beresford(cards: list[Card]) -> bool:
+
+    if len(cards) < 2:
+        return False
+    
+    detectives = [card.name for card in cards if card.name not in ["Tommy Beresford","Tuppence Beresford","Harley Quin"]]
+    if detectives:
+        return False
+
+    return True
