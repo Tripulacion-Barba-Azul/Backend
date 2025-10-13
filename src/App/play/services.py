@@ -64,14 +64,17 @@ class PlayService:
                 
         if player.turn_status != TurnStatus.PLAYING:
             raise NotPlayersTurnError(f"It's not the turn of player {player_id}")
-        
-        set_type = self._detective_set_service.validate_play_set(cards)
+        played_cards = [card for card in player.cards if card.id in card_ids]
+        set_type = self._detective_set_service.validate_play_set(played_cards)
         if not set_type:
             raise InvalididDetectiveSet("Not a valid detective set. Learn the rules little cheater.")
 
         new_set = self._detective_set_service.create_detective_set(player_id, card_ids, set_type)
 
-        player.turn_status = TurnStatus.DISCARDING
+        player.turn_status = TurnStatus.TAKING_ACTION
+
+        player.turn_action = self._detective_set_service.select_event_type(set_type)
+
 
         self._db.flush()
         self._db.commit()

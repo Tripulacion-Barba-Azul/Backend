@@ -60,3 +60,4 @@ def db_game_2_game_detectives_win(db_game: Game) -> list[PlayerWinInfo]:
                 name=player.name,
                 role=player.role.value
             ) for player in db_game.players if player.role == PlayerRole.DETECTIVE]
+

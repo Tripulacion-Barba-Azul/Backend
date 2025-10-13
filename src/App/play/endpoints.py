@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from App.card.schemas import CardGameInfo
+
 from App.exceptions import (
-    GameNotFoundError,
     InvalididDetectiveSet,
     NotCardInHand,
     NotPlayersTurnError,
@@ -15,15 +14,16 @@ from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
-from App.play.schemas import DrawCardInfo, PlayCard, PlayCardInfo
+from App.play.schemas import DrawCardInfo, PlayCard
 from App.models.db import get_db
 
 from App.play.services import PlayService
 from App.players.models import Player
-from App.players.schemas import PlayerGameInfo
-from App.players.services import PlayerService
-from App.players.utils import db_player_2_player_private_info
+
+from App.players.utils import db_player_2_played_cards_played_info, db_player_2_player_private_info
 from App.websockets import manager
+from App.play.enums import ActionType
+from App.sets.services import DetectiveSetService
 
 play_router = APIRouter()
 
@@ -62,12 +62,26 @@ async def play_card(
             
             playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
             await manager.send_to_player(
-                game_id=game.id, 
+                game_id=game.id,
                 player_id=player.id,
                 message=playerPrivateInfo.model_dump()
             )
+            event = DetectiveSetService(db).select_event_type(played_set.type).value
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message={"event": event}
+            )
 
-            return [card.id for card in played_set.cards]
+            playedCards = db_player_2_played_cards_played_info(player, played_set, cards_id, ActionType.SET)
+            await manager.broadcast_except(
+                game_id=game.id, 
+                exclude_player_id=player.id,
+                message=playedCards.model_dump()
+            )
+
+            return {"setId": played_set.id}
+        
         elif cards_id == []:
                     
             game = PlayService(db).no_action(game_id, player_id)

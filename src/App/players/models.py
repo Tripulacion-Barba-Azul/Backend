@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List
 from App.models.db import Base
 from App.card.models import Card
-from App.players.enums import PlayerRole, TurnStatus
+from App.players.enums import PlayerRole, TurnAction, TurnStatus
 from App.secret.models import Secret
 from App.sets.models import DetectiveSet
 
@@ -52,6 +52,11 @@ class Player(Base):
     turn_status: Mapped[TurnStatus] = mapped_column(
         SqlEnum(TurnStatus),
         default=TurnStatus.WAITING,
+        nullable=False
+    )
+    turn_action: Mapped[TurnAction] = mapped_column(
+        SqlEnum(TurnAction),
+        default=TurnAction.NO_ACTION,
         nullable=False
     )
     ally: Mapped[int] = mapped_column(Integer, ForeignKey('players.id'), nullable=True)

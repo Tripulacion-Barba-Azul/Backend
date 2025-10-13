@@ -1,4 +1,3 @@
-from types import NoneType
 from sqlalchemy.orm import Session
 
 from App.card.models import Card, Detective
@@ -7,6 +6,7 @@ from App.sets.enums import DetectiveSetType
 from App.exceptions import NotCardInHand, PlayerNotFoundError
 from App.players.models import Player
 from App.sets.models import DetectiveSet
+from App.players.enums import TurnAction
 
 
 class DetectiveSetService:
@@ -73,10 +73,33 @@ class DetectiveSetService:
             player=player,
             cards=cards_to_set
         )
+        
+        player.cards = [card for card in player.cards if card.id not in card_ids]
+
         self._db.add(new_set)
         self._db.commit()
 
         return new_set
+    
+    def select_event_type(self, set_type: DetectiveSetType) -> TurnAction:
+        if set_type == DetectiveSetType.HERCULE_POIROT:
+            return TurnAction.REVEAL_SECRET
+        if set_type == DetectiveSetType.MISS_MARPLE:
+            return TurnAction.REVEAL_SECRET
+        if set_type == DetectiveSetType.MR_SATTERTHWAITE:
+            return TurnAction.SELECT_ANY_PLAYER
+        if set_type == DetectiveSetType.SATTERTHQUIN:
+            return TurnAction.SATTERWAITEWILD
+        if set_type == DetectiveSetType.PARKER_PYNE:
+            return TurnAction.HIDE_SECRET
+        if set_type == DetectiveSetType.LADY_EILEEN_BRENT:
+            return TurnAction.SELECT_ANY_PLAYER
+        if set_type == DetectiveSetType.TOMMY_BERESFORD:
+            return TurnAction.SELECT_ANY_PLAYER
+        if set_type == DetectiveSetType.TUPPENCE_BERESFORD:
+            return TurnAction.SELECT_ANY_PLAYER
+        if set_type == DetectiveSetType.SIBLINGS_BERESFORD:
+            return TurnAction.SELECT_ANY_PLAYER
         
 
 def no_ariadne_oliver(cards: list[Card]) -> bool:
