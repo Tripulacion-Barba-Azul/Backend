@@ -5,6 +5,8 @@ from App.games.models import Game
 from App.games.services import GameService
 from App.play.services import PlayService
 from App.players.enums import TurnStatus
+from App.card.services import CardService
+from App.players.enums import TurnAction
 
 
 def test_discard_card_service(session: Session, seed_game_player2_discard):
@@ -112,3 +114,27 @@ def test_end_game_(session: Session, seed_game_player2_discard):
 
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.FINISHED
+
+
+def test_play_set(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+
+    assert player.turn_status == TurnStatus.PLAYING
+
+    card_ids = []
+    for i in range(3):
+        card = CardService(session).create_detective_card("Hercule Poirot","",3)
+        player.cards[i] = card
+        card_ids.append(card.id)
+
+    session.flush()
+    session.commit()
+
+    new_set = PlayService(session).play_set(player.id, card_ids)
+
+    assert len(player.cards) == 3
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.REVEAL_SECRET
+    assert new_set in player.sets

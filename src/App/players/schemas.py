@@ -1,7 +1,7 @@
 from datetime import date
 from pydantic import BaseModel
 
-from App.card.schemas import CardPrivateInfo
+from App.card.schemas import CardPrivateInfo, CardPublicInfo
 from App.players.dtos import PlayerDTO
 from App.players.enums import TurnStatus
 from App.secret.schemas import SecretPrivateInfo, SecretPublicInfo
@@ -56,3 +56,13 @@ class PlayerPrivateInfo(BaseModel):
     secrets: list[SecretPrivateInfo]
     role: str
     ally: AllyInfo | None = None
+
+class PlayerPlayedCardsInfo(BaseModel):
+    playerId: int
+    cards: list[CardPublicInfo]
+    actionType: str
+
+class CardsPlayedInfo(BaseModel):
+    event: str = "cardsPlayed"
+    payload: PlayerPlayedCardsInfo
+
