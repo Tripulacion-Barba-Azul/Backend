@@ -72,7 +72,7 @@ def test_relationship_with_game(session:Session, sample_player):
     session.refresh(rep_deck)
     session.refresh(game)
 
-    game.reposition_deck= rep_deck
+    game.reposition_deck = rep_deck
     
     session.commit()
     session.refresh(rep_deck)

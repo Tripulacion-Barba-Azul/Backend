@@ -14,6 +14,18 @@ from main import app
 
 from .game_fixtures import *
 
+
+@pytest.fixture(name="sample_player")
+def sample_player_fixture(session: Session):
+    """Fixture global para crear un player de prueba accesible por otros fixtures/tests"""
+    from App.players.models import Player
+
+    player = Player(name="Elias", avatar=1, birthday=date(1999, 3, 13))
+    session.add(player)
+    session.commit()
+    session.refresh(player)
+    return player
+
 @pytest.fixture(name="session", scope="function")
 def session_fixture():
     
@@ -66,3 +78,18 @@ def seed_games_fixture(session: Session):
     session.commit()
 
     return {"players": [player1, player2], "games": [game1, game2]}
+
+
+@pytest.fixture(name="sample_game")
+def sample_game(session, sample_player):
+    """Fixture para crear un game de prueba"""
+    game = Game(
+        name="test_game",
+        min_players=2,
+        max_players=4,
+        owner= sample_player
+    )
+    session.add(game)
+    session.commit()
+    session.refresh(game)
+    return game
