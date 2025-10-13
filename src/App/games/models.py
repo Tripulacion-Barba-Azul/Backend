@@ -5,6 +5,7 @@ from sqlalchemy import (
     )
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 from App.decks.discard_deck_model import DiscardDeck
+from App.decks.draft_deck_model import DraftDeck
 from App.models.db import Base
 from App.games.enums import ActionStatus, GameStatus
 from App.players.models import Player
@@ -66,6 +67,12 @@ class Game(Base):
         uselist=False,
         cascade="all, delete-orphan"
     )
+    draft_deck: Mapped[DraftDeck] = relationship(  
+        "DraftDeck",        
+        back_populates="game",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
 
     def __init__(self, 
                  name: str, 
@@ -78,3 +85,4 @@ class Game(Base):
         self.min_players = min_players
         self.max_players = max_players
         self.players = [owner]
+    
