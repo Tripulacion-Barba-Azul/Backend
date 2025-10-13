@@ -42,9 +42,9 @@ def test_card_optional_fields(session:Session):
     session.commit()
     session.refresh(card)
 
-    assert card.playable_on_turn is None
+    assert card.playable_on_turn is False
     assert card.number_to_set is None
-    assert card.playable is None
+    assert card.playable is True
 
 
 
