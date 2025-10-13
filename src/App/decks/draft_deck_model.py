@@ -1,4 +1,4 @@
-"""Discard Deck Models."""
+"""Draft Deck Models."""
 
 
 from sqlalchemy import Integer, Table, ForeignKey, Column
@@ -8,30 +8,30 @@ from App.models.db import Base
 from App.card.models import Card
 
 
-discard_cards_association = Table(
-        "discard_cards_association",
+draft_cards_association = Table(
+        "draft_cards_association",
         Base.metadata,
-        Column("discard_deck_id", ForeignKey("discard_deck.id"), primary_key=True),
+        Column("draft_deck_id", ForeignKey("draft_deck.id"), primary_key=True),
         Column("card_id", ForeignKey("cards.id"), primary_key=True),
         extend_existing=True
 )
 
-class DiscardDeck(Base):
+class DraftDeck(Base):
     """
-    Represent a discard deck
+    Represent a draft deck
 
     """
 
-    __tablename__ = 'discard_deck'
+    __tablename__ = 'draft_deck'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     cards: Mapped[List[Card]] = relationship("Card",
-                                             secondary="discard_cards_association",
-                                             backref="discard_deck")
+                                             secondary="draft_cards_association",
+                                             backref="draft_deck")
     game_id: Mapped[int] = mapped_column(Integer, ForeignKey('games.id'), unique=True, nullable = True)
     
     game: Mapped["Game"] = relationship( # type: ignore
         "Game",
-        back_populates="discard_deck",
+        back_populates="draft_deck",
         uselist=False
     )
     number_of_cards: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

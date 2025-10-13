@@ -3,10 +3,34 @@ import pytest
 from sqlalchemy.orm import Session
 
 from App.games.dtos import GameDTO
+from App.games.models import Game
 from App.games.services import GameService
 from App.play.services import PlayService
 from App.players.dtos import PlayerDTO
+from App.players.models import Player
 
+
+@pytest.fixture(name="sample_player")
+def sample_player(session:Session):
+    player = Player(name="Elias", avatar="kjhgdsFAKJHG", birthday= date(1999,3,13))
+    session.add(player)
+    session.commit()
+    session.refresh(player)
+    return player
+
+@pytest.fixture(name="sample_game")
+def sample_game(session, sample_player):
+    """Fixture para crear un game de prueba"""
+    game = Game(
+        name="test_game",
+        min_players=2,
+        max_players=4,
+        owner= sample_player
+    )
+    session.add(game)
+    session.commit()
+    session.refresh(game)
+    return game
 
 @pytest.fixture(name="seed_started_game")
 def seed_started_game(session: Session):
@@ -51,3 +75,4 @@ def seed_game_player2_draw(session: Session, seed_game_player2_discard):
     PlayService(session).discard(game, player.id, cards_id)
     
     return game, player
+

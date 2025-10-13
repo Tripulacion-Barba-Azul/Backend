@@ -12,7 +12,7 @@ class DiscardDeckService:
     def get_discard_deck(self, deck_id):
         discard_deck = self._db.query(DiscardDeck).filter_by(id = deck_id).first()
         if discard_deck == None:
-            raise ValueError(f"Deck with id:{deck_id} dont exist")
+            raise ValueError(f"Deck with id: {deck_id} dont exist")
         else:
             return discard_deck
         
@@ -30,7 +30,7 @@ class DiscardDeckService:
 
         if game == None:
             raise ValueError(
-                f"Game with id {game_id} dont exist"
+                f"Game with id: {game_id} dont exist"
             )
 
         game.discard_deck = discard_deck
@@ -38,9 +38,12 @@ class DiscardDeckService:
         self._db.refresh(discard_deck)
         self._db.refresh(game)
 
+
     def relate_card_to_discard_deck(self, deck_id, card):
 
         discard_deck = self.get_discard_deck(deck_id)
+
+
         discard_deck.number_of_cards += 1
         card.order = discard_deck.number_of_cards
         discard_deck.cards.append(card)

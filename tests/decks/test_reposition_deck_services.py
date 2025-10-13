@@ -17,19 +17,7 @@ def sample_player(session:Session):
     session.refresh(player)
     return player
 
-@pytest.fixture
-def sample_game(session, sample_player):
-    """Fixture para crear un game de prueba"""
-    game = Game(
-        name="test_game",
-        min_players=2,
-        max_players=4,
-        owner= sample_player
-    )
-    session.add(game)
-    session.commit()
-    session.refresh(game)
-    return game
+
 
 @pytest.fixture
 def sample_reposition_deck(session):
