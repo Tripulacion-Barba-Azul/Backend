@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 
 from App.exceptions import (
+    GameNotFoundError,
     InvalididDetectiveSet,
     NotCardInHand,
     NotPlayersTurnError,
@@ -18,6 +19,7 @@ from App.play.schemas import DrawCardInfo, PlayCard, SelectAnyPlayerInfo
 from App.models.db import get_db
 
 from App.play.services import PlayService
+from App.players.enums import TurnAction, TurnStatus
 from App.players.models import Player
 
 from App.players.utils import db_player_2_played_cards_played_info, db_player_2_player_private_info
@@ -240,41 +242,37 @@ async def select_any_player(
         db=Depends(get_db)
         ):
     
-    event = select_player_info.event
-    if event is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Event field is required.",
+    try:
+        game, player, selected_player = PlayService(db).select_any_player(
+            game_id,
+            select_player_info.playerId,
+            select_player_info.selectedPlayerId
         )
-    
-    game = GameService(db).get_by_id(game_id)
-    if not game:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No game found {game_id}",
-        )
-    is_player_in_game= GameService(db).player_in_game(game_id, select_player_info.playerId)
-    if not is_player_in_game:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Player {select_player_info.playerId} not found in game {game_id}",
-        )
-    is_selected_player_in_game = GameService(db).player_in_game(game_id, select_player_info.selectedPlayerId)
-    if not is_selected_player_in_game:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Player {select_player_info.selectedPlayerId} not found in game {game_id}",
-        )
-    
-    player = db.query(Player).filter(Player.id == select_player_info.playerId).first()
-    selected_player = db.query(Player).filter(Player.id == select_player_info.selectedPlayerId).first()
-    
-    gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-    await manager.broadcast(game.id, gamePublicInfo.model_dump())
+        gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id, gamePublicInfo.model_dump())
 
-    playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
-    await manager.send_to_player(
-        game_id=game.id,
-        player_id=player.id,
-        message=playerPrivateInfo.model_dump()
-    )
+        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+        await manager.send_to_player(
+            game_id=game.id,
+            player_id=player.id,
+            message=playerPrivateInfo.model_dump()
+        )
+        
+        event = player.turn_action
+        if event == TurnAction.CARDS_OFF_THE_TABLE:
+            event_type = "cards_off_the_table"
+        elif event == TurnAction.SELECT_ANY_PLAYER_SETS:
+            event_type = "select_any_player_sets"
+        
+    except (GameNotFoundError, PlayerNotFoundError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
+    

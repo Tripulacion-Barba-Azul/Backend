@@ -187,3 +187,25 @@ class PlayService:
         self._db.commit()
 
         return game
+
+    def select_any_player(self, game_id: int, player_id: int, selected_player_id: int) -> None:
+        game: Game | None = self._game_service.get_by_id(game_id)
+        if not game:
+            raise GameNotFoundError(f"No game found {game_id}")
+
+        player: Player | None = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        if player.turn_status != TurnStatus.TAKING_ACTION:
+            raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
+        if (player.turn_action != TurnStatus.SELECT_ANY_PLAYER_SETS) or (player.turn_action != TurnStatus.CARDS_OFF_THE_TABLE):
+            raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
+        selected_player: Player | None = self._db.query(Player).filter(Player.id == selected_player_id).first()
+        if not selected_player:
+            raise PlayerNotFoundError(f"Selected player {selected_player_id} not found")
+        
+        
+        
+        self._db.add(player)
+        self._db.flush()
+        self._db.commit()
