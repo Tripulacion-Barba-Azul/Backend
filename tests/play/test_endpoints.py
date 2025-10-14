@@ -1,3 +1,4 @@
+import copy
 from datetime import date
 from fastapi.testclient import TestClient
 
@@ -94,7 +95,7 @@ def test_discard_endpoint(client: TestClient, seed_game_player2_discard):
         
 
 
-def test_draw_card_endpoint(client: TestClient, seed_game_player2_draw):
+def test_draw_from_regular_deck(client: TestClient, seed_game_player2_draw):
 
     game = seed_game_player2_draw[0]
     player = seed_game_player2_draw[1]
@@ -107,6 +108,8 @@ def test_draw_card_endpoint(client: TestClient, seed_game_player2_draw):
             f"/play/{game.id}/actions/draw-card", 
             json={
                 "playerId": player.id,
+                "deck" :"regular",
+                "order": None
                 }
         )
         data = response.json()
@@ -123,6 +126,50 @@ def test_draw_card_endpoint(client: TestClient, seed_game_player2_draw):
                 players = payload["players"]         
                 player_public = next((p for p in players if p["id"] == player.id), None)
                 assert player_public["cardCount"] == player_cards_before + 1
+                public_update_received = True
+            elif result.get("event") == "privateUpdate":
+                assert len(payload["cards"]) == 1
+                private_update_received = True
+        
+        assert public_update_received
+        assert private_update_received    
+
+    assert response.status_code == 200
+
+def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
+    
+    game = seed_game_player2_draw[0]
+    player = seed_game_player2_draw[1]
+    rep_deck_count_before = len(game.reposition_deck.cards)
+    card1_before = game.draft_deck.cards[0]
+    player_cards_before = len(player.cards)
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+        
+        response = client.post(
+            f"/play/{game.id}/actions/draw-card", 
+            json={
+                "playerId": player.id,
+                "deck": "draft",
+                "order": 1,
+            }
+                
+        )
+        data = response.json()
+
+        public_update_received = False
+        private_update_received = False
+
+        for i in range(2):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                assert payload["actionStatus"] == "blocked"
+                assert payload["regularDeckCount"] == rep_deck_count_before - 1
+                players = payload["players"]         
+                player_public = next((p for p in players if p["id"] == player.id), None)
+                assert player_public["cardCount"] == player_cards_before + 1
+                assert payload["draftCards"][0]["id"] != card1_before.id
                 public_update_received = True
             elif result.get("event") == "privateUpdate":
                 assert len(payload["cards"]) == 1
