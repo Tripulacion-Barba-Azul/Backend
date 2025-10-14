@@ -17,6 +17,5 @@ class DrawCardInfo(BaseModel):
     playerId: int
     
 class SelectAnyPlayerInfo(BaseModel):
-    event : str | None = None
     playerId: int
     selectedPlayerId: int
