@@ -81,6 +81,33 @@ class PlayService:
 
         return new_set
     
+    def play_event(self, player_id, event_card_id):
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        if player.turn_status != TurnStatus.PLAYING:
+            raise NotPlayersTurnError(f"It's not the turn of player {player_id}")
+        if player.turn_action != TurnAction.NO_ACTION:
+            raise NotPlayersTurnError(f"Player {player_id} cannot play an event now")
+        
+        event_card = self._card_service.get_card(event_card_id)
+        if event_card not in player.cards:
+            raise PlayerNotFoundError(f"Player {player_id} does not have the card {event_card_id}")
+        if event_card.type != "event":
+            raise PlayerNotFoundError(f"Card {event_card_id} is not an event card")
+        
+        if event_card.name == "Cards off the table":
+            player = self._player_service.discard_card(player_id, event_card)
+            player.turn_status = TurnStatus.TAKING_ACTION
+            player.turn_action = TurnAction.CARDS_OFF_THE_TABLE
+            
+            self._db.add(player)
+            self._db.flush()
+            self._db.commit()
+
+        return event_card
+    
 
     def discard(
             self,
