@@ -19,3 +19,12 @@ class DrawCardInfo(BaseModel):
 class SelectAnyPlayerInfo(BaseModel):
     playerId: int
     selectedPlayerId: int
+    
+class CardsOffTheTableInfo(BaseModel):
+    playerId: int
+    quantity: int
+    selectedPlayerId: int
+    
+class NotifierCardsOffTheTable(BaseModel):
+    event: str = "notifierCardsOffTheTable"
+    payload: CardsOffTheTableInfo

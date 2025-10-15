@@ -6,6 +6,7 @@ from App import players
 from App.card.utils import db_card_2_card_info, db_card_2_card_private_info
 from App.games.models import Game
 from App.models import db
+from App.play.schemas import CardsOffTheTableInfo, NotifierCardsOffTheTable
 from App.players.enums import PlayerRole
 from App.players.models import Player
 from App.players.schemas import AllyInfo, CardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPrivateInfo, PlayerPublicInfo
@@ -109,3 +110,17 @@ def db_player_2_played_cards_played_info(
         )
 
         return CardsPlayedInfo(payload=payload)
+    
+def db_player_cards_off_the_tables_info(
+    db_player: Player,
+    db_player_selected: Player,
+    not_so_fast: int
+) -> NotifierCardsOffTheTable:
+
+    payload = CardsOffTheTableInfo(
+        playerId = db_player.id,
+        quantity = not_so_fast,
+        selectedPlayerId = db_player_selected.id
+    )
+
+    return NotifierCardsOffTheTable(payload=payload)
