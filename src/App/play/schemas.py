@@ -23,3 +23,13 @@ class RevealSecretInfo(BaseModel):
     playerId: int
     secretId: int
     revealedPlayerId: int
+
+class StealSetInfo(BaseModel):
+    playerId: int
+    stolenPlayerId: int
+    setId: int
+
+class NotifierStealSet(BaseModel):
+    event: str =  "notifierStealSet"
+    payload: StealSetInfo
+

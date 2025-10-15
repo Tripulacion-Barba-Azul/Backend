@@ -1,14 +1,19 @@
+
+from sqlalchemy.orm import Session
+
 import copy
+
 from datetime import date
 from fastapi.testclient import TestClient
 
 from App.games.models import Game
 from App.players.enums import TurnStatus
-from App.players.utils import db_player_2_player_private_info, db_player_2_player_public_info
-from main import app
-from App.games.services import GameService
+from App.card.services import CardService
+from App.sets.enums import DetectiveSetType
+from App.sets.models import DetectiveSet
+from App.players.enums import TurnAction
 
-client = TestClient(app)
+
 
 def test_no_action(client: TestClient, seed_games, session):
     
@@ -135,6 +140,97 @@ def test_draw_from_regular_deck(client: TestClient, seed_game_player2_draw):
         assert private_update_received    
 
     assert response.status_code == 200
+
+
+def test_steal_set_endpoint(
+        client: TestClient,
+        session: Session,
+        seed_started_game):
+        game = seed_started_game(3)
+        player = game.players[1]
+        stolen_player = game.players[2]
+
+        cards = list()
+        cards.append(CardService(session).create_detective_card("Tommy Beresford","",2))
+        cards.append(CardService(session).create_detective_card("Tommy Beresford","",2))
+
+        dset = DetectiveSet(
+            type=DetectiveSetType.TOMMY_BERESFORD,
+            player=stolen_player,
+            cards=cards
+            )
+
+        assert player.turn_status == TurnStatus.PLAYING
+        
+        card = CardService(session).create_event_card("Another Victim","")
+        player.cards[0] = card
+        
+        session.add(dset)
+        session.flush()
+        session.commit()
+     
+        with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+            
+            response = client.post(
+                f"/play/{game.id}/actions/steal-set", 
+                json={
+                    "playerId": player.id,
+                    "stolenPlayerId": stolen_player.id,
+                    "setId": dset.id
+                    }
+            )
+            data = response.json()
+            assert response.status_code == 200
+            
+            result = websocket.receive_json()
+            result = websocket.receive_json()
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+
+            assert result["event"] == "notifierStealSet"
+            assert payload["playerId"] == player.id
+            assert payload["stolenPlayerId"] == stolen_player.id
+            assert payload["setId"] == dset.id
+
+
+def test_play_card_another_victim_with_no_sets_played(
+        client: TestClient,
+        session: Session,
+        seed_started_game):
+        game = seed_started_game(3)
+        player = game.players[1]
+        stolen_player = game.players[2]
+
+        assert player.turn_status == TurnStatus.PLAYING
+        
+        card = CardService(session).create_event_card("Another Victim","")
+        player.cards[0] = card
+        
+        session.flush()
+        session.commit()
+     
+        with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+            
+            response = client.post(
+                f"/play/{game.id}/actions/play-card", 
+                json={
+                    "playerId": player.id,
+                    "cards": [card.id]
+                    }
+            )
+            data = response.json()
+            assert response.status_code == 200
+            
+            result = websocket.receive_json()
+            result = websocket.receive_json()
+            result = websocket.receive_json()
+            
+
+            assert result["event"] == "notifierNoEffect"
+
+            assert player.turn_status == TurnStatus.DISCARDING_OPT
+            assert player.turn_action == TurnAction.NO_ACTION
+
 
 def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
     

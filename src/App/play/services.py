@@ -7,6 +7,8 @@ from App.decks.draft_deck_service import DraftDeckService
 from App.exceptions import (
     GameNotFoundError,
     InvalididDetectiveSet,
+    NotCardInHand,
+    NotPlayableCard,
     NotPlayersTurnError,
     ObligatoryDiscardError,
     PlayerNeedSixCardsError,
@@ -23,6 +25,7 @@ from App.players.models import Player
 from App.players.enums import TurnAction, TurnStatus
 from App.players.services import PlayerService
 from App.sets.services import DetectiveSetService
+from App.card.models import Card, Event
 
 class PlayService:
 
@@ -57,6 +60,37 @@ class PlayService:
         
         return game
     
+    def play_card(self, game, player_id, card_id) -> tuple[Card,TurnAction]:
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        if player.turn_status != TurnStatus.PLAYING:
+            raise NotPlayersTurnError(f"It's not the turn of player {player_id}")
+        
+        if card_id not in [card.id for card in player.cards]:
+            raise NotCardInHand("That card does not belong to the player.")
+        
+        card = self._card_service.get_card(card_id)
+        if not isinstance(card, Event):
+            raise NotPlayableCard("You tried to play a card that is not playable.")
+        
+        self._card_service.unrelate_card_player(card_id, player_id)
+
+        event = self._card_service.select_event_type(game, player, card)
+        if event in [TurnAction.NO_ACTION, TurnAction.NO_EFFECT]:
+            player.turn_status = TurnStatus.DISCARDING_OPT
+        else:
+            player.turn_status = TurnStatus.TAKING_ACTION
+            player.turn_action = event
+
+        self._db.flush()
+        self._db.commit()
+
+        return card, event
+
+    
     def play_set(self, player_id, card_ids):
         player = self._db.query(Player).filter(Player.id == player_id).first()
 
@@ -84,6 +118,37 @@ class PlayService:
         self._db.commit()
 
         return new_set
+    
+    def steal_set(
+            self,
+            player_id: int,
+            stolen_player_id: int,
+            set_id: int
+    ):
+        
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        stolen_player = self._db.query(Player).filter(Player.id == stolen_player_id).first()
+        if not stolen_player:
+            raise PlayerNotFoundError(f"Player {stolen_player_id} not found")
+        
+        if set_id not in [dset.id for dset in stolen_player.sets]:
+            raise InvalididDetectiveSet(f"Detective set {set_id} not found")
+        
+        dset = next((dset for dset in stolen_player.sets if dset.id == set_id))
+        
+        stolen_player.sets.remove(dset)
+        player.sets.append(dset)
+
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.flush()
+        self._db.commit()
+
+        return dset
     
 
     def discard(
@@ -118,10 +183,10 @@ class PlayService:
     def draw_card_from_deck(self, game_id, player_id):
 
         game = self._db.query(Game).filter_by(id=game_id).first()
-        rep_deck = game.reposition_deck
+        rep_deck = game.reposition_deck # type: ignore
         player = self._db.query(Player).filter_by(id=player_id).first()
 
-        if player.turn_status != TurnStatus.DRAWING:
+        if player.turn_status != TurnStatus.DRAWING: # type: ignore
             raise NotPlayersTurnError(f"It's not the turn of player {player_id} for discard")
 
         if rep_deck is None:

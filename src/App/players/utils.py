@@ -14,6 +14,7 @@ from App.sets.utils import db_dset_2_set_public_info
 from App.card.schemas import CardPublicInfo
 from App.play.enums import ActionType
 from App.sets.models import DetectiveSet
+from App.card.models import Card
 
 
 def db_player_2_player_info(db_player: Player) -> PlayerInfo:
@@ -109,3 +110,16 @@ def db_player_2_played_cards_played_info(
         )
 
         return CardsPlayedInfo(payload=payload)
+
+def db_player_2_played_card_info(
+        db_player: Player,
+        card_played: Card,
+        action_type: ActionType
+    ) -> CardsPlayedInfo:
+    
+    payload = PlayerPlayedCardsInfo(
+            playerId = db_player.id,
+            cards = [db_card_2_card_info(card_played)],
+            actionType=action_type.value
+        )
+    return CardsPlayedInfo(payload=payload)
