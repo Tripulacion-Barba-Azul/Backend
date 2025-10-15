@@ -23,7 +23,6 @@ def test_discard_card_service(session: Session, seed_game_player2_discard):
     assert player.turn_status == TurnStatus.DRAWING
     assert len(game.discard_deck.cards) == 7
 
-
 def test_draw_card_from_deck_success(session: Session, seed_game_player2_draw):
     game = seed_game_player2_draw[0]
     player = seed_game_player2_draw[1]
@@ -117,7 +116,6 @@ def test_end_game_(session: Session, seed_game_player2_discard):
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.FINISHED
 
-
 def test_play_set(session: Session, seed_started_game):
 
     game = seed_started_game(3)
@@ -140,7 +138,6 @@ def test_play_set(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.REVEAL_SECRET
     assert new_set in player.sets
-
 
 def test_reveal_secret_service(session: Session, seed_game_player2_reveal):
     game = seed_game_player2_reveal[0]
@@ -178,7 +175,7 @@ def test_play_card(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.DISCARDING_OPT
     assert event == TurnAction.NO_EFFECT
 
-def test_hide_secret(session: Session, seed_started_game):
+def test_steal_set(session: Session, seed_started_game):
     game = seed_started_game(3)
     player = game.players[1]
     stolen_player = game.players[2]
@@ -219,7 +216,7 @@ def test_hide_secret(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.DISCARDING_OPT
     assert player.turn_action == TurnAction.NO_ACTION
 
-def test_steal_set(session: Session, seed_started_game):
+def test_hide_secret(session: Session, seed_started_game):
     game = seed_started_game(3)
     player = game.players[1]
     revealed_secret_player = game.players[2]
@@ -244,13 +241,13 @@ def test_steal_set(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.HIDE_SECRET
 
-    secret_id = PlayService(session).hide_secret(
+    hiddenSecret = PlayService(session).hide_secret(
         player.id,
         secret.id,
         revealed_secret_player.id
     )
 
-    assert secret.id == secret_id
+    assert secret == hiddenSecret
     assert not revealed_secret_player.secrets[0].revealed
     assert player.turn_status == TurnStatus.DISCARDING_OPT
     assert player.turn_action == TurnAction.NO_ACTION
