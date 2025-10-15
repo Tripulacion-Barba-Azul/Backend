@@ -111,6 +111,21 @@ def db_player_2_played_cards_played_info(
 
         return CardsPlayedInfo(payload=payload)
     
+def db_player_2_played_card_played_info(
+        db_player: Player,
+        card_played: int,
+        action_type: ActionType
+
+    ) -> CardsPlayedInfo:
+
+        payload = PlayerPlayedCardsInfo(
+            playerId = db_player.id,
+            card = db_card_2_card_info(card_played),
+            actionType=action_type.value
+        )
+
+        return CardsPlayedInfo(payload=payload)
+    
 def db_player_cards_off_the_tables_info(
     db_player: Player,
     db_player_selected: Player,
