@@ -81,7 +81,7 @@ class PlayService:
 
         return new_set
     
-    def play_event(self, player_id, event_card_id):
+    def play_event(self, game: Game, player_id: int, event_card_id: int):
         player = self._db.query(Player).filter(Player.id == player_id).first()
 
         if not player:
@@ -98,7 +98,8 @@ class PlayService:
             raise PlayerNotFoundError(f"Card {event_card_id} is not an event card")
         
         if event_card.name == "Cards off the table":
-            player = self._player_service.discard_card(player_id, event_card)
+            card = self._player_service.discard_card(player_id, event_card)
+            self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
             player.turn_status = TurnStatus.TAKING_ACTION
             player.turn_action = TurnAction.CARDS_OFF_THE_TABLE
             

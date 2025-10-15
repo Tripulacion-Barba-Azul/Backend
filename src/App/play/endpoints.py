@@ -85,7 +85,7 @@ async def play_card(
             return {"setId": played_set.id}
         
         elif len(cards_id) == 1:
-            played_card = PlayService(db).play_event(player_id, cards_id[0])
+            played_card = PlayService(db).play_event(game, player_id, cards_id[0])
 
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
