@@ -141,7 +141,7 @@ def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
     game = seed_game_player2_draw[0]
     player = seed_game_player2_draw[1]
     rep_deck_count_before = len(game.reposition_deck.cards)
-    card1_before = game.draft_deck.cards[0]
+    card1_before = max(game.draft_deck.cards, key=lambda c: c.order)  # type: ignore
     player_cards_before = len(player.cards)
 
     with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
@@ -151,7 +151,7 @@ def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
             json={
                 "playerId": player.id,
                 "deck": "draft",
-                "order": 1,
+                "order": 3,
             }
                 
         )
@@ -169,10 +169,12 @@ def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
                 players = payload["players"]         
                 player_public = next((p for p in players if p["id"] == player.id), None)
                 assert player_public["cardCount"] == player_cards_before + 1
-                assert payload["draftCards"][0]["id"] != card1_before.id
+                assert payload["draftCards"][2]["id"] != card1_before.id
+                assert len(payload["draftCards"]) == 3
                 public_update_received = True
             elif result.get("event") == "privateUpdate":
                 assert len(payload["cards"]) == 1
+                assert payload["cards"][0]["id"] == card1_before.id
                 private_update_received = True
         
         assert public_update_received

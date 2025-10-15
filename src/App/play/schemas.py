@@ -1,3 +1,4 @@
+
 from pydantic import BaseModel
 
 from App.card.schemas import CardGameInfo
@@ -15,3 +16,5 @@ class PlayCard(BaseModel):
 
 class DrawCardInfo(BaseModel):
     playerId: int
+    deck: str
+    order: int | None = None
