@@ -7,6 +7,8 @@ from App.play.services import PlayService
 from App.players.enums import TurnStatus
 from App.card.services import CardService
 from App.players.enums import TurnAction
+from App.sets.enums import DetectiveSetType
+from App.sets.models import DetectiveSet
 
 
 def test_discard_card_service(session: Session, seed_game_player2_discard):
@@ -153,8 +155,49 @@ def test_play_card(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    card, event = PlayService(session).play_card(player.id, card.id)
+    card, event = PlayService(session).play_card(game, player.id, card.id)
     
     assert len(player.cards) == 5
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert event == TurnAction.NO_EFFECT
+
+def test_steal_set(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    stolen_player = game.players[2]
+
+    cards = list()
+    cards.append(CardService(session).create_detective_card("Tommy Beresford","",2))
+    cards.append(CardService(session).create_detective_card("Tommy Beresford","",2))
+
+    dset = DetectiveSet(
+        type=DetectiveSetType.TOMMY_BERESFORD,
+        player=stolen_player,
+        cards=cards
+        )
+
+    assert player.turn_status == TurnStatus.PLAYING
+    
+    card = CardService(session).create_event_card("Another Victim","")
+    player.cards[0] = card
+    
+    session.add(dset)
+    session.flush()
+    session.commit()
+    
+    PlayService(session).play_card(game, player.id, card.id)
+
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.STEAL_SET
+
+    stolen_set = PlayService(session).steal_set(
+        player.id,
+        stolen_player.id,
+        dset.id
+    )
+
+    assert stolen_set in player.sets
+    assert stolen_set not in stolen_player.sets
+    assert stolen_set == dset
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
