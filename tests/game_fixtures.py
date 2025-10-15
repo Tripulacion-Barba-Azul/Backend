@@ -2,6 +2,7 @@ from datetime import date
 import pytest
 from sqlalchemy.orm import Session
 
+from App.card.services import CardService
 from App.games.dtos import GameDTO
 from App.games.models import Game
 from App.games.services import GameService
@@ -76,3 +77,25 @@ def seed_game_player2_draw(session: Session, seed_game_player2_discard):
     
     return game, player
 
+
+@pytest.fixture(name="seed_game_player2_reveal")
+def seed_game_player2_reveal(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    
+    # remove any existing cards from the player safely (iterate over a copy)
+    existing_cards = list(player.cards)
+    for c in existing_cards:
+        CardService(session).unrelate_card_player(c.id, player.id)
+
+    # create and relate three new detective cards to the player
+    card_ids = []
+    for _ in range(3):
+        card = CardService(session).create_detective_card("Hercule Poirot", "", 3)
+        CardService(session).relate_card_player(player.id, card.id, commit=True)
+        card_ids.append(card.id)
+
+    session.refresh(player)
+    new_set = PlayService(session).play_set(player.id, card_ids)
+
+    return game, player

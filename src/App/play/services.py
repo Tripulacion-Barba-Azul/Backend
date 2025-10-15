@@ -14,10 +14,13 @@ from App.exceptions import (
     PlayerNeedSixCardsError,
     PlayerNotFoundError,
     PlayerHave6CardsError,
-    DeckNotFoundError)
+    DeckNotFoundError,
+    SecretAlreadyRevealedError,
+    SecretNotFoundError)
 from App.games.models import Game
 from App.games.services import GameService
 from App.games.enums import GameStatus
+from App.secret.services import relate_secret_player, reveal_secret, unrelate_secret_player
 from App.players.models import Player
 from App.players.enums import TurnAction, TurnStatus
 from App.players.services import PlayerService
@@ -296,3 +299,44 @@ class PlayService:
         self._db.refresh(card1)
 
         return card
+
+    def reveal_secret_service(self, player_id: int, secret_id: int, revealed_player_id: int):
+
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        revealed_player = self._db.query(Player).filter(Player.id == revealed_player_id).first()
+
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        if not revealed_player:
+            raise PlayerNotFoundError(f"Player {revealed_player_id} not found")
+
+        if player.turn_status != TurnStatus.TAKING_ACTION:
+            raise NotPlayersTurnError(f"It's not the turn of player {player_id}")
+
+        if player.turn_action != TurnAction.REVEAL_SECRET:
+            raise NotPlayersTurnError(f"Player {player_id} cannot reveal secret now")
+
+        secret = None
+        for s in revealed_player.secrets:
+            if s.id == secret_id:
+                secret = s
+                break
+        
+        if not secret:
+            raise SecretNotFoundError(f"Secret {secret_id} not found for player {player_id}")
+        
+        if secret.revealed:
+            raise SecretAlreadyRevealedError(f"Secret {secret_id} already revealed")
+
+        reveal_secret(secret, self._db)
+    
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.commit()
+        self._db.refresh(player)
+        self._db.refresh(secret)
+        self._db.refresh(revealed_player)
+
+        return secret

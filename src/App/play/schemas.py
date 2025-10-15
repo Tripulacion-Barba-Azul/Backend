@@ -19,6 +19,10 @@ class DrawCardInfo(BaseModel):
     deck: str
     order: int | None = None
 
+class RevealSecretInfo(BaseModel):
+    playerId: int
+    secretId: int
+    revealedPlayerId: int
 
 class StealSetInfo(BaseModel):
     playerId: int

@@ -63,19 +63,24 @@ def create_secret(new_name, new_description, new_type, db:Session, commit=False)
 
 
 
-def reveal_secret(secret_id, db:Session):
-    secret = get_secret(secret_id, db)
+def reveal_secret(secret, db:Session):
 
     secret.revealed = True
     db.commit()
     db.refresh(secret)
 
-def relate_secret_player(player_id, secret_id, db:Session, commit=False):
-
-    secret = get_secret(secret_id, db)
-    player =  db.query(Player).filter_by(id = player_id).first()
+def relate_secret_player(player, secret, db:Session, commit=False):
 
     player.secrets.append(secret)
+
+    if commit:
+        db.commit()
+        db.refresh(player)
+        db.refresh(secret)
+
+def unrelate_secret_player(player, secret, db:Session, commit=False):
+
+    player.secrets.remove(secret)
 
     if commit:
         db.commit()
@@ -144,7 +149,7 @@ def create_and_draw_secrets(game_id, db:Session):
     for i in range (3):
         for player in players:
                 secret = secret_list_copy[0]
-                relate_secret_player(player.id, secret.id, db, commit=False)
+                relate_secret_player(player, secret, db, commit=False)
                 secret_list_copy.pop(0)       
             
     db.commit()

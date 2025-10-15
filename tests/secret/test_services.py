@@ -156,13 +156,13 @@ def test_reveal_secret(sample_secret ,session:Session):
     session.commit()
     session.refresh(secret)
 
-    reveal_secret(secret.id, session)
+    reveal_secret(secret, session)
 
     assert secret.revealed == True
 
 
 def test_relate_secret_player(sample_secret, sample_player, session:Session):
-    relate_secret_player(sample_player.id, sample_secret.id, session)
+    relate_secret_player(sample_player, sample_secret, session)
 
     assert len(sample_secret.players) == 1
     assert sample_secret.players[0].name == "Elias"

@@ -77,4 +77,11 @@ class GameEndInfo(BaseModel):
     event: str = "gameEnded"
     payload: list[PlayerWinInfo]
 
-
+class SecretRevealedInfo(BaseModel):
+    playerId: int
+    secretId: int
+    selectedPlayerId: int
+    
+class NotifierRevealSecret(BaseModel):
+    event: str = "notifierRevealSecret"
+    payload: SecretRevealedInfo
