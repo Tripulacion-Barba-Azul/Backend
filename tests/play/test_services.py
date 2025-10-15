@@ -138,3 +138,23 @@ def test_play_set(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.REVEAL_SECRET
     assert new_set in player.sets
+
+def test_play_card(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+
+    assert player.turn_status == TurnStatus.PLAYING
+
+    
+    card = CardService(session).create_event_card("Another Victim","")
+    player.cards[0] = card
+    
+    session.flush()
+    session.commit()
+
+    card, event = PlayService(session).play_card(player.id, card.id)
+    
+    assert len(player.cards) == 5
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.STEAL_SET
