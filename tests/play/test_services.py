@@ -158,3 +158,26 @@ def test_play_event(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
     assert played_card in game.discard_deck.cards
+    
+def test_select_any_player(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    target_player = game.players[2]
+    
+    card = CardService(session).create_event_card("Cards off the table","")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    played_card = PlayService(session).play_event(game, player.id, card.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
+
+    game, s_player, s_selected_player = PlayService(session).select_any_player(game.id, player.id, target_player.id)
+
+    assert s_player.turn_status == TurnStatus.TAKING_ACTION
+    assert s_player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
+    assert s_selected_player.turn_status == TurnStatus.WAITING

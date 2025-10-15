@@ -226,16 +226,16 @@ class PlayService:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         if player.turn_status != TurnStatus.TAKING_ACTION:
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
-        if (player.turn_action != TurnAction.SELECT_ANY_PLAYER_SETS) or (player.turn_action != TurnAction.CARDS_OFF_THE_TABLE):
+        if (player.turn_action != TurnAction.SELECT_ANY_PLAYER_SETS) and (player.turn_action != TurnAction.CARDS_OFF_THE_TABLE):
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
-        player_in_game = GameService(self)._game_service.player_in_game(game_id, selected_player_id)
+        player_in_game = GameService(self._db).player_in_game(game_id, selected_player_id)
         if not player_in_game:
             raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
         
         selected_player: Player | None = self._db.query(Player).filter(Player.id == selected_player_id).first()
         if not selected_player:
             raise PlayerNotFoundError(f"Selected player {selected_player_id} not found")
-        selected_player_in_game = GameService(self)._game_service.player_in_game(game_id, selected_player_id)
+        selected_player_in_game = GameService(self._db).player_in_game(game_id, selected_player_id)
         if not selected_player_in_game:
             raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
         
