@@ -41,3 +41,9 @@ class NotCardInHand(Exception):
 
 class InvalididDetectiveSet(Exception):
     """Not a valid detective set. Learn the rules little cheater."""
+
+class SecretAlreadyRevealedError(Exception):
+    """Cannot reveal a secret that has already been revealed."""
+
+class SecretNotFoundError(Exception):
+    """It is raised when no secret is found with the specified ID."""
