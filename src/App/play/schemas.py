@@ -18,3 +18,14 @@ class DrawCardInfo(BaseModel):
     playerId: int
     deck: str
     order: int | None = None
+
+
+class StealSetInfo(BaseModel):
+    playerId: int
+    stolenPlayerId: int
+    setId: int
+
+class NotifierStealSet(BaseModel):
+    event: str =  "notifierStealSet"
+    payload: StealSetInfo
+
