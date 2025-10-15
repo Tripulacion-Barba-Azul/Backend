@@ -32,6 +32,11 @@ class GameConnectionPool:
         for websocket in self.active_connections.values():
             await websocket.send_json(message)
 
+    async def broadcast_except(self, exclude_player_id: int, message: dict):
+        for player_id, websocket in self.active_connections.items():
+            if player_id != exclude_player_id:
+                await websocket.send_json(message)
+
 class ConnectionManager:
     def __init__(self):
         self.games: dict[int, GameConnectionPool] = {}
@@ -63,6 +68,11 @@ class ConnectionManager:
         game_pool = self.games.get(game_id)
         if game_pool:
             await game_pool.broadcast(message)
+
+    async def broadcast_except(self, game_id: int, exclude_player_id: int, message: dict,):
+        game_pool = self.games.get(game_id)
+        if game_pool:
+            await game_pool.broadcast_except(exclude_player_id, message)
 
 
 manager = ConnectionManager()
