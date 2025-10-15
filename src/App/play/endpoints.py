@@ -22,7 +22,7 @@ from App.play.services import PlayService
 from App.players.enums import TurnAction, TurnStatus
 from App.players.models import Player
 
-from App.players.utils import db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_cards_off_the_tables_info
+from App.players.utils import db_player_2_played_card_played_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_cards_off_the_tables_info
 from App.websockets import manager
 from App.play.enums import ActionType
 from App.sets.services import DetectiveSetService
@@ -77,12 +77,29 @@ async def play_card(
 
             playedCards = db_player_2_played_cards_played_info(player, played_set, cards_id, ActionType.SET)
             await manager.broadcast_except(
-                game_id=game.id, 
+                game_id=game.id,
                 exclude_player_id=player.id,
                 message=playedCards.model_dump()
             )
 
             return {"setId": played_set.id}
+        
+        elif len(cards_id) == 1:
+            played_card = PlayService(db).play_event(player_id, cards_id[0])
+
+            gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+
+            playedCard = db_player_2_played_card_played_info(player, played_card, ActionType.EVENT)
+            await manager.broadcast_except(game.id, playedCard.model_dump())
+            return {"cardId": played_card.id}
         
         elif cards_id == []:
                     
