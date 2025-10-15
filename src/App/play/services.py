@@ -91,7 +91,6 @@ class PlayService:
 
         return card, event
 
-    
     def play_set(self, game, player_id, card_ids):
         player = self._db.query(Player).filter(Player.id == player_id).first()
 
@@ -156,7 +155,6 @@ class PlayService:
 
         return dset
     
-
     def discard(
             self,
             game: Game,
@@ -184,7 +182,6 @@ class PlayService:
         self._db.add(player)
         self._db.flush()
         self._db.commit()
-
 
     def draw_card_from_deck(self, game_id, player_id):
 
@@ -262,7 +259,6 @@ class PlayService:
         self._db.commit()
 
         return game
-
 
     def draw_card_from_draft(self, game_id, player_id, order):
         game = self._db.query(Game).filter_by(id=game_id).first()
@@ -377,4 +373,4 @@ class PlayService:
         self._db.flush()
         self._db.commit()
         
-        return secret.id
+        return secret
