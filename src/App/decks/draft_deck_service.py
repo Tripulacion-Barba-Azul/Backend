@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from tests.conftest import *
 from App.decks.draft_deck_model import DraftDeck
 from App.games.models import Game
 

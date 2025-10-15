@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from App.decks.discard_deck_model import DiscardDeck
 from App.decks.discard_deck_service import DiscardDeckService
+from App.decks.draft_deck_service import DraftDeckService
 from App.decks.reposition_deck_model import RepositionDeck
 from App.games.models import Game
 from App.card.services import CardService
@@ -162,8 +163,21 @@ class RepositionDeckService:
         discard_pile = DiscardDeckService(self._db).create_discard_deck()
         DiscardDeckService(self._db).relate_card_to_discard_deck(discard_pile.id, card)
         DiscardDeckService(self._db).relate_discard_deck_game(discard_pile.id, game.id)
-
         self._db.refresh(discard_pile)
+
+        draft_deck = DraftDeckService(self._db).create_draft_deck()
+        DraftDeckService(self._db).relate_draft_deck_game(draft_deck.id, game.id)
+
+        for i in range(3):
+            card = max(rep_deck.cards, key=lambda c: c.order)
+            CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id, commit=False)
+            DraftDeckService(self._db).relate_card_to_draft_deck(draft_deck.id, card, i+1)
+        
+        self._db.commit()
+        self._db.refresh(draft_deck)
+        self._db.refresh(rep_deck)
+        self._db.refresh(game)
+
 
 
 

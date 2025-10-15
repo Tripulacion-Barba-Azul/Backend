@@ -1,3 +1,4 @@
+
 from pydantic import BaseModel
 
 from App.card.schemas import CardGameInfo
@@ -15,6 +16,9 @@ class PlayCard(BaseModel):
 
 class DrawCardInfo(BaseModel):
     playerId: int
+    deck: str
+    order: int | None = None
+
 
 class StealSetInfo(BaseModel):
     playerId: int
@@ -24,3 +28,4 @@ class StealSetInfo(BaseModel):
 class NotifierStealSet(BaseModel):
     event: str =  "notifierStealSet"
     payload: StealSetInfo
+

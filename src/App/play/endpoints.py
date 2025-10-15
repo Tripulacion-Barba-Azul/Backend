@@ -211,7 +211,9 @@ async def draw_card(
             detail=f"No game found {game_id}",
         )
     player_id = action.playerId
-    isPlayerInGame = GameService(db).player_in_game(game_id, player_id) 
+    isPlayerInGame = GameService(db).player_in_game(game_id, player_id)
+    order = action.order
+
     if not isPlayerInGame:  
             raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -220,48 +222,103 @@ async def draw_card(
     
     player = db.query(Player).filter(Player.id == player_id).first()
 
-    try:
-        PlayService(db).draw_card_from_deck(game_id, player_id)
 
-        game = PlayService(db).end_game(game_id)
-        if game.status == GameStatus.FINISHED:
-            gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_win(game))
-            await manager.broadcast(game.id, gameEndInfo.model_dump())
-            return {"message": "The game has ended"}
+    if action.deck == "regular":
+        if order is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The order field is only for draft deck",
+            )
+        try:
+            PlayService(db).draw_card_from_deck(game_id, player_id)
 
-        if len(player.cards) == 6:
-            PlayService(db).end_turn(game_id, player_id)
+            if len(player.cards) == 6:
+                PlayService(db).end_turn(game_id, player_id)
 
-        gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-        await manager.broadcast(game.id, gamePublicInfo.model_dump())
+            gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id, gamePublicInfo.model_dump())
 
-        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
-        await manager.send_to_player(
-            game_id=game.id,
-            player_id=player.id,
-            message=playerPrivateInfo.model_dump()
-        )
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+
+            game = PlayService(db).end_game(game_id)
+            if game.status == GameStatus.FINISHED:
+                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_win(game))
+                await manager.broadcast(game.id, gameEndInfo.model_dump())
+                return {"message": "The game has ended"}
         
-    except NotPlayersTurnError as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
-        )
-    except PlayerHave6CardsError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(e),
-        )
-    except PlayerNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
-    except DeckNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
-        )
+        except NotPlayersTurnError as e:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            )
+        except PlayerHave6CardsError as e:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(e),
+            )
+        except PlayerNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        except DeckNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+    elif action.deck == "draft":
+        if order not in [1, 2, 3]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The order field must be 1, 2 or 3",
+            )
+        try:
+            
+            PlayService(db).draw_card_from_draft(game_id, player_id, order)
+
+            if len(player.cards) == 6:
+                    PlayService(db).end_turn(game_id, player_id)
+                
+            gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id, gamePublicInfo.model_dump())
+
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+
+            game = PlayService(db).end_game(game_id)
+            if game.status == GameStatus.FINISHED:
+                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_win(game))
+                await manager.broadcast(game.id, gameEndInfo.model_dump())
+                return {"message": "The game has ended"}
+            
+        except NotPlayersTurnError as e:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(e),
+            )
+        except PlayerHave6CardsError as e:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(e),
+            )
+        except PlayerNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+        except DeckNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
     
 
 @play_router.post(path="/{game_id}/actions/steal-set", status_code=200)
@@ -318,7 +375,4 @@ async def steal_set(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Detective set {set_id} not found",
     )
-
     
-
-
