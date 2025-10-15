@@ -14,7 +14,7 @@ from App.exceptions import (
 from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
-from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
+from App.games.utils import db_game_2_game_detectives_lose, db_game_2_game_public_info
 from App.play.schemas import DrawCardInfo, NotifierCardsOffTheTable, PlayCard, SelectAnyPlayerInfo
 from App.models.db import get_db
 
@@ -99,8 +99,15 @@ async def play_card(
 
             playedCard = db_player_2_played_card_played_info(player, played_card, ActionType.EVENT)
             await manager.broadcast_except(game.id, playedCard.model_dump())
+
+            if played_card.name == "Cards off the table":
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=player.id,
+                    message={"event": TurnAction.CARDS_OFF_THE_TABLE.value}
+                )
             return {"cardId": played_card.id}
-        
+                
         elif cards_id == []:
                     
             game = PlayService(db).no_action(game_id, player_id)
@@ -212,11 +219,6 @@ async def draw_card(
     try:
         PlayService(db).draw_card_from_deck(game_id, player_id)
 
-        game = PlayService(db).end_game(game_id)
-        if game.status == GameStatus.FINISHED:
-            gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_win(game))
-            await manager.broadcast(game.id, gameEndInfo.model_dump())
-            return {"message": "The game has ended"}
 
         if len(player.cards) == 6:
             PlayService(db).end_turn(game_id, player_id)
@@ -230,6 +232,11 @@ async def draw_card(
             player_id=player.id,
             message=playerPrivateInfo.model_dump()
         )
+        game = PlayService(db).end_game(game_id)
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
         
     except NotPlayersTurnError as e:
         raise HTTPException(
