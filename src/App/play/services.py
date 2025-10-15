@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from App.card.services import CardService
 from App.decks.discard_deck_service import DiscardDeckService
 from App.card.services import CardService
+from App.decks.draft_deck_service import DraftDeckService
 from App.exceptions import (
     GameNotFoundError,
     InvalididDetectiveSet,
@@ -187,3 +188,46 @@ class PlayService:
         self._db.commit()
 
         return game
+
+
+    def draw_card_from_draft(self, game_id, player_id, order):
+        game = self._db.query(Game).filter_by(id=game_id).first()
+        draft_deck = game.draft_deck
+        rep_deck = game.reposition_deck
+        player = self._db.query(Player).filter_by(id=player_id).first()
+
+
+        if player.turn_status != TurnStatus.DRAWING:
+            raise NotPlayersTurnError(f"It's not the turn of player {player_id} for discard")
+
+        if draft_deck is None:
+            raise DeckNotFoundError(f"Game {game_id} doesn't have a draft deck")  
+        
+        if player is None:
+            raise PlayerNotFoundError(f"Player {player_id} not found")  
+              
+        card = None
+        for c in draft_deck.cards:
+            if c.order == order:
+                card = c
+                break
+        
+
+        DraftDeckService(self._db).unrelate_card_from_draft_deck(draft_deck.id, card)
+        CardService(self._db).relate_card_player(player_id, card.id, commit=True)
+
+        self._db.commit()
+        self._db.refresh(draft_deck)
+        self._db.refresh(player)
+        self._db.refresh(card)
+
+        card1 = max(rep_deck.cards, key=lambda c: c.order)  # type: ignore
+        CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card1.id, commit=True)
+        DraftDeckService(self._db).relate_card_to_draft_deck(draft_deck.id, card1, order)
+
+        self._db.commit()
+        self._db.refresh(draft_deck)
+        self._db.refresh(rep_deck)
+        self._db.refresh(card1)
+
+        return card
