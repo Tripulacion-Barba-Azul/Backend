@@ -15,3 +15,12 @@ class PlayCard(BaseModel):
 
 class DrawCardInfo(BaseModel):
     playerId: int
+
+class StealSetInfo(BaseModel):
+    playerId: int
+    stolenPlayerId: int
+    setId: int
+
+class NotifierStealSet(BaseModel):
+    event: str =  "notifierStealSet"
+    payload: StealSetInfo

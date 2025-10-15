@@ -161,8 +161,17 @@ class CardService:
                 f"Card with {card_id} not related with player {player_id}"
             )
         
-    def select_event_type(self, card) -> TurnAction:
+    def select_event_type(self, game, player, card) -> TurnAction:
         if card.name == "Another Victim":
+            player_id = player.id
+            players = game.players
+            dsets = []
+            for player in players:
+                if player.id != player_id:
+                    dsets += [dset for dset in player.sets]
+            
+            if not dsets:
+                return TurnAction.NO_EFFECT
             return TurnAction.STEAL_SET
         else:
             return TurnAction.NO_ACTION

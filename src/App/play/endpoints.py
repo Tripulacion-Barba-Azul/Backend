@@ -14,7 +14,7 @@ from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
-from App.play.schemas import DrawCardInfo, PlayCard
+from App.play.schemas import DrawCardInfo, NotifierStealSet, PlayCard, StealSetInfo
 from App.models.db import get_db
 
 from App.play.services import PlayService
@@ -84,7 +84,7 @@ async def play_card(
         
         elif len(cards_id) == 1:
             card_id = cards_id[0]
-            card, event = PlayService(db).play_card(player_id, card_id)
+            card, event = PlayService(db).play_card(game, player_id, card_id)
 
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
@@ -99,7 +99,7 @@ async def play_card(
             await manager.send_to_player(
                 game_id=game.id,
                 player_id=player.id,
-                message={"event": event}
+                message={"event": event.value}
             )
 
             playedCard = db_player_2_played_card_info(player, card, ActionType.EVENT)
@@ -262,3 +262,63 @@ async def draw_card(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
         )
+    
+
+@play_router.post(path="/{game_id}/actions/steal-set", status_code=200)
+async def steal_set(
+    game_id:int,
+    turn_info: StealSetInfo,
+    db=Depends(get_db)
+    ):
+
+    game = GameService(db).get_by_id(game_id)
+
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+    player_id = turn_info.playerId
+    stolen_played_id = turn_info.stolenPlayerId
+    set_id = turn_info.setId
+    try:
+        
+        dset = PlayService(db).steal_set(player_id, stolen_played_id, set_id)
+
+        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            
+        for player in game.players:
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+
+            await manager.send_to_player(
+                game_id=game.id, 
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+        
+        notifierStealSet = NotifierStealSet(
+            payload=StealSetInfo(
+                playerId=player_id,
+                stolenPlayerId= stolen_played_id,
+                setId = dset.id
+            )
+        )
+        await manager.broadcast(game.id, notifierStealSet.model_dump())
+
+        return {"stolenSetId": dset.id}
+
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=str(e),
+    )
+    except InvalididDetectiveSet as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Detective set {set_id} not found",
+    )
+
+    
+
+

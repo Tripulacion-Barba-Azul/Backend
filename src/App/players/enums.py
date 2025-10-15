@@ -25,3 +25,4 @@ class TurnAction(Enum):
     STEAL_SET = "stealSet" 
     LOOK_INTO_THE_ASHES = "lookIntoTheAshes" 
     DELAY_THE_MURDERER = "delayTheMurderer"
+    NO_EFFECT = "notifierNoEffect" # Dont use as state in player

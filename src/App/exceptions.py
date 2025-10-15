@@ -47,3 +47,4 @@ class InvalididDetectiveSet(Exception):
 
 class NotPlayableCard(Exception):
     """You tried to play a card that is not playable."""
+
