@@ -15,14 +15,14 @@ from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
-from App.play.schemas import DrawCardInfo, PlayCard, SelectAnyPlayerInfo
+from App.play.schemas import DrawCardInfo, NotifierCardsOffTheTable, PlayCard, SelectAnyPlayerInfo
 from App.models.db import get_db
 
 from App.play.services import PlayService
 from App.players.enums import TurnAction, TurnStatus
 from App.players.models import Player
 
-from App.players.utils import db_player_2_played_cards_played_info, db_player_2_player_private_info
+from App.players.utils import db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_cards_off_the_tables_info
 from App.websockets import manager
 from App.play.enums import ActionType
 from App.sets.services import DetectiveSetService
@@ -248,6 +248,17 @@ async def select_any_player(
             select_player_info.playerId,
             select_player_info.selectedPlayerId
         )
+        
+        event = player.turn_action
+        if event == TurnAction.CARDS_OFF_THE_TABLE:
+            countNotSoFast = PlayService(db).cards_off_the_tables(game, selected_player)
+            
+            cardsOffTheTableInfo = NotifierCardsOffTheTable(payload = db_player_cards_off_the_tables_info(player,selected_player,countNotSoFast))
+            await manager.broadcast(game.id, cardsOffTheTableInfo.model_dump())
+
+        elif event == TurnAction.SELECT_ANY_PLAYER_SETS:
+            await manager.broadcast(event_type = "select_any_player_sets")
+            
         gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublicInfo.model_dump())
 
@@ -257,12 +268,6 @@ async def select_any_player(
             player_id=player.id,
             message=playerPrivateInfo.model_dump()
         )
-        
-        event = player.turn_action
-        if event == TurnAction.CARDS_OFF_THE_TABLE:
-            event_type = "cards_off_the_table"
-        elif event == TurnAction.SELECT_ANY_PLAYER_SETS:
-            event_type = "select_any_player_sets"
         
     except (GameNotFoundError, PlayerNotFoundError) as e:
         raise HTTPException(
