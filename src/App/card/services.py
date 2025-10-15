@@ -3,6 +3,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from App.card.models import Card, Devious, Detective, Instant, Event
 from App.decks.reposition_deck_model import RepositionDeck
 from App.players.models import Player
+from App.players.enums import TurnAction
 
 
 class CardService:
@@ -152,10 +153,16 @@ class CardService:
 
         if card in player.cards: # type: ignore
             player.cards.remove(card) # type: ignore
-            self._db.commit
+            self._db.commit()
             self._db.refresh(player)
             self._db.refresh(card)
         else:
             raise ValueError(
                 f"Card with {card_id} not related with player {player_id}"
             )
+        
+    def select_event_type(self, card) -> TurnAction:
+        if card.name == "Another Victim":
+            return TurnAction.STEAL_SET
+        else:
+            return TurnAction.NO_ACTION

@@ -6,6 +6,8 @@ from App.card.services import CardService
 from App.exceptions import (
     GameNotFoundError,
     InvalididDetectiveSet,
+    NotCardInHand,
+    NotPlayableCard,
     NotPlayersTurnError,
     ObligatoryDiscardError,
     PlayerNeedSixCardsError,
@@ -16,9 +18,10 @@ from App.games.models import Game
 from App.games.services import GameService
 from App.games.enums import GameStatus
 from App.players.models import Player
-from App.players.enums import TurnStatus
+from App.players.enums import TurnAction, TurnStatus
 from App.players.services import PlayerService
 from App.sets.services import DetectiveSetService
+from App.card.models import Card, Event
 
 class PlayService:
 
@@ -52,6 +55,37 @@ class PlayService:
         self._db.commit()
         
         return game
+    
+    def play_card(self, player_id, card_id) -> tuple[Card,TurnAction]:
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        if player.turn_status != TurnStatus.PLAYING:
+            raise NotPlayersTurnError(f"It's not the turn of player {player_id}")
+        
+        if card_id not in [card.id for card in player.cards]:
+            raise NotCardInHand("That card does not belong to the player.")
+        
+        card = self._card_service.get_card(card_id)
+        if not isinstance(card, Event):
+            raise NotPlayableCard("You tried to play a card that is not playable.")
+        
+        self._card_service.unrelate_card_player(card_id, player_id)
+
+        event = self._card_service.select_event_type(card)
+        if event == TurnAction.NO_ACTION:
+            player.turn_status = TurnStatus.DISCARDING_OPT
+        else:
+            player.turn_status = TurnStatus.TAKING_ACTION
+            player.turn_action = event
+
+        self._db.flush()
+        self._db.commit()
+
+        return card, event
+
     
     def play_set(self, player_id, card_ids):
         player = self._db.query(Player).filter(Player.id == player_id).first()
