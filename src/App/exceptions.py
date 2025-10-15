@@ -46,9 +46,13 @@ class InvalididDetectiveSet(Exception):
 class SecretAlreadyRevealedError(Exception):
     """Cannot reveal a secret that has already been revealed."""
 
+class SecretNotRevealed(Exception):
+    """Cannot hide a unrevealed secret."""
+
 class SecretNotFoundError(Exception):
     """It is raised when no secret is found with the specified ID."""
 
 class NotPlayableCard(Exception):
     """You tried to play a card that is not playable."""
+
 

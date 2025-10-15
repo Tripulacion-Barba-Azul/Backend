@@ -16,7 +16,8 @@ from App.exceptions import (
     PlayerHave6CardsError,
     DeckNotFoundError,
     SecretAlreadyRevealedError,
-    SecretNotFoundError)
+    SecretNotFoundError,
+    SecretNotRevealed)
 from App.games.models import Game
 from App.games.services import GameService
 from App.games.enums import GameStatus
@@ -345,3 +346,35 @@ class PlayService:
         self._db.refresh(revealed_player)
 
         return secret
+
+    def hide_secret(self, player_id, secret_id, affected_player_id):
+
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        if player.turn_action != TurnAction.HIDE_SECRET:
+            raise NotPlayersTurnError(f"Player {player_id} cannot hide secret now")
+        
+        affected_player = self._db.query(Player).filter(Player.id == affected_player_id).first()
+        if not affected_player:
+            raise PlayerNotFoundError(f"Player {affected_player_id} not found")
+        
+        if secret_id not in [secret.id for secret in affected_player.secrets]:
+            raise SecretNotFoundError(f"Secret id {secret_id} not found")
+        
+        secret = next((secret for secret in affected_player.secrets if secret.id == secret_id))
+
+        if not secret.revealed:
+            raise SecretNotRevealed(f"Secret id {secret_id} is not revealed")
+        
+        secret.revealed = False
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        # TODO: si affected_played_id esta en desgracia social quitarsela
+
+        self._db.flush()
+        self._db.commit()
+        
+        return secret.id
