@@ -181,3 +181,47 @@ def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
         assert private_update_received    
 
     assert response.status_code == 200
+
+
+def test_reveal_secret_endpoint(client: TestClient, seed_game_player2_reveal):
+
+    game = seed_game_player2_reveal[0]
+    player = seed_game_player2_reveal[1]
+    other_player = next(p for p in game.players if p.id != player.id)
+    secret = other_player.secrets[0]
+    
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+        
+        response = client.post(
+            f"/play/{game.id}/actions/reveal-secret", 
+            json={
+                "playerId": player.id,
+                "secretId": secret.id,
+                "revealedPlayerId": other_player.id
+                }
+        )
+        data = response.json()
+
+        notifier_received = False
+        public_update_received = False
+
+        for i in range(2):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "notifierRevealSecret":
+                assert payload["playerId"] == player.id
+                assert payload["secretId"] == secret.id
+                assert payload["selectedPlayerId"] == other_player.id
+                notifier_received = True
+            elif result.get("event") == "publicUpdate":
+                assert payload["actionStatus"] == "blocked"
+                players = payload["players"]
+                selected_player = next((p for p in players if p["id"] == other_player.id), None)
+                secret_rev = next((s for s in selected_player.get("secrets", []) if s["id"] == secret.id), None)
+                assert secret_rev["revealed"] is True
+                public_update_received = True
+        
+        assert notifier_received
+        assert public_update_received    
+
+    assert response.status_code == 200

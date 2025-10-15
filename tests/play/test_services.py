@@ -138,3 +138,20 @@ def test_play_set(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.REVEAL_SECRET
     assert new_set in player.sets
+
+
+def test_reveal_secret_service(session: Session, seed_game_player2_reveal):
+    game = seed_game_player2_reveal[0]
+    player = seed_game_player2_reveal[1]
+    other_player = next(p for p in game.players if p.id != player.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.REVEAL_SECRET
+
+    secret = other_player.secrets[0]
+    assert not secret.revealed
+
+    PlayService(session).reveal_secret_service(player.id, secret.id, other_player.id)
+
+    assert secret.revealed
+    assert player.turn_action == TurnAction.NO_ACTION
