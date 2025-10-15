@@ -243,20 +243,21 @@ class PlayService:
         return game, player, selected_player
     
     def cards_off_the_tables(self, game: Game, player: Player, selected_player: Player) -> int:
-        CountNotSoFast = 0
+        countNotSoFast = 0
 
-        cards_player = selected_player.cards
+        cards_player = list(selected_player.cards)
         for card in cards_player:
-            if card.name == "Not so fast!":
-                card = self._card_service.get_card(card.id)
-                card = self._player_service.discard_card(player.id, card)
+            card = self._card_service.get_card(card.id)
+            if card.name == "Not so Fast!":
+                card = self._player_service.discard_card(selected_player.id, card)
                 self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
-                CountNotSoFast += 1
+                countNotSoFast = countNotSoFast + 1
         
         player.turn_action = TurnAction.NO_ACTION
         player.turn_status = TurnStatus.DISCARDING_OPT
         self._db.add(player)
+        self._db.add(selected_player)
         self._db.flush()
         self._db.commit()
         
-        return CountNotSoFast
+        return countNotSoFast

@@ -181,3 +181,44 @@ def test_select_any_player(session: Session, seed_started_game):
     assert s_player.turn_status == TurnStatus.TAKING_ACTION
     assert s_player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
     assert s_selected_player.turn_status == TurnStatus.WAITING
+    
+def test_cards_off_the_table(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    target_player = game.players[2]
+    
+    card1 = CardService(session).create_event_card("Cards off the table","")
+    player.cards[0] = card1
+    target_player.cards[0] = CardService(session).create_event_card("Cards off the table","")
+    target_player.cards[1] = CardService(session).create_instant_card("Not so Fast!", "")
+    target_player.cards[2] = CardService(session).create_event_card("Cards off the table","")
+    target_player.cards[3] = CardService(session).create_instant_card("Not so Fast!", "")
+    target_player.cards[4] = CardService(session).create_instant_card("Not so Fast!", "")
+    target_player.cards[5] = CardService(session).create_event_card("Cards off the table","")
+
+    session.add(player)
+    session.add(target_player)
+    session.flush()
+    session.commit()
+
+    played_card = PlayService(session).play_event(game, player.id, card1.id)
+
+    assert len(game.discard_deck.cards) == 2
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
+
+    game, s_player, s_selected_player = PlayService(session).select_any_player(game.id, player.id, target_player.id)
+
+    assert s_player.turn_status == TurnStatus.TAKING_ACTION
+    assert s_player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
+    assert s_selected_player.turn_status == TurnStatus.WAITING
+
+    count_nsf = PlayService(session).cards_off_the_tables(game, player, target_player)
+
+    assert len(s_player.cards) == 5
+    assert count_nsf == 3
+    assert len(game.discard_deck.cards) == count_nsf + 2
+    assert s_player.turn_status == TurnStatus.DISCARDING_OPT
+    assert s_player.turn_action == TurnAction.NO_ACTION
+    assert s_selected_player.turn_status == TurnStatus.WAITING
