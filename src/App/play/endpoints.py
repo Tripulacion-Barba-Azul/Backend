@@ -12,13 +12,14 @@ from App.exceptions import (
     DeckNotFoundError,
     PlayerHave6CardsError,
     SecretAlreadyRevealedError,
-    SecretNotFoundError)
+    SecretNotFoundError,
+    SecretNotRevealed)
 
 from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
-from App.play.schemas import DrawCardInfo, PlayCard, RevealSecretInfo , NotifierStealSet, StealSetInfo
+from App.play.schemas import DrawCardInfo, HideSecretInfo, NotifierHideSecret, PayloadHideSecret, PlayCard, RevealSecretInfo , NotifierStealSet, StealSetInfo
 from App.models.db import get_db
 
 from App.play.services import PlayService
@@ -60,7 +61,7 @@ async def play_card(
 
     try:
         if len(cards_id) > 1:
-            played_set = PlayService(db).play_set(player_id, cards_id)
+            played_set = PlayService(db).play_set(game, player_id, cards_id)
 
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
@@ -71,7 +72,7 @@ async def play_card(
                 player_id=player.id,
                 message=playerPrivateInfo.model_dump()
             )
-            event = DetectiveSetService(db).select_event_type(played_set.type).value
+            event = DetectiveSetService(db).select_event_type(game, played_set.type).value
             await manager.send_to_player(
                 game_id=game.id,
                 player_id=player.id,
@@ -324,13 +325,6 @@ async def draw_card(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-
-        
-@play_router.post(path="/{game_id}/actions/reveal-secret", status_code=200)
-async def endpoint_reveal_secret(
-    game_id: int,
-    action: RevealSecretInfo,
-
     
 
 @play_router.post(path="/{game_id}/actions/steal-set", status_code=200)
@@ -341,6 +335,13 @@ async def steal_set(
     ):
 
     game = GameService(db).get_by_id(game_id)
+
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+    
     player_id = turn_info.playerId
     stolen_played_id = turn_info.stolenPlayerId
     set_id = turn_info.setId
@@ -452,6 +453,74 @@ async def endpoint_reveal_secret(
             detail=str(e),
         )
     except SecretAlreadyRevealedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    
+
+@play_router.post(path="/{game_id}/actions/hide-secret", status_code=200)
+async def hide_secret(
+    game_id:int,
+    turn_info: HideSecretInfo,
+    db=Depends(get_db)
+    ):
+
+    game = GameService(db).get_by_id(game_id)
+
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+    
+    player_id = turn_info.playerId
+    affected_player_id = turn_info.hiddenPlayerId
+    secret_id = turn_info.secretId
+    try:
+        
+        secret = PlayService(db).hide_secret(player_id, secret_id, affected_player_id)
+
+        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            
+        for player in game.players:
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+
+            await manager.send_to_player(
+                game_id=game.id, 
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+        
+        notifierStealSet = NotifierHideSecret(
+            payload=PayloadHideSecret(
+                playerId=player_id,
+                secretId= secret.id,
+                selectedPlayerId=affected_player_id
+            )
+        )
+        
+        await manager.broadcast(game.id, notifierStealSet.model_dump())
+
+        return {"hiddenSecretId": secret.id}
+
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=str(e),
+    )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"It's not the turn of player {player_id}",
+        )
+    except SecretNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except SecretNotRevealed as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),

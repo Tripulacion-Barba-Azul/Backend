@@ -96,6 +96,6 @@ def seed_game_player2_reveal(session: Session, seed_started_game):
         card_ids.append(card.id)
 
     session.refresh(player)
-    new_set = PlayService(session).play_set(player.id, card_ids)
+    new_set = PlayService(session).play_set(game, player.id, card_ids)
 
     return game, player

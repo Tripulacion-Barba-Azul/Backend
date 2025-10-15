@@ -33,3 +33,18 @@ class NotifierStealSet(BaseModel):
     event: str =  "notifierStealSet"
     payload: StealSetInfo
 
+
+class HideSecretInfo(BaseModel):
+    playerId: int
+    secretId: int
+    hiddenPlayerId: int
+
+class PayloadHideSecret(BaseModel):
+    playerId: int
+    secretId: int
+    selectedPlayerId: int
+
+
+class NotifierHideSecret(BaseModel):
+    event: str = "notifierHideSecret"
+    payload:  PayloadHideSecret

@@ -16,7 +16,8 @@ from App.exceptions import (
     PlayerHave6CardsError,
     DeckNotFoundError,
     SecretAlreadyRevealedError,
-    SecretNotFoundError)
+    SecretNotFoundError,
+    SecretNotRevealed)
 from App.games.models import Game
 from App.games.services import GameService
 from App.games.enums import GameStatus
@@ -90,8 +91,7 @@ class PlayService:
 
         return card, event
 
-    
-    def play_set(self, player_id, card_ids):
+    def play_set(self, game, player_id, card_ids):
         player = self._db.query(Player).filter(Player.id == player_id).first()
 
         if not player:
@@ -108,10 +108,15 @@ class PlayService:
             raise InvalididDetectiveSet("Not a valid detective set. Learn the rules little cheater.")
 
         new_set = self._detective_set_service.create_detective_set(player_id, card_ids, set_type)
-
-        player.turn_status = TurnStatus.TAKING_ACTION
-
-        player.turn_action = self._detective_set_service.select_event_type(set_type)
+        
+        event = self._detective_set_service.select_event_type(game, set_type)
+        
+        if event == TurnAction.NO_EFFECT:
+            player.turn_action = TurnAction.NO_ACTION
+            player.turn_status = TurnStatus.DISCARDING_OPT
+        else :
+            player.turn_action = event
+            player.turn_status = TurnStatus.TAKING_ACTION
 
 
         self._db.flush()
@@ -150,7 +155,6 @@ class PlayService:
 
         return dset
     
-
     def discard(
             self,
             game: Game,
@@ -178,7 +182,6 @@ class PlayService:
         self._db.add(player)
         self._db.flush()
         self._db.commit()
-
 
     def draw_card_from_deck(self, game_id, player_id):
 
@@ -256,7 +259,6 @@ class PlayService:
         self._db.commit()
 
         return game
-
 
     def draw_card_from_draft(self, game_id, player_id, order):
         game = self._db.query(Game).filter_by(id=game_id).first()
@@ -339,4 +341,36 @@ class PlayService:
         self._db.refresh(secret)
         self._db.refresh(revealed_player)
 
+        return secret
+
+    def hide_secret(self, player_id, secret_id, affected_player_id):
+
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        if player.turn_action != TurnAction.HIDE_SECRET:
+            raise NotPlayersTurnError(f"Player {player_id} cannot hide secret now")
+        
+        affected_player = self._db.query(Player).filter(Player.id == affected_player_id).first()
+        if not affected_player:
+            raise PlayerNotFoundError(f"Player {affected_player_id} not found")
+        
+        if secret_id not in [secret.id for secret in affected_player.secrets]:
+            raise SecretNotFoundError(f"Secret id {secret_id} not found")
+        
+        secret = next((secret for secret in affected_player.secrets if secret.id == secret_id))
+
+        if not secret.revealed:
+            raise SecretNotRevealed(f"Secret id {secret_id} is not revealed")
+        
+        secret.revealed = False
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        # TODO: si affected_played_id esta en desgracia social quitarsela
+
+        self._db.flush()
+        self._db.commit()
+        
         return secret

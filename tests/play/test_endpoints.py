@@ -12,6 +12,7 @@ from App.card.services import CardService
 from App.sets.enums import DetectiveSetType
 from App.sets.models import DetectiveSet
 from App.players.enums import TurnAction
+from App.play.services import PlayService
 
 
 
@@ -321,3 +322,57 @@ def test_reveal_secret_endpoint(client: TestClient, seed_game_player2_reveal):
         assert public_update_received    
 
     assert response.status_code == 200
+
+def test_hide_secret_endpoint(
+        client: TestClient,
+        session: Session,
+        seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    revealed_secret_player = game.players[2]
+
+    cards = list()
+    cards.append(CardService(session).create_detective_card("Parker Pyne","",2))
+    cards.append(CardService(session).create_detective_card("Parker Pyne","",2))
+
+
+    assert player.turn_status == TurnStatus.PLAYING
+    
+    secret = revealed_secret_player.secrets[0]
+    secret.revealed = True
+    player.cards[0] = cards[0]
+    player.cards[1] = cards[1]
+
+    session.flush()
+    session.commit()
+    PlayService(session).play_set(game, player.id, [cards[0].id, cards[1].id])
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+            
+            response = client.post(
+                f"/play/{game.id}/actions/hide-secret", 
+                json={
+                    "playerId": player.id,
+                    "secretId": secret.id,
+                    "hiddenPlayerId": revealed_secret_player.id
+                    }
+            )
+            data = response.json()
+            assert response.status_code == 200
+            
+            result = websocket.receive_json()
+
+            for s in result["payload"]["players"][2]["secrets"]:
+                assert not s["revealed"]
+
+
+            result = websocket.receive_json()
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+
+            assert result["event"] == "notifierHideSecret"
+            assert payload["playerId"] == player.id
+            assert payload["selectedPlayerId"] == revealed_secret_player.id
+            assert payload["secretId"] == secret.id
+
+    
