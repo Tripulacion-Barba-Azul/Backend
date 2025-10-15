@@ -16,7 +16,7 @@ from App.games.models import Game
 from App.games.services import GameService
 from App.games.enums import GameStatus
 from App.players.models import Player
-from App.players.enums import TurnStatus
+from App.players.enums import TurnAction, TurnStatus
 from App.players.services import PlayerService
 from App.sets.services import DetectiveSetService
 
@@ -188,7 +188,7 @@ class PlayService:
 
         return game
 
-    def select_any_player(self, game_id: int, player_id: int, selected_player_id: int) -> None:
+    def select_any_player(self, game_id: int, player_id: int, selected_player_id: int) -> tuple[Game, Player, Player]:
         game: Game | None = self._game_service.get_by_id(game_id)
         if not game:
             raise GameNotFoundError(f"No game found {game_id}")
@@ -198,14 +198,37 @@ class PlayService:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         if player.turn_status != TurnStatus.TAKING_ACTION:
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
-        if (player.turn_action != TurnStatus.SELECT_ANY_PLAYER_SETS) or (player.turn_action != TurnStatus.CARDS_OFF_THE_TABLE):
+        if (player.turn_action != TurnAction.SELECT_ANY_PLAYER_SETS) or (player.turn_action != TurnAction.CARDS_OFF_THE_TABLE):
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
+        player_in_game = GameService(self)._game_service.player_in_game(game_id, selected_player_id)
+        if not player_in_game:
+            raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
+        
         selected_player: Player | None = self._db.query(Player).filter(Player.id == selected_player_id).first()
         if not selected_player:
             raise PlayerNotFoundError(f"Selected player {selected_player_id} not found")
+        selected_player_in_game = GameService(self)._game_service.player_in_game(game_id, selected_player_id)
+        if not selected_player_in_game:
+            raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
         
+
+        return game, player, selected_player
+    
+    def cards_off_the_tables(self, game: Game, player: Player, selected_player: Player) -> int:
+        CountNotSoFast = 0
+
+        cards_player = selected_player.cards
+        for card in cards_player:
+            if card.name == "Not so fast!":
+                card = self._card_service.get_card(card.id)
+                card = self._player_service.discard_card(player.id, card)
+                self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+                CountNotSoFast += 1
         
-        
+        player.turn_action = TurnAction.NO_ACTION
+        player.turn_status = TurnStatus.DISCARDING_OPT
         self._db.add(player)
         self._db.flush()
         self._db.commit()
+        
+        return CountNotSoFast
