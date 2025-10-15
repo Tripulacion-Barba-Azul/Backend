@@ -60,7 +60,7 @@ async def play_card(
 
     try:
         if len(cards_id) > 1:
-            played_set = PlayService(db).play_set(player_id, cards_id)
+            played_set = PlayService(db).play_set(game, player_id, cards_id)
 
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
@@ -71,7 +71,7 @@ async def play_card(
                 player_id=player.id,
                 message=playerPrivateInfo.model_dump()
             )
-            event = DetectiveSetService(db).select_event_type(played_set.type).value
+            event = DetectiveSetService(db).select_event_type(game, played_set.type).value
             await manager.send_to_player(
                 game_id=game.id,
                 player_id=player.id,
@@ -324,13 +324,6 @@ async def draw_card(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-
-        
-@play_router.post(path="/{game_id}/actions/reveal-secret", status_code=200)
-async def endpoint_reveal_secret(
-    game_id: int,
-    action: RevealSecretInfo,
-
     
 
 @play_router.post(path="/{game_id}/actions/steal-set", status_code=200)

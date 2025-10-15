@@ -1,7 +1,5 @@
 """Exceptions"""
 
-from re import L
-
 
 class GameNotFoundError(Exception):
     """It is raised when no game is found with the specified ID."""
@@ -50,7 +48,7 @@ class SecretAlreadyRevealedError(Exception):
 
 class SecretNotFoundError(Exception):
     """It is raised when no secret is found with the specified ID."""
-=======
+
 class NotPlayableCard(Exception):
     """You tried to play a card that is not playable."""
 

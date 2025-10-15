@@ -91,7 +91,7 @@ class PlayService:
         return card, event
 
     
-    def play_set(self, player_id, card_ids):
+    def play_set(self, game, player_id, card_ids):
         player = self._db.query(Player).filter(Player.id == player_id).first()
 
         if not player:
@@ -108,10 +108,15 @@ class PlayService:
             raise InvalididDetectiveSet("Not a valid detective set. Learn the rules little cheater.")
 
         new_set = self._detective_set_service.create_detective_set(player_id, card_ids, set_type)
-
-        player.turn_status = TurnStatus.TAKING_ACTION
-
-        player.turn_action = self._detective_set_service.select_event_type(set_type)
+        
+        event = self._detective_set_service.select_event_type(game, set_type)
+        
+        if event == TurnAction.NO_EFFECT:
+            player.turn_action = TurnAction.NO_ACTION
+            player.turn_status = TurnStatus.DISCARDING_OPT
+        else :
+            player.turn_action = event
+            player.turn_status = TurnStatus.TAKING_ACTION
 
 
         self._db.flush()

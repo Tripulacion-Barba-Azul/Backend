@@ -134,7 +134,7 @@ def test_play_set(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    new_set = PlayService(session).play_set(player.id, card_ids)
+    new_set = PlayService(session).play_set(game, player.id, card_ids)
 
     assert len(player.cards) == 3
     assert player.turn_status == TurnStatus.TAKING_ACTION
@@ -157,6 +157,7 @@ def test_reveal_secret_service(session: Session, seed_game_player2_reveal):
 
     assert secret.revealed
     assert player.turn_action == TurnAction.NO_ACTION
+
 def test_play_card(session: Session, seed_started_game):
 
     game = seed_started_game(3)
