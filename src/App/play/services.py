@@ -449,9 +449,7 @@ class PlayService:
 
         self._db.flush()
         self._db.commit()
-        self._db.refresh(player)
-        self._db.refresh(discard_deck)
-        self._db.refresh(card)
+        
 
         return card
     

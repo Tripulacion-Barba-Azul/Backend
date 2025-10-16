@@ -6,6 +6,7 @@ import copy
 from datetime import date
 from fastapi.testclient import TestClient
 
+from App.decks.discard_deck_service import DiscardDeckService
 from App.games.models import Game
 from App.players.enums import TurnStatus
 from App.card.services import CardService
@@ -265,6 +266,7 @@ def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
                 assert len(payload["draftCards"]) == 3
                 public_update_received = True
             elif result.get("event") == "privateUpdate":
+
                 assert len(payload["cards"]) == 1
                 assert payload["cards"][0]["id"] == card1_before.id
                 private_update_received = True
@@ -421,4 +423,66 @@ def test_and_then_there_was_one_more_endpoint(
             assert payload["secretId"] == secret.id
             assert payload["secretName"] == secret.name
 
+def test_look_into_the_ashes_endpoint(client:TestClient, session:Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+
+    card = CardService(session).create_event_card("Look in to the Ashes","")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).play_card(game, player.id, card.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.LOOK_INTO_THE_ASHES
+
+    for _ in range(5):
+        c = CardService(session).create_event_card("Random Card","")
+        DiscardDeckService(session).relate_card_to_discard_deck(game.discard_deck.id, c)
+        card_id = c.id
+
+    session.flush()
+    session.commit()
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+
+        response = client.post(
+            f"/play/{game.id}/actions/look-into-the-ashes",
+            json = {
+                "playerId": player.id,
+                "cardId" : card_id,
+            }
+        )
+        data = response.json()
+
+        notifier_received = False
+        public_update_received = False
+        private_update_received = False
+
+        for i in range(3):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            
+            if result.get("event") == "notifierLookIntoTheAshes":
+
+                assert payload["playerId"] == player.id
+                notifier_received = True
+            elif result.get("event") == "publicUpdate":
+
+                assert payload["actionStatus"] == "blocked"
+                public_update_received = True
+            elif result.get("event") == "privateUpdate":
+
+                cards = payload.get("cards", [])
+                card_ids = [c.get("id") for c in cards]
+                assert card_id in card_ids
+                private_update_received = True
+        
+        assert notifier_received
+        assert public_update_received   
+        assert private_update_received 
+
+    assert response.status_code == 200
     

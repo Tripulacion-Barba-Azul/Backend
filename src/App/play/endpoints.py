@@ -628,7 +628,7 @@ async def look_into_the_ashes(
 
     player_id = turn_info.playerId
     try:
-        secret = PlayService(db).look_into_the_ashes_effect(
+        card = PlayService(db).look_into_the_ashes_effect(
             game=game,
             player_id=player_id,
             card_id=turn_info.cardId,
@@ -646,15 +646,15 @@ async def look_into_the_ashes(
                 message=playerPrivateInfo.model_dump()
             )
 
-        notifierStealSet = NotifierLookIntoTheAshes(
+        notifierLookIntoTheAshes = NotifierLookIntoTheAshes(
             payload=PayloadLookIntoTheAshes(
                 playerId=player_id
             )
         )
 
-        await manager.broadcast(game.id, notifierStealSet.model_dump())
+        await manager.broadcast(game.id, notifierLookIntoTheAshes.model_dump())
 
-        return {"hiddenSecretId": secret.id}
+        return {"takenCardId": card.id}
 
     except PlayerNotFoundError as e:
         raise HTTPException(
