@@ -275,9 +275,9 @@ async def select_any_player(
         
         event = player.turn_action
         if event == TurnAction.CARDS_OFF_THE_TABLE:
-            countNotSoFast = PlayService(db).cards_off_the_tables(game, selected_player)
-            
-            cardsOffTheTableInfo = NotifierCardsOffTheTable(payload = db_player_cards_off_the_tables_info(player,selected_player,countNotSoFast))
+            countNotSoFast = PlayService(db).cards_off_the_tables(game, player, selected_player)
+
+            cardsOffTheTableInfo = db_player_cards_off_the_tables_info(player, selected_player, countNotSoFast)
             await manager.broadcast(game.id, cardsOffTheTableInfo.model_dump())
 
         elif event == TurnAction.SELECT_ANY_PLAYER_SETS:
@@ -303,5 +303,7 @@ async def select_any_player(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(e),
         )
+    
+    return {"message": "Player selected successfully"}
 
     
