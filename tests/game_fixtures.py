@@ -77,6 +77,21 @@ def seed_game_player2_draw(session: Session, seed_game_player2_discard):
     
     return game, player
 
+@pytest.fixture(name="seed_game_player2_select_any_player_cards_off_the_table")
+def seed_game_player2_select_any_player(session: Session, seed_started_game):
+    game = seed_started_game(4)
+    player = game.players[1]
+    selected_player = game.players[2]
+    
+    card = CardService(session).create_event_card("Cards off the table","")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).play_card(game, player.id, card.id)
+    
+    return game, player, selected_player
 
 @pytest.fixture(name="seed_game_player2_reveal")
 def seed_game_player2_reveal(session: Session, seed_started_game):

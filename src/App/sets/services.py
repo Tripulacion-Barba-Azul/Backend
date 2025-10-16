@@ -88,7 +88,7 @@ class DetectiveSetService:
         if set_type == DetectiveSetType.MISS_MARPLE:
             return TurnAction.REVEAL_SECRET
         if set_type == DetectiveSetType.MR_SATTERTHWAITE:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         if set_type == DetectiveSetType.SATTERTHQUIN:
             return TurnAction.SATTERWAITEWILD
         if set_type == DetectiveSetType.PARKER_PYNE:
@@ -104,13 +104,13 @@ class DetectiveSetService:
 
             return TurnAction.HIDE_SECRET
         if set_type == DetectiveSetType.LADY_EILEEN_BRENT:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         if set_type == DetectiveSetType.TOMMY_BERESFORD:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         if set_type == DetectiveSetType.TUPPENCE_BERESFORD:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         if set_type == DetectiveSetType.SIBLINGS_BERESFORD:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         
 
 def no_ariadne_oliver(cards: list[Card]) -> bool:

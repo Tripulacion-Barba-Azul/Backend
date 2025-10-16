@@ -18,7 +18,20 @@ class DrawCardInfo(BaseModel):
     playerId: int
     deck: str
     order: int | None = None
-
+    
+class SelectAnyPlayerInfo(BaseModel):
+    playerId: int
+    selectedPlayerId: int
+    
+class CardsOffTheTableInfo(BaseModel):
+    playerId: int
+    quantity: int
+    selectedPlayerId: int
+    
+class NotifierCardsOffTheTable(BaseModel):
+    event: str = "notifierCardsOffTheTable"
+    payload: CardsOffTheTableInfo
+    
 class RevealSecretInfo(BaseModel):
     playerId: int
     secretId: int
@@ -43,7 +56,6 @@ class PayloadHideSecret(BaseModel):
     playerId: int
     secretId: int
     selectedPlayerId: int
-
 
 class NotifierHideSecret(BaseModel):
     event: str = "notifierHideSecret"

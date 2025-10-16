@@ -140,6 +140,48 @@ def test_draw_from_regular_deck(client: TestClient, seed_game_player2_draw):
 
     assert response.status_code == 200
 
+    
+def test_select_any_player_endpoint_cards_off_the_table(client: TestClient, seed_game_player2_select_any_player_cards_off_the_table):
+    
+    game = seed_game_player2_select_any_player_cards_off_the_table[0]
+    player = seed_game_player2_select_any_player_cards_off_the_table[1]
+    selected_player = seed_game_player2_select_any_player_cards_off_the_table[2]
+    
+    cards_selected_player = selected_player.cards
+    nsf_select_player = 0
+    for card in cards_selected_player:
+        if card.name == "Not so Fast!":
+            nsf_select_player += 1
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+        print(f"WebSocket connection established for player {player.id}")
+        response = client.post(
+            f"/play/{game.id}/actions/select_any_player", 
+            json={
+                "playerId": player.id,
+                "selectedPlayerId": selected_player.id
+                }
+        )
+        data = response.json()
+        print(f"Response data: {data}")
+        public_update_received = False
+        private_update_received = False
+
+        for i in range(3):
+            result = websocket.receive_json()
+            print(f"Received event: {result}")
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                public_update_received = True
+            elif result.get("event") == "privateUpdate":
+                private_update_received = True
+            elif result.get("event") == "notifierCardsOffTheTable":
+                assert payload["playerId"] == player.id
+                assert payload["quantity"] == nsf_select_player
+                assert payload["selectedPlayerId"] == selected_player.id
+
+
+
 def test_steal_set_endpoint(
         client: TestClient,
         session: Session,
