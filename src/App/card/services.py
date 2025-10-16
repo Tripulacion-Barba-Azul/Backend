@@ -153,6 +153,8 @@ class CardService:
             return another_victim_event_type(game,player)
         elif card.name == "And There was One More...":
             return and_then_there_was_one_more_event_type(game)
+        elif card.name == "Look Into The Ashes":
+            return TurnAction.LOOK_INTO_THE_ASHES
         else:
             return TurnAction.NO_ACTION
 
@@ -179,3 +181,6 @@ def and_then_there_was_one_more_event_type(game) -> TurnAction:
     if not revealed_secrets:
         return TurnAction.NO_EFFECT
     return TurnAction.ONE_MORE
+
+
+    
