@@ -164,13 +164,13 @@ def test_select_any_player_endpoint_cards_off_the_table(client: TestClient, seed
                 }
         )
         data = response.json()
-        print(f"Response data: {data}")
+        
         public_update_received = False
         private_update_received = False
 
         for i in range(3):
             result = websocket.receive_json()
-            print(f"Received event: {result}")
+            
             payload = result.get("payload", {})
             if result.get("event") == "publicUpdate":
                 public_update_received = True

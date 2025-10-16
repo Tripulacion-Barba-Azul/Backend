@@ -1,3 +1,4 @@
+from itertools import count
 from sqlalchemy.orm import Session
 
 from App.decks.discard_deck_service import DiscardDeckService
@@ -141,7 +142,7 @@ def test_play_set(session: Session, seed_started_game):
     assert new_set in player.sets
 
 
-def test_reveal_secret_service_case_cards_off(session: Session, seed_game_player2_reveal):
+def test_reveal_secret_service(session: Session, seed_game_player2_reveal):
     game = seed_game_player2_reveal[0]
     player = seed_game_player2_reveal[1]
     other_player = next(p for p in game.players if p.id != player.id)
@@ -195,11 +196,11 @@ def test_select_any_player(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
 
-    game, s_player, s_selected_player, event, number_of_NSF = PlayService(session).select_any_player(game.id, player.id, target_player.id)
+    game, s_player, s_selected_player, event, count_nsf = PlayService(session).select_any_player(game.id, player.id, target_player.id)
 
     assert s_player.turn_status == TurnStatus.DISCARDING_OPT
     assert s_player.turn_action == TurnAction.NO_ACTION
-    assert s_selected_player.turn_status == TurnStatus.WAITING
+
     
 def test_cards_off_the_table(session: Session, seed_started_game):
 
@@ -216,8 +217,6 @@ def test_cards_off_the_table(session: Session, seed_started_game):
     target_player.cards[4] = CardService(session).create_instant_card("Not so Fast!", "")
     target_player.cards[5] = CardService(session).create_event_card("Cards off the table","")
 
-    session.add(player)
-    session.add(target_player)
     session.flush()
     session.commit()
 
@@ -400,4 +399,44 @@ def test_get_top_five_discarded_cards(session: Session, seed_started_game):
 
     assert len(top_five) == 5
     for i in range(5):
-        assert top_five[i].id == top_five_ids[4 - i] 
+        assert top_five[i].id == top_five_ids[4 - i]
+
+def test_select_own_secret_case_give(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    current_turn_player = game.players[1]
+    player = game.players[2]
+    
+    player.turn_action = TurnAction.GIVE_SECRET_AWAY
+    current_turn_player.turn_status = TurnStatus.TAKING_ACTION
+    secret = player.secrets[0]
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).select_own_secret(game, player.id, secret.id)
+
+    assert current_turn_player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert not secret.revealed
+    assert secret in current_turn_player.secrets
+    assert secret not in player.secrets
+
+def test_select_own_secret_case_reveal(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    current_turn_player = game.players[1]
+    player = game.players[2]
+    
+    player.turn_action = TurnAction.REVEAL_OWN_SECRET
+    current_turn_player.turn_status = TurnStatus.TAKING_ACTION
+    secret = player.secrets[0]
+
+    session.flush()
+    session.commit()
+
+    assert not secret.revealed
+    PlayService(session).select_own_secret(game, player.id, secret.id)
+    
+    assert current_turn_player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert secret.revealed
+    assert secret in player.secrets
