@@ -17,7 +17,7 @@ from App.exceptions import (
     SecretNotRevealed)
 
 from App.games.enums import GameStatus
-from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo
+from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo, TopFiveInfo
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
 from App.play.schemas import AndThenThereWasOneMoreInfo, DrawCardInfo, HideSecretInfo, LookIntoTheAshesInfo, NotifierAndThenThereWasOneMore, NotifierHideSecret, NotifierLookIntoTheAshes, PayloadAndThenThereWasOneMore, PayloadHideSecret, PayloadLookIntoTheAshes, PlayCard, RevealSecretInfo , NotifierStealSet, StealSetInfo
@@ -105,11 +105,12 @@ async def play_card(
 
             if player.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
                 top_cards = PlayService(db).get_top_five_discarded_cards(game.id)
+                topFiveCardsInfo = TopFiveInfo(payload = [db_card_2_card_info(c) for c in top_cards])
                 await manager.send_to_player(
                     game_id=game.id,
                     player_id=player.id,
-                    message={"event": event.value, "payload": [db_card_2_card_info(c) for c in top_cards]}
-                )
+                    message=topFiveCardsInfo.model_dump()
+                    )
             else:
                 await manager.send_to_player(
                     game_id=game.id,
@@ -628,7 +629,9 @@ async def look_into_the_ashes(
     player_id = turn_info.playerId
     try:
         secret = PlayService(db).look_into_the_ashes_effect(
-            player_id=player_id
+            game=game,
+            player_id=player_id,
+            card_id=turn_info.cardId,
         )
 
         gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))

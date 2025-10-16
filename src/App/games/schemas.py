@@ -85,3 +85,7 @@ class SecretRevealedInfo(BaseModel):
 class NotifierRevealSecret(BaseModel):
     event: str = "notifierRevealSecret"
     payload: SecretRevealedInfo
+
+class TopFiveInfo(BaseModel):
+    event: str = "lookIntoTheAshes"
+    payload: list[CardPublicInfo]
