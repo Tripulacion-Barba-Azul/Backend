@@ -7,6 +7,8 @@ from App.play.services import PlayService
 from App.players.enums import TurnStatus
 from App.card.services import CardService
 from App.players.enums import TurnAction
+from App.sets.enums import DetectiveSetType
+from App.sets.models import DetectiveSet
 
 
 def test_discard_card_service(session: Session, seed_game_player2_discard):
@@ -20,7 +22,6 @@ def test_discard_card_service(session: Session, seed_game_player2_discard):
     assert len(player.cards) == 0
     assert player.turn_status == TurnStatus.DRAWING
     assert len(game.discard_deck.cards) == 7
-
 
 def test_draw_card_from_deck_success(session: Session, seed_game_player2_draw):
     game = seed_game_player2_draw[0]
@@ -115,7 +116,6 @@ def test_end_game_(session: Session, seed_game_player2_discard):
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.FINISHED
 
-
 def test_play_set(session: Session, seed_started_game):
 
     game = seed_started_game(3)
@@ -132,32 +132,50 @@ def test_play_set(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    new_set = PlayService(session).play_set(player.id, card_ids)
+    new_set = PlayService(session).play_set(game, player.id, card_ids)
 
     assert len(player.cards) == 3
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.REVEAL_SECRET
     assert new_set in player.sets
 
-def test_play_event(session: Session, seed_started_game):
+
+def test_reveal_secret_service(session: Session, seed_game_player2_reveal):
+    game = seed_game_player2_reveal[0]
+    player = seed_game_player2_reveal[1]
+    other_player = next(p for p in game.players if p.id != player.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.REVEAL_SECRET
+
+    secret = other_player.secrets[0]
+    assert not secret.revealed
+
+    PlayService(session).reveal_secret_service(player.id, secret.id, other_player.id)
+
+    assert secret.revealed
+    assert player.turn_action == TurnAction.NO_ACTION
+
+def test_play_card(session: Session, seed_started_game):
+
 
     game = seed_started_game(3)
     player = game.players[1]
 
     assert player.turn_status == TurnStatus.PLAYING
 
-    card = CardService(session).create_event_card("Cards off the table","")
+    card = CardService(session).create_event_card("Another Victim","")
     player.cards[0] = card
-
+    
     session.flush()
     session.commit()
 
-    played_card = PlayService(session).play_event(game, player.id, card.id)
-
+    card, event = PlayService(session).play_card(game, player.id, card.id)
+    
     assert len(player.cards) == 5
-    assert player.turn_status == TurnStatus.TAKING_ACTION
-    assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
-    assert played_card in game.discard_deck.cards
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert event == TurnAction.NO_EFFECT
+    assert card in game.discard_deck.cards
     
 def test_select_any_player(session: Session, seed_started_game):
 
@@ -171,7 +189,7 @@ def test_select_any_player(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    played_card = PlayService(session).play_event(game, player.id, card.id)
+    played_card = PlayService(session).play_card(game, player.id, card.id)[0]
 
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
@@ -202,7 +220,7 @@ def test_cards_off_the_table(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    played_card = PlayService(session).play_event(game, player.id, card1.id)
+    played_card = PlayService(session).play_card(game, player.id, card1.id)[0]
 
     assert len(game.discard_deck.cards) == 2
     assert player.turn_status == TurnStatus.TAKING_ACTION
@@ -222,3 +240,82 @@ def test_cards_off_the_table(session: Session, seed_started_game):
     assert s_player.turn_status == TurnStatus.DISCARDING_OPT
     assert s_player.turn_action == TurnAction.NO_ACTION
     assert s_selected_player.turn_status == TurnStatus.WAITING
+  
+    
+
+def test_steal_set(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    stolen_player = game.players[2]
+
+    cards = list()
+    cards.append(CardService(session).create_detective_card("Tommy Beresford","",2))
+    cards.append(CardService(session).create_detective_card("Tommy Beresford","",2))
+
+    dset = DetectiveSet(
+        type=DetectiveSetType.TOMMY_BERESFORD,
+        player=stolen_player,
+        cards=cards
+        )
+
+    assert player.turn_status == TurnStatus.PLAYING
+    
+    card = CardService(session).create_event_card("Another Victim","")
+    player.cards[0] = card
+    
+    session.add(dset)
+    session.flush()
+    session.commit()
+    
+    PlayService(session).play_card(game, player.id, card.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.STEAL_SET
+
+    stolen_set = PlayService(session).steal_set(
+        player.id,
+        stolen_player.id,
+        dset.id
+    )
+
+    assert stolen_set in player.sets
+    assert stolen_set not in stolen_player.sets
+    assert stolen_set == dset
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
+
+def test_hide_secret(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    revealed_secret_player = game.players[2]
+
+    cards = list()
+    cards.append(CardService(session).create_detective_card("Parker Pyne","",2))
+    cards.append(CardService(session).create_detective_card("Parker Pyne","",2))
+
+
+    assert player.turn_status == TurnStatus.PLAYING
+    
+    secret = revealed_secret_player.secrets[0]
+    secret.revealed = True
+    player.cards[0] = cards[0]
+    player.cards[1] = cards[1]
+
+    session.flush()
+    session.commit()
+    
+    PlayService(session).play_set(game, player.id, [cards[0].id, cards[1].id])
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.HIDE_SECRET
+
+    hiddenSecret = PlayService(session).hide_secret(
+        player.id,
+        secret.id,
+        revealed_secret_player.id
+    )
+
+    assert secret == hiddenSecret
+    assert not revealed_secret_player.secrets[0].revealed
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION

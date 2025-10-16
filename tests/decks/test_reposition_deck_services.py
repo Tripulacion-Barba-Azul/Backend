@@ -111,6 +111,9 @@ def test_draw_reposition_deck_sucess(sample_player, sample_game, session:Session
         i = i+1
     assert check_instant
     assert sample_game.discard_deck is not None
+    assert len(sample_game.discard_deck.cards) == 1
+    assert sample_game.draft_deck is not None
+    assert len(sample_game.draft_deck.cards) == 3
 
 
 

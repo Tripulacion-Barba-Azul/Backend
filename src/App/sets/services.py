@@ -7,6 +7,7 @@ from App.exceptions import NotCardInHand, PlayerNotFoundError
 from App.players.models import Player
 from App.sets.models import DetectiveSet
 from App.players.enums import TurnAction
+from App.games.models import Game
 
 
 class DetectiveSetService:
@@ -81,25 +82,35 @@ class DetectiveSetService:
 
         return new_set
     
-    def select_event_type(self, set_type: DetectiveSetType) -> TurnAction:
+    def select_event_type(self, game: Game, set_type: DetectiveSetType) -> TurnAction:
         if set_type == DetectiveSetType.HERCULE_POIROT:
             return TurnAction.REVEAL_SECRET
         if set_type == DetectiveSetType.MISS_MARPLE:
             return TurnAction.REVEAL_SECRET
         if set_type == DetectiveSetType.MR_SATTERTHWAITE:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         if set_type == DetectiveSetType.SATTERTHQUIN:
             return TurnAction.SATTERWAITEWILD
         if set_type == DetectiveSetType.PARKER_PYNE:
+
+            revealed_secrets = []
+            for player in game.players:
+                for secret in player.secrets:
+                    if secret.revealed:
+                        revealed_secrets.append(secret)
+
+            if not revealed_secrets:
+                return TurnAction.NO_EFFECT
+
             return TurnAction.HIDE_SECRET
         if set_type == DetectiveSetType.LADY_EILEEN_BRENT:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         if set_type == DetectiveSetType.TOMMY_BERESFORD:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         if set_type == DetectiveSetType.TUPPENCE_BERESFORD:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         if set_type == DetectiveSetType.SIBLINGS_BERESFORD:
-            return TurnAction.SELECT_ANY_PLAYER
+            return TurnAction.SELECT_ANY_PLAYER_SETS
         
 
 def no_ariadne_oliver(cards: list[Card]) -> bool:

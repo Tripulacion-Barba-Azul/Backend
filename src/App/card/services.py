@@ -3,6 +3,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from App.card.models import Card, Devious, Detective, Instant, Event
 from App.decks.reposition_deck_model import RepositionDeck
 from App.players.models import Player
+from App.players.enums import TurnAction
 
 
 class CardService:
@@ -152,10 +153,44 @@ class CardService:
 
         if card in player.cards: # type: ignore
             player.cards.remove(card) # type: ignore
-            self._db.commit
+            self._db.commit()
             self._db.refresh(player)
             self._db.refresh(card)
         else:
             raise ValueError(
                 f"Card with {card_id} not related with player {player_id}"
             )
+        
+    def select_event_type(self, game, player, card) -> TurnAction:
+        if card.name == "Another Victim":
+            return another_victim_event_type(game,player)
+        elif card.name == "And There was One More...":
+            return and_then_there_was_one_more_event_type(game)
+        elif card.name == "Cards off the table":
+            return TurnAction.CARDS_OFF_THE_TABLE
+        else:
+            return TurnAction.NO_ACTION
+
+def another_victim_event_type(game, player) -> TurnAction:
+    player_id = player.id
+    players = game.players
+    dsets = []
+    for player in players:
+        if player.id != player_id:
+            dsets += [dset for dset in player.sets]
+    
+    if not dsets:
+        return TurnAction.NO_EFFECT
+    return TurnAction.STEAL_SET
+
+def and_then_there_was_one_more_event_type(game) -> TurnAction:
+    
+    revealed_secrets = []
+    for player in game.players:
+        for secret in player.secrets:
+            if secret.revealed:
+                revealed_secrets.append(secret)
+
+    if not revealed_secrets:
+        return TurnAction.NO_EFFECT
+    return TurnAction.ONE_MORE
