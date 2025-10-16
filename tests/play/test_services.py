@@ -319,3 +319,39 @@ def test_hide_secret(session: Session, seed_started_game):
     assert not revealed_secret_player.secrets[0].revealed
     assert player.turn_status == TurnStatus.DISCARDING_OPT
     assert player.turn_action == TurnAction.NO_ACTION
+
+
+def test_and_then_there_was_one_more_service(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    stolen_player = game.players[2]
+    selected_player = game.players[0]
+
+    assert player.turn_status == TurnStatus.PLAYING
+    
+    secret = stolen_player.secrets[0]
+    secret.revealed = True
+
+    card = CardService(session).create_event_card("And There was One More...","")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+    
+    PlayService(session).play_card(game, player.id, card.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.ONE_MORE
+
+    stolen_secret = PlayService(session).and_then_there_was_one_more_effect( 
+                                           player.id,
+                                           secret.id,
+                                           stolen_player.id,
+                                           selected_player.id)
+    
+    assert secret == stolen_secret
+    assert secret not in stolen_player.secrets
+    assert len(selected_player.secrets) == 4
+    assert not secret.revealed
+    assert secret in selected_player.secrets
+

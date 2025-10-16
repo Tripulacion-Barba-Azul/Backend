@@ -420,3 +420,46 @@ class PlayService:
         self._db.commit()
         
         return secret
+    
+    def and_then_there_was_one_more_effect(self, 
+                                           player_id,
+                                           secret_id,
+                                           stolen_player_id,
+                                           selected_player_id):
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        if player.turn_action != TurnAction.ONE_MORE:
+            raise NotPlayersTurnError(f"Player {player_id} cannot hide secret now")
+        
+        stolen_player = self._db.query(Player).filter(Player.id == stolen_player_id).first()
+        if not stolen_player:
+            raise PlayerNotFoundError(f"Player {stolen_player_id} not found")
+        
+        selected_player = self._db.query(Player).filter(Player.id == selected_player_id).first()
+        if not selected_player:
+            raise PlayerNotFoundError(f"Player {selected_player_id} not found")
+        
+        if secret_id not in [secret.id for secret in stolen_player.secrets]:
+            raise SecretNotFoundError(f"Secret id {secret_id} not found")
+        
+        secret = next((secret for secret in stolen_player.secrets if secret.id == secret_id))
+
+        if not secret.revealed:
+            raise SecretNotRevealed(f"Secret id {secret_id} is not revealed")
+        
+        secret.revealed = False
+        unrelate_secret_player(stolen_player, secret, self._db)
+        relate_secret_player(selected_player, secret, self._db)
+
+        # TODO: salir o entrar en desgracia social para stolen_player y selected_player
+
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.flush()
+        self._db.commit()
+        
+        return secret
+

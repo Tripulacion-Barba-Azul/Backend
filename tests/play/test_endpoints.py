@@ -99,8 +99,6 @@ def test_discard_endpoint(client: TestClient, seed_game_player2_discard):
     
     assert response.status_code == 200
         
-
-
 def test_draw_from_regular_deck(client: TestClient, seed_game_player2_draw):
 
     game = seed_game_player2_draw[0]
@@ -234,7 +232,6 @@ def test_steal_set_endpoint(
             assert payload["stolenPlayerId"] == stolen_player.id
             assert payload["setId"] == dset.id
 
-
 def test_play_card_another_victim_with_no_sets_played(
         client: TestClient,
         session: Session,
@@ -272,7 +269,6 @@ def test_play_card_another_victim_with_no_sets_played(
 
             assert player.turn_status == TurnStatus.DISCARDING_OPT
             assert player.turn_action == TurnAction.NO_ACTION
-
 
 def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
     
@@ -319,7 +315,6 @@ def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
         assert private_update_received    
 
     assert response.status_code == 200
-
 
 def test_reveal_secret_endpoint(client: TestClient, seed_game_player2_reveal):
 
@@ -415,5 +410,57 @@ def test_hide_secret_endpoint(
             assert payload["playerId"] == player.id
             assert payload["selectedPlayerId"] == revealed_secret_player.id
             assert payload["secretId"] == secret.id
+
+
+def test_and_then_there_was_one_more_endpoint(
+        client: TestClient,
+        session: Session,
+        seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    stolen_player = game.players[2]
+    selected_player = game.players[0]
+
+    secret = stolen_player.secrets[0]
+    secret.revealed = True
+
+    card = CardService(session).create_event_card("And There was One More...","")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+    
+    PlayService(session).play_card(game, player.id, card.id)
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+            
+            response = client.post(
+                f"/play/{game.id}/actions/and-then-there-was-one-more", 
+                json={
+                    "playerId": player.id,
+                    "secretId": secret.id,
+                    "stolenPlayerId": stolen_player.id,
+                    "selectedPlayerId": selected_player.id
+                    }
+            )
+            data = response.json()
+            assert response.status_code == 200
+            
+            result = websocket.receive_json()
+
+            assert len(result["payload"]["players"][0]["secrets"]) == 4
+            for s in result["payload"]["players"][0]["secrets"]:
+                assert not s["revealed"]
+                
+            result = websocket.receive_json()
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+
+            assert result["event"] == "notifierAndThenThereWasOneMore"
+            assert payload["playerId"] == player.id
+            assert payload["stolenPlayerId"] == stolen_player.id
+            assert payload["giftedPlayerId"] == selected_player.id
+            assert payload["secretId"] == secret.id
+            assert payload["secretName"] == secret.name
 
     

@@ -61,3 +61,22 @@ class NotifierHideSecret(BaseModel):
     event: str = "notifierHideSecret"
     payload:  PayloadHideSecret
 
+
+class AndThenThereWasOneMoreInfo(BaseModel):
+    playerId: int
+    secretId: int
+    stolenPlayerId: int
+    selectedPlayerId: int
+
+
+class PayloadAndThenThereWasOneMore(BaseModel):
+    playerId: int
+    secretId: int
+    secretName: str
+    stolenPlayerId: int
+    giftedPlayerId: int
+
+
+class NotifierAndThenThereWasOneMore(BaseModel):
+    event: str =  "notifierAndThenThereWasOneMore"
+    payload: PayloadAndThenThereWasOneMore
