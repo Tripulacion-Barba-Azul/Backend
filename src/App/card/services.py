@@ -155,6 +155,8 @@ class CardService:
             return and_then_there_was_one_more_event_type(game)
         elif card.name == "Look in to the Ashes":
             return TurnAction.LOOK_INTO_THE_ASHES
+        elif card.name == "Cards off the table":
+            return TurnAction.CARDS_OFF_THE_TABLE
         else:
             return TurnAction.NO_ACTION
 

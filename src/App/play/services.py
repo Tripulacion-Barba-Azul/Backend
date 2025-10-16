@@ -78,7 +78,7 @@ class PlayService:
             raise NotPlayableCard("You tried to play a card that is not playable.")
         
         self._card_service.unrelate_card_player(card_id, player_id)
-
+        self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
         event = self._card_service.select_event_type(game, player, card)
         if event in [TurnAction.NO_ACTION, TurnAction.NO_EFFECT]:
             player.turn_status = TurnStatus.DISCARDING_OPT
@@ -259,6 +259,52 @@ class PlayService:
         self._db.commit()
 
         return game
+
+    def select_any_player(self, game_id: int, player_id: int, selected_player_id: int) -> tuple[Game, Player, Player]:
+        game: Game | None = self._game_service.get_by_id(game_id)
+        if not game:
+            raise GameNotFoundError(f"No game found {game_id}")
+
+        player: Player | None = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        if player.turn_status != TurnStatus.TAKING_ACTION:
+            raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
+        if (player.turn_action != TurnAction.SELECT_ANY_PLAYER_SETS) and (player.turn_action != TurnAction.CARDS_OFF_THE_TABLE):
+            raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
+        player_in_game = GameService(self._db).player_in_game(game_id, selected_player_id)
+        if not player_in_game:
+            raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
+        
+        selected_player: Player | None = self._db.query(Player).filter(Player.id == selected_player_id).first()
+        if not selected_player:
+            raise PlayerNotFoundError(f"Selected player {selected_player_id} not found")
+        selected_player_in_game = GameService(self._db).player_in_game(game_id, selected_player_id)
+        if not selected_player_in_game:
+            raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
+        
+
+        return game, player, selected_player
+    
+    def cards_off_the_tables(self, game: Game, player: Player, selected_player: Player) -> int:
+        countNotSoFast = 0
+
+        cards_player = list(selected_player.cards)
+        for card in cards_player:
+            card = self._card_service.get_card(card.id)
+            if card.name == "Not so Fast!":
+                card = self._player_service.discard_card(selected_player.id, card)
+                self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+                countNotSoFast = countNotSoFast + 1
+        
+        player.turn_action = TurnAction.NO_ACTION
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        self._db.add(player)
+        self._db.add(selected_player)
+        self._db.flush()
+        self._db.commit()
+        
+        return countNotSoFast
 
     def draw_card_from_draft(self, game_id, player_id, order):
         game = self._db.query(Game).filter_by(id=game_id).first()

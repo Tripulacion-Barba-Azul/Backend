@@ -1,10 +1,8 @@
-from asyncio import sleep
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import Secret
-
 
 from App.card.utils import db_card_2_card_info
 from App.exceptions import (
+    GameNotFoundError,
     InvalididDetectiveSet,
     NotCardInHand,
     NotPlayersTurnError,
@@ -19,15 +17,19 @@ from App.exceptions import (
 from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo, TopFiveInfo
 from App.games.services import GameService
-from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
-from App.play.schemas import AndThenThereWasOneMoreInfo, DrawCardInfo, HideSecretInfo, LookIntoTheAshesInfo, NotifierAndThenThereWasOneMore, NotifierHideSecret, NotifierLookIntoTheAshes, PayloadAndThenThereWasOneMore, PayloadHideSecret, PayloadLookIntoTheAshes, PlayCard, RevealSecretInfo , NotifierStealSet, StealSetInfo
+
+from App.games.utils import db_game_2_game_detectives_lose, db_game_2_game_public_info
+from App.play.schemas import AndThenThereWasOneMoreInfo, DrawCardInfo, HideSecretInfo, LookIntoTheAshesInfo, NotifierAndThenThereWasOneMore, NotifierHideSecret, NotifierLookIntoTheAshes, PayloadAndThenThereWasOneMore, PayloadHideSecret, PayloadLookIntoTheAshes, PlayCard, RevealSecretInfo, NotifierStealSet, StealSetInfo, SelectAnyPlayerInfo
+
 from App.models.db import get_db
 
 from App.play.services import PlayService
 from App.players.enums import TurnAction
 from App.players.models import Player
 
-from App.players.utils import db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info
+from App.players.utils import db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_cards_off_the_tables_info
+
+
 from App.websockets import manager
 from App.play.enums import ActionType
 from App.sets.services import DetectiveSetService
@@ -82,7 +84,7 @@ async def play_card(
 
             playedCards = db_player_2_played_cards_played_info(player, played_set, cards_id, ActionType.SET)
             await manager.broadcast_except(
-                game_id=game.id, 
+                game_id=game.id,
                 exclude_player_id=player.id,
                 message=playedCards.model_dump()
             )
@@ -127,8 +129,7 @@ async def play_card(
             )
 
             return {"playedCardName": card.name}
-
-
+    
         elif cards_id == []:
                     
             game = PlayService(db).no_action(game_id, player_id)
@@ -164,7 +165,6 @@ async def play_card(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Not a valid detective set. Learn the rules little cheater.",
     )
-
 
 @play_router.post(path="/{game_id}/actions/discard", status_code=200)
 async def discard_cards(
@@ -213,7 +213,6 @@ async def discard_cards(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-
 
 @play_router.post(path="/{game_id}/actions/draw-card", status_code=200)
 async def draw_card(
@@ -264,7 +263,7 @@ async def draw_card(
 
             game = PlayService(db).end_game(game_id)
             if game.status == GameStatus.FINISHED:
-                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_win(game))
+                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
                 await manager.broadcast(game.id, gameEndInfo.model_dump())
                 return {"message": "The game has ended"}
         
@@ -313,7 +312,7 @@ async def draw_card(
 
             game = PlayService(db).end_game(game_id)
             if game.status == GameStatus.FINISHED:
-                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_win(game))
+                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
                 await manager.broadcast(game.id, gameEndInfo.model_dump())
                 return {"message": "The game has ended"}
             
@@ -336,7 +335,6 @@ async def draw_card(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-    
 
 @play_router.post(path="/{game_id}/actions/steal-set", status_code=200)
 async def steal_set(
@@ -468,7 +466,53 @@ async def endpoint_reveal_secret(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+@play_router.post(path="/{game_id}/actions/select_any_player", status_code=200)
+async def select_any_player(
+        game_id: int,
+        select_player_info: SelectAnyPlayerInfo,
+        db=Depends(get_db)
+        ):
     
+    try:
+        game, player, selected_player = PlayService(db).select_any_player(
+            game_id,
+            select_player_info.playerId,
+            select_player_info.selectedPlayerId
+        )
+        
+        event = player.turn_action
+        if event == TurnAction.CARDS_OFF_THE_TABLE:
+            countNotSoFast = PlayService(db).cards_off_the_tables(game, player, selected_player)
+
+            cardsOffTheTableInfo = db_player_cards_off_the_tables_info(player, selected_player, countNotSoFast)
+            await manager.broadcast(game.id, cardsOffTheTableInfo.model_dump())
+
+        """ elif event == TurnAction.SELECT_ANY_PLAYER_SETS:
+            await manager.broadcast(game.id, event_type = "select_any_player_sets") """
+            
+        gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id, gamePublicInfo.model_dump())
+
+        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+        await manager.send_to_player(
+            game_id=game.id,
+            player_id=player.id,
+            message=playerPrivateInfo.model_dump()
+        )
+        
+    except (GameNotFoundError, PlayerNotFoundError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+    
+    return {"message": "Player selected successfully"}
 
 @play_router.post(path="/{game_id}/actions/hide-secret", status_code=200)
 async def hide_secret(

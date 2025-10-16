@@ -15,7 +15,8 @@ class TurnStatus(Enum):
 
 class TurnAction(Enum):
     NO_ACTION = "noAction"
-    SELECT_ANY_PLAYER = "selectAnyPlayer"
+    CARDS_OFF_THE_TABLE = "cardsOffTheTable"
+    SELECT_ANY_PLAYER_SETS = "selectAnyPlayerSets"
     ONE_MORE = "andThenThereWasOneMore" 
     SATTERWAITEWILD =  "satterthwaiteWild"
     REVEAL_SECRET = "revealSecret" 
