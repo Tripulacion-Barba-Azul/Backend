@@ -50,3 +50,16 @@ class DiscardDeckService:
         self._db.commit()
         self._db.refresh(discard_deck)
         return discard_deck
+
+    def unrelate_card_from_discard_deck(self, deck_id, card):
+
+        discard_deck = self.get_discard_deck(deck_id)
+
+        if card not in discard_deck.cards:
+            raise ValueError(f"Card with id: {card.id} is not in the discard deck with id: {deck_id}")
+
+        discard_deck.cards.remove(card)
+        self._db.commit()
+        self._db.refresh(discard_deck)
+        self._db.refresh(card)
+        return discard_deck

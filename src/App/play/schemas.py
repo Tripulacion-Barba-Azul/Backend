@@ -1,7 +1,7 @@
 
 from pydantic import BaseModel
 
-from App.card.schemas import CardGameInfo
+from App.card.schemas import CardGameInfo, CardPublicInfo
 from App.players.schemas import PlayerGameInfo
 from App.card.schemas import CardGameInfo
     
@@ -80,3 +80,15 @@ class PayloadAndThenThereWasOneMore(BaseModel):
 class NotifierAndThenThereWasOneMore(BaseModel):
     event: str =  "notifierAndThenThereWasOneMore"
     payload: PayloadAndThenThereWasOneMore
+
+class LookIntoTheAshesInfo(BaseModel):
+    playerId: int
+    cardId: int
+
+class PayloadLookIntoTheAshes(BaseModel):
+    playerId: int
+    
+
+class NotifierLookIntoTheAshes(BaseModel):
+    event: str = "notifierLookIntoTheAshes"
+    payload: PayloadLookIntoTheAshes

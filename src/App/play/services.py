@@ -463,3 +463,53 @@ class PlayService:
         
         return secret
 
+    def look_into_the_ashes_effect(self, game, player_id, card_id):
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        if player.turn_action != TurnAction.LOOK_INTO_THE_ASHES:
+            raise NotPlayersTurnError(f"Player {player_id} cannot look into the ashes now")
+        
+        discard_deck = game.discard_deck
+
+        if not discard_deck:
+            raise DeckNotFoundError(f"Player {player_id} game does not have a discard deck")
+        
+        card = None
+
+        for c in discard_deck.cards:
+            if c.id == card_id:
+                card = c
+                break
+        
+        if not card:
+            raise NotCardInHand(f"Card {card_id} not found in discard deck")
+
+        DiscardDeckService(self._db).unrelate_card_from_discard_deck(discard_deck.id, card)
+        CardService(self._db).relate_card_player(player_id, card.id, commit=True)
+
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.flush()
+        self._db.commit()
+        
+
+        return card
+    
+    def get_top_five_discarded_cards(self, game_id):
+        game = self._db.query(Game).filter_by(id=game_id).first()
+        
+        if not game:
+            raise GameNotFoundError(f"No game found {game_id}")
+        
+        discard_deck = game.discard_deck
+        if not discard_deck:
+            raise DeckNotFoundError(f"Game {game_id} does not have a discard deck")
+        
+        sorted_cards = sorted(discard_deck.cards, key=lambda c: c.order, reverse=True)
+        top_five_cards = sorted_cards[:5]
+
+        return top_five_cards

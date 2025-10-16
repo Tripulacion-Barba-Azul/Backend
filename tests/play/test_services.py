@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from App.decks.discard_deck_service import DiscardDeckService
 from App.games.enums import GameStatus
 from App.games.models import Game
 from App.games.services import GameService
@@ -355,3 +356,54 @@ def test_and_then_there_was_one_more_service(session: Session, seed_started_game
     assert not secret.revealed
     assert secret in selected_player.secrets
 
+def test_look_into_the_ashes_effect(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+
+    assert player.turn_status == TurnStatus.PLAYING
+
+    card = CardService(session).create_event_card("Look in to the Ashes","")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).play_card(game, player.id, card.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.LOOK_INTO_THE_ASHES
+
+    for _ in range(5):
+        c = CardService(session).create_event_card("Random Card","")
+        DiscardDeckService(session).relate_card_to_discard_deck(game.discard_deck.id, c)
+        card_id = c.id
+
+    session.flush()
+    session.commit()
+
+    taken_card = PlayService(session).look_into_the_ashes_effect(game, player.id, card_id)
+
+    assert taken_card in player.cards
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert taken_card not in game.discard_deck.cards
+    assert taken_card.id == card_id
+    
+def test_get_top_five_discarded_cards(session: Session, seed_started_game):
+    game = seed_started_game(3)
+
+
+    top_five_ids = []
+    for _ in range(5):
+        c = CardService(session).create_event_card("Random Card","")
+        DiscardDeckService(session).relate_card_to_discard_deck(game.discard_deck.id, c)
+        top_five_ids.append(c.id)
+
+    session.flush()
+    session.commit()
+
+    top_five = PlayService(session).get_top_five_discarded_cards(game.id)
+
+    assert len(top_five) == 5
+    for i in range(5):
+        assert top_five[i].id == top_five_ids[4 - i] 
