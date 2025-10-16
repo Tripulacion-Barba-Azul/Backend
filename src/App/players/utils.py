@@ -7,7 +7,7 @@ from App.card.utils import db_card_2_card_info, db_card_2_card_private_info
 from App.games.models import Game
 from App.models import db
 from App.play.schemas import CardsOffTheTableInfo, NotifierCardsOffTheTable
-from App.players.enums import PlayerRole
+from App.players.enums import PlayerRole, TurnAction
 from App.players.models import Player
 from App.players.schemas import AllyInfo, CardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPrivateInfo, PlayerPublicInfo
 from App.secret.utils import db_secret_2_secret_private_info, db_secret_2_secret_public_info
@@ -138,3 +138,13 @@ def db_player_2_played_card_info(
             actionType=action_type.value
         )
     return CardsPlayedInfo(payload=payload)
+
+def turn_action_enum_2_str(turn_action: TurnAction) -> str:
+    if turn_action == TurnAction.SELECT_ANY_PLAYER:
+        return "selectAnyPlayer"
+    elif turn_action == TurnAction.SATTERWAITEWILD:
+        return "selectAnyPlayer"
+    elif turn_action == TurnAction.GIVE_SECRET_AWAY:
+        return "revealOwnSecret"
+    else:
+        return turn_action.value

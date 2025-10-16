@@ -21,7 +21,7 @@ from App.exceptions import (
 from App.games.models import Game
 from App.games.services import GameService
 from App.games.enums import GameStatus
-from App.secret.services import relate_secret_player, reveal_secret, unrelate_secret_player
+from App.secret.services import get_secret, relate_secret_player, reveal_secret, unrelate_secret_player
 from App.players.models import Player
 from App.players.enums import TurnAction, TurnStatus
 from App.players.services import PlayerService
@@ -532,3 +532,46 @@ class PlayService:
         top_five_cards = sorted_cards[:5]
 
         return top_five_cards
+
+    def select_own_secret(self, game: Game, player_id: int, secret_id: int):
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        
+        if player.turn_action not in [TurnAction.REVEAL_OWN_SECRET, TurnAction.GIVE_SECRET_AWAY]:
+            raise NotPlayersTurnError(f"Player {player_id} cannot reveal secret.")
+        
+        secret = next((secret for secret in player.secrets if secret.id == secret_id))
+        if not secret:
+            raise SecretNotFoundError(f"Secret {secret_id} not found for player {player_id}")
+        if secret not in player.secrets:
+            raise SecretNotFoundError(f"Secret {secret_id} not found for player {player_id}")
+        if secret.revealed:
+            raise SecretAlreadyRevealedError(f"Secret {secret_id} already revealed")
+        secret.revealed = True
+        print(secret.revealed)
+        current_turn_player = None
+        for p in game.players:
+                if p.turn_status == TurnStatus.TAKING_ACTION:
+                    current_turn_player = p
+        if not current_turn_player:
+                raise PlayerNotFoundError(f"Player not found")
+        
+        secret.revealed = True
+        
+        event = player.turn_action        
+        if event is TurnAction.GIVE_SECRET_AWAY:
+            print("se entro en GIVE_SECRET_AWAY")
+            unrelate_secret_player(player, secret, self._db)
+            relate_secret_player(current_turn_player, secret, self._db)
+            secret.revealed = False
+
+        current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.flush()
+        self._db.commit()
+
+        return event, secret
+        
+        
