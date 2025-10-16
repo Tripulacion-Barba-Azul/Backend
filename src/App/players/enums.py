@@ -15,15 +15,16 @@ class TurnStatus(Enum):
 
 class TurnAction(Enum):
     NO_ACTION = "noAction"
-    CARDS_OFF_THE_TABLE = "cardsOffTheTable"
-    SELECT_ANY_PLAYER_SETS = "selectAnyPlayerSets"
-    ONE_MORE = "andThenThereWasOneMore" 
-    SATTERWAITEWILD =  "satterthwaiteWild"
+    CARDS_OFF_THE_TABLE = "selectAnyPlayer"
+    SELECT_ANY_PLAYER = "selectAnyPlayer"
+    ONE_MORE = "andThenThereWasOneMore"
+    SATTERWAITEWILD =  "selectAnyPlayer"
     REVEAL_SECRET = "revealSecret" 
-    REVEAL_OWN_SECRET = "revealOwnSecret" 
+    REVEAL_OWN_SECRET = "revealOwnSecret"
+    GIVE_SECRET_AWAY = "revealOwnSecret"
     HIDE_SECRET = "hideSecret"  # All
     HIDE_OWN_SECRET = "hideOwnSecret" 
-    STEAL_SET = "stealSet" 
-    LOOK_INTO_THE_ASHES = "lookIntoTheAshes" 
+    STEAL_SET = "stealSet"
+    LOOK_INTO_THE_ASHES = "lookIntoTheAshes"
     DELAY_THE_MURDERER = "delayTheMurderer"
     NO_EFFECT = "notifierNoEffect" # Dont use as state in player

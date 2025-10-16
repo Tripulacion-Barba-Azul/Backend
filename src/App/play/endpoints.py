@@ -33,6 +33,7 @@ from App.players.utils import db_player_2_played_card_info, db_player_2_played_c
 from App.websockets import manager
 from App.play.enums import ActionType
 from App.sets.services import DetectiveSetService
+from App.games.models import Game
 
 play_router = APIRouter()
 
@@ -391,7 +392,7 @@ async def steal_set(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Detective set {set_id} not found",
     )
-  
+
 @play_router.post(path="/{game_id}/actions/reveal-secret", status_code=200)
 async def endpoint_reveal_secret(
     game_id: int,
@@ -473,34 +474,40 @@ async def select_any_player(
         select_player_info: SelectAnyPlayerInfo,
         db=Depends(get_db)
         ):
-    
+    player_id = select_player_info.playerId
+    selected_player_id = select_player_info.selectedPlayerId
     try:
-        game, player, selected_player = PlayService(db).select_any_player(
+        game, player, selected_player, event, countNotSoFast = PlayService(db).select_any_player(
             game_id,
-            select_player_info.playerId,
-            select_player_info.selectedPlayerId
+            player_id,
+            selected_player_id
         )
         
-        event = player.turn_action
         if event == TurnAction.CARDS_OFF_THE_TABLE:
-            countNotSoFast = PlayService(db).cards_off_the_tables(game, player, selected_player)
 
+            gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id, gamePublicInfo.model_dump())
+
+            for p in game.players:
+                playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=p.id,
+                    message=playerPrivateInfo.model_dump()
+                )
+            if not countNotSoFast:
+                countNotSoFast = 0
             cardsOffTheTableInfo = db_player_cards_off_the_tables_info(player, selected_player, countNotSoFast)
             await manager.broadcast(game.id, cardsOffTheTableInfo.model_dump())
 
-        """ elif event == TurnAction.SELECT_ANY_PLAYER_SETS:
-            await manager.broadcast(game.id, event_type = "select_any_player_sets") """
-            
-        gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-        await manager.broadcast(game.id, gamePublicInfo.model_dump())
-
-        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
-        await manager.send_to_player(
-            game_id=game.id,
-            player_id=player.id,
-            message=playerPrivateInfo.model_dump()
-        )
-        
+        elif event in [TurnAction.SELECT_ANY_PLAYER, TurnAction.SATTERWAITEWILD]:
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=selected_player.id,
+                message={"event": selected_player.turn_action.value}
+            )
+              
     except (GameNotFoundError, PlayerNotFoundError) as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -581,7 +588,6 @@ async def hide_secret(
             detail=str(e),
         )
     
-
 @play_router.post(path="/{game_id}/actions/and-then-there-was-one-more", status_code=200)
 async def and_then_there_was_one_more(
     game_id:int,
@@ -655,7 +661,7 @@ async def and_then_there_was_one_more(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-    
+
 @play_router.post(path="/{game_id}/actions/look-into-the-ashes", status_code=200)
 async def look_into_the_ashes(
     game_id: int,

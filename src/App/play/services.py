@@ -37,7 +37,7 @@ class PlayService:
         self._card_service = CardService(db)
         self._discard_deck_service = DiscardDeckService(db)
         self._detective_set_service = DetectiveSetService(db)
-        
+
     def no_action(
             self,
             game_id: int,
@@ -60,7 +60,7 @@ class PlayService:
         self._db.commit()
         
         return game
-    
+
     def play_card(self, game, player_id, card_id) -> tuple[Card,TurnAction]:
         player = self._db.query(Player).filter(Player.id == player_id).first()
 
@@ -123,7 +123,7 @@ class PlayService:
         self._db.commit()
 
         return new_set
-    
+
     def steal_set(
             self,
             player_id: int,
@@ -154,7 +154,7 @@ class PlayService:
         self._db.commit()
 
         return dset
-    
+
     def discard(
             self,
             game: Game,
@@ -244,7 +244,7 @@ class PlayService:
         self._db.commit()
 
         return game, player
-    
+
     def end_game(self, game_id: int) -> Game:
         game: Game | None = self._game_service.get_by_id(game_id)
         if not game:
@@ -260,7 +260,7 @@ class PlayService:
 
         return game
 
-    def select_any_player(self, game_id: int, player_id: int, selected_player_id: int) -> tuple[Game, Player, Player]:
+    def select_any_player(self, game_id: int, player_id: int, selected_player_id: int):
         game: Game | None = self._game_service.get_by_id(game_id)
         if not game:
             raise GameNotFoundError(f"No game found {game_id}")
@@ -268,10 +268,15 @@ class PlayService:
         player: Player | None = self._db.query(Player).filter(Player.id == player_id).first()
         if not player:
             raise PlayerNotFoundError(f"Player {player_id} not found")
+        
         if player.turn_status != TurnStatus.TAKING_ACTION:
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
-        if (player.turn_action != TurnAction.SELECT_ANY_PLAYER_SETS) and (player.turn_action != TurnAction.CARDS_OFF_THE_TABLE):
+        
+        if (player.turn_action != TurnAction.SELECT_ANY_PLAYER 
+            and player.turn_action != TurnAction.CARDS_OFF_THE_TABLE
+            and player.turn_action != TurnAction.SATTERWAITEWILD):
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
+        
         player_in_game = GameService(self._db).player_in_game(game_id, selected_player_id)
         if not player_in_game:
             raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
@@ -279,19 +284,35 @@ class PlayService:
         selected_player: Player | None = self._db.query(Player).filter(Player.id == selected_player_id).first()
         if not selected_player:
             raise PlayerNotFoundError(f"Selected player {selected_player_id} not found")
+        
         selected_player_in_game = GameService(self._db).player_in_game(game_id, selected_player_id)
         if not selected_player_in_game:
             raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
         
+        event = player.turn_action
 
-        return game, player, selected_player
-    
+        countNotSoFast = None
+        if event == TurnAction.CARDS_OFF_THE_TABLE:
+            countNotSoFast = self.cards_off_the_tables(game, player, selected_player)
+
+        elif event == TurnAction.SELECT_ANY_PLAYER:
+                player.turn_action = TurnAction.NO_ACTION
+                selected_player.turn_action = TurnAction.REVEAL_OWN_SECRET
+
+        elif event == TurnAction.SATTERWAITEWILD:
+            player.turn_action = TurnAction.NO_ACTION
+            selected_player.turn_action = TurnAction.GIVE_SECRET_AWAY
+
+        self._db.flush()
+        self._db.commit()
+
+        return game, player, selected_player, event, countNotSoFast
+
     def cards_off_the_tables(self, game: Game, player: Player, selected_player: Player) -> int:
         countNotSoFast = 0
 
         cards_player = list(selected_player.cards)
         for card in cards_player:
-            card = self._card_service.get_card(card.id)
             if card.name == "Not so Fast!":
                 card = self._player_service.discard_card(selected_player.id, card)
                 self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
@@ -299,8 +320,6 @@ class PlayService:
         
         player.turn_action = TurnAction.NO_ACTION
         player.turn_status = TurnStatus.DISCARDING_OPT
-        self._db.add(player)
-        self._db.add(selected_player)
         self._db.flush()
         self._db.commit()
         
@@ -420,7 +439,7 @@ class PlayService:
         self._db.commit()
         
         return secret
-    
+
     def and_then_there_was_one_more_effect(self, 
                                            player_id,
                                            secret_id,

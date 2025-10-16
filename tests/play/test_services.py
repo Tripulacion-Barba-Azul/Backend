@@ -141,7 +141,7 @@ def test_play_set(session: Session, seed_started_game):
     assert new_set in player.sets
 
 
-def test_reveal_secret_service(session: Session, seed_game_player2_reveal):
+def test_reveal_secret_service_case_cards_off(session: Session, seed_game_player2_reveal):
     game = seed_game_player2_reveal[0]
     player = seed_game_player2_reveal[1]
     other_player = next(p for p in game.players if p.id != player.id)
@@ -195,10 +195,10 @@ def test_select_any_player(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
 
-    game, s_player, s_selected_player = PlayService(session).select_any_player(game.id, player.id, target_player.id)
+    game, s_player, s_selected_player, event, number_of_NSF = PlayService(session).select_any_player(game.id, player.id, target_player.id)
 
-    assert s_player.turn_status == TurnStatus.TAKING_ACTION
-    assert s_player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
+    assert s_player.turn_status == TurnStatus.DISCARDING_OPT
+    assert s_player.turn_action == TurnAction.NO_ACTION
     assert s_selected_player.turn_status == TurnStatus.WAITING
     
 def test_cards_off_the_table(session: Session, seed_started_game):
@@ -227,13 +227,7 @@ def test_cards_off_the_table(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
 
-    game, s_player, s_selected_player = PlayService(session).select_any_player(game.id, player.id, target_player.id)
-
-    assert s_player.turn_status == TurnStatus.TAKING_ACTION
-    assert s_player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
-    assert s_selected_player.turn_status == TurnStatus.WAITING
-
-    count_nsf = PlayService(session).cards_off_the_tables(game, player, target_player)
+    game, s_player, s_selected_player, event, count_nsf = PlayService(session).select_any_player(game.id, player.id, target_player.id)
 
     assert len(s_player.cards) == 5
     assert count_nsf == 3
