@@ -29,8 +29,6 @@ class CardService:
         self._db.refresh(new_devious)
         return new_devious
 
-
-
     def create_detective_card(self,
                             card_name,
                             card_effect,
@@ -51,9 +49,7 @@ class CardService:
         
         except SQLAlchemyError as e:
             self._db.rollback()
-            raise ValueError(f"Error creating detective card: {e}")
-        
-
+            raise ValueError(f"Error creating detective card: {e}")      
 
     def create_instant_card(self,card_name, card_effect):
 
@@ -72,8 +68,6 @@ class CardService:
             self._db.rollback()
             raise ValueError(f"Error creating instant card: {e}")
         
-
-
     def create_event_card(self, card_name, card_effect):
         
         try:
@@ -92,8 +86,6 @@ class CardService:
             self._db.rollback()
             raise ValueError(f"Error creating event card: {e}")
 
-
-
     def relate_card_reposition_deck(self, deck_id, card_id, commit=False):
         card = CardService(self._db).get_card(card_id)
         reposition_deck = self._db.query(RepositionDeck).filter_by(id = deck_id).first()
@@ -109,8 +101,6 @@ class CardService:
             self._db.commit()
             self._db.refresh(reposition_deck)
             self._db.refresh(card)
-
-
 
     def unrelate_card_reposition_deck( self, deck_id, card_id, commit=False):
         reposition_deck = self._db.query(RepositionDeck).filter_by(id=deck_id).first()
@@ -129,8 +119,6 @@ class CardService:
             self._db.commit()
             self._db.refresh(reposition_deck)
             
-
-
     def relate_card_player(self, player_id, card_id, commit=False):
         player = self._db.query(Player).filter_by(id=player_id).first()
         card = CardService(self._db).get_card(card_id)
@@ -145,7 +133,6 @@ class CardService:
         if commit:
             self._db.commit()
             self._db.refresh(player)
-
 
     def unrelate_card_player(self, card_id, player_id):
         player = self._db.query(Player).filter_by(id = player_id).first()
@@ -163,15 +150,32 @@ class CardService:
         
     def select_event_type(self, game, player, card) -> TurnAction:
         if card.name == "Another Victim":
-            player_id = player.id
-            players = game.players
-            dsets = []
-            for player in players:
-                if player.id != player_id:
-                    dsets += [dset for dset in player.sets]
-            
-            if not dsets:
-                return TurnAction.NO_EFFECT
-            return TurnAction.STEAL_SET
+            return another_victim_event_type(game,player)
+        elif card.name == "And There was One More...":
+            return and_then_there_was_one_more_event_type(game)
         else:
             return TurnAction.NO_ACTION
+
+def another_victim_event_type(game, player) -> TurnAction:
+    player_id = player.id
+    players = game.players
+    dsets = []
+    for player in players:
+        if player.id != player_id:
+            dsets += [dset for dset in player.sets]
+    
+    if not dsets:
+        return TurnAction.NO_EFFECT
+    return TurnAction.STEAL_SET
+
+def and_then_there_was_one_more_event_type(game) -> TurnAction:
+    
+    revealed_secrets = []
+    for player in game.players:
+        for secret in player.secrets:
+            if secret.revealed:
+                revealed_secrets.append(secret)
+
+    if not revealed_secrets:
+        return TurnAction.NO_EFFECT
+    return TurnAction.ONE_MORE

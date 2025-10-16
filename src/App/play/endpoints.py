@@ -19,7 +19,7 @@ from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo
 from App.games.services import GameService
 from App.games.utils import db_game_2_game_detectives_win, db_game_2_game_public_info
-from App.play.schemas import DrawCardInfo, HideSecretInfo, NotifierHideSecret, PayloadHideSecret, PlayCard, RevealSecretInfo , NotifierStealSet, StealSetInfo
+from App.play.schemas import AndThenThereWasOneMoreInfo, DrawCardInfo, HideSecretInfo, NotifierAndThenThereWasOneMore, NotifierHideSecret, PayloadAndThenThereWasOneMore, PayloadHideSecret, PlayCard, RevealSecretInfo , NotifierStealSet, StealSetInfo
 from App.models.db import get_db
 
 from App.play.services import PlayService
@@ -498,6 +498,81 @@ async def hide_secret(
                 playerId=player_id,
                 secretId= secret.id,
                 selectedPlayerId=affected_player_id
+            )
+        )
+        
+        await manager.broadcast(game.id, notifierStealSet.model_dump())
+
+        return {"hiddenSecretId": secret.id}
+
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=str(e),
+    )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"It's not the turn of player {player_id}",
+        )
+    except SecretNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except SecretNotRevealed as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    
+
+@play_router.post(path="/{game_id}/actions/and-then-there-was-one-more", status_code=200)
+async def and_then_there_was_one_more(
+    game_id:int,
+    turn_info: AndThenThereWasOneMoreInfo,
+    db=Depends(get_db)
+    ):
+
+    game = GameService(db).get_by_id(game_id)
+
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+    
+    player_id = turn_info.playerId
+    stolen_player_id = turn_info.stolenPlayerId
+    selected_player_id = turn_info.selectedPlayerId
+    secret_id = turn_info.secretId
+    try:
+        secret = PlayService(db).and_then_there_was_one_more_effect(
+            player_id=player_id,
+            secret_id=secret_id,
+            stolen_player_id=stolen_player_id,
+            selected_player_id=selected_player_id
+        )
+
+        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            
+        for player in game.players:
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+
+            await manager.send_to_player(
+                game_id=game.id, 
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+        
+        notifierStealSet = NotifierAndThenThereWasOneMore(
+            payload=PayloadAndThenThereWasOneMore(
+                playerId=player_id,
+                secretId=secret.id,
+                secretName=secret.name,
+                stolenPlayerId=stolen_player_id,
+                giftedPlayerId=selected_player_id
             )
         )
         
