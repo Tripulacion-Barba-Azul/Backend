@@ -510,6 +510,42 @@ class PlayService:
             raise DeckNotFoundError(f"Game {game_id} does not have a discard deck")
         
         sorted_cards = sorted(discard_deck.cards, key=lambda c: c.order, reverse=True)
-        top_five_cards = sorted_cards[:5]
-
+        top_five_cards = sorted_cards[:6]
+        top_five_cards.pop(0)
+        
         return top_five_cards
+    
+    def delay_the_murder_effect(self, game, player_id, cards):
+
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        discard_deck = game.discard_deck
+        rep_deck = game.reposition_deck
+
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+
+        if player.turn_action != TurnAction.DELAY_THE_MURDERER:
+            raise NotPlayersTurnError(f"Player {player_id} cannot delay the murder now")
+
+        if not discard_deck:
+            raise DeckNotFoundError(f"Game {game.id} does not have a discard deck")
+        
+        for i in range(len(cards)):
+
+            card = self._db.query(Card).filter(Card.id == cards[-1]).first()
+
+            DiscardDeckService(self._db).unrelate_card_from_discard_deck(discard_deck.id, card)
+            CardService(self._db).relate_card_reposition_deck(rep_deck.id, card.id, commit=False)
+
+            cards.pop(-1)
+
+
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.flush()
+        self._db.commit()
+        self._db.refresh(rep_deck)
+        self._db.refresh(discard_deck)
+
+        return cards

@@ -528,3 +528,69 @@ def test_look_into_the_ashes_endpoint(client:TestClient, session:Session, seed_s
 
     assert response.status_code == 200
     
+def test_delay_the_murderers_escape_endpoint(client:TestClient, session:Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+
+    assert player.turn_status == TurnStatus.PLAYING
+
+    card = CardService(session).create_event_card("Delay the Muderer's Escape", "")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+
+    PlayService(session).play_card(game, player.id, card.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.DELAY_THE_MURDERER
+
+    card_ids = []
+    cards = []
+    for _ in range(5):
+        c = CardService(session).create_event_card("Random Card","")
+        cards.append(c)
+        DiscardDeckService(session).relate_card_to_discard_deck(game.discard_deck.id, c)
+        card_ids.append(c.id)
+
+    session.flush()
+    session.commit()
+
+    rep_deck_before = len(game.reposition_deck.cards)
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+
+        response = client.post(
+            f"/play/{game.id}/actions/delay-the-murderers-escape",
+            json = {
+                "playerId": player.id,
+                "cards" : card_ids,
+            }
+        )
+        data = response.json()
+
+        notifier_received = False
+        public_update_received = False
+        private_update_received = False
+
+        for i in range(3):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+
+            if result.get("event") == "notifierDelayTheMurderersEscape":
+
+                assert payload["playerId"] == player.id
+                notifier_received = True
+            elif result.get("event") == "publicUpdate":
+
+                assert payload["actionStatus"] == "blocked"
+                assert payload["regularDeckCount"] == rep_deck_before + 5 
+                public_update_received = True
+            elif result.get("event") == "privateUpdate":
+                private_update_received = True
+
+        assert notifier_received
+        assert public_update_received   
+        assert private_update_received 
+
+    assert response.status_code == 200

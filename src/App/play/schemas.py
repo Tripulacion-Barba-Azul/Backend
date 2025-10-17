@@ -92,3 +92,16 @@ class PayloadLookIntoTheAshes(BaseModel):
 class NotifierLookIntoTheAshes(BaseModel):
     event: str = "notifierLookIntoTheAshes"
     payload: PayloadLookIntoTheAshes
+
+
+class DelayTheMurderInfo(BaseModel):
+    playerId: int
+    cards: list[int]
+
+class PayloadDelayTheMurder(BaseModel):
+    playerId: int
+    
+
+class NotifierDelayTheMurder(BaseModel):
+    event: str = "notifierDelayTheMurderersEscape"
+    payload: PayloadDelayTheMurder
