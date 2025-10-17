@@ -19,7 +19,33 @@ from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, 
 from App.games.services import GameService
 
 from App.games.utils import db_game_2_game_detectives_lose, db_game_2_game_public_info
-from App.play.schemas import AndThenThereWasOneMoreInfo, DelayTheMurderInfo, DrawCardInfo, HideSecretInfo, LookIntoTheAshesInfo, NotifierAndThenThereWasOneMore, NotifierDelayTheMurder, NotifierHideSecret, NotifierLookIntoTheAshes, NotifierRevealSecretForce, NotifierSatterthwaiteWild, PayloadAndThenThereWasOneMore, PayloadDelayTheMurder PayloadHideSecret, PayloadLookIntoTheAshes, PlayCard, RevealOwnSecretInfo, RevealSecretInfo, NotifierStealSet, StealSetInfo, SelectAnyPlayerInfo
+from App.play.schemas import (
+    AndThenThereWasOneMoreInfo, 
+    DelayTheMurderInfo, 
+    DrawCardInfo, 
+    HideSecretInfo, 
+    LookIntoTheAshesInfo, 
+    NotifierAndThenThereWasOneMore, 
+    NotifierDelayTheMurder, 
+    NotifierHideSecret, 
+    NotifierLookIntoTheAshes, 
+    NotifierRevealSecretForce, 
+    NotifierSatterthwaiteWild, 
+    NotifierStealSet, 
+    PayloadAndThenThereWasOneMore, 
+    PayloadDelayTheMurder, 
+    PayloadHideSecret, 
+    PayloadLookIntoTheAshes, 
+    PlayCard, 
+    RevealOwnSecretInfo, 
+    RevealSecretInfo, 
+    SelectAnyPlayerInfo, 
+    StealSetInfo, 
+    PayloadHideSecret, 
+    PayloadLookIntoTheAshes, 
+    PlayCard, 
+    RevealOwnSecretInfo, 
+    RevealSecretInfo, NotifierStealSet, StealSetInfo, SelectAnyPlayerInfo)
 
 from App.models.db import get_db
 
@@ -476,7 +502,7 @@ async def endpoint_reveal_secret(
             detail=str(e),
         )
 
-@play_router.post(path="/{game_id}/actions/select_any_player", status_code=200)
+@play_router.post(path="/{game_id}/actions/select-any-player", status_code=200)
 async def select_any_player(
         game_id: int,
         select_player_info: SelectAnyPlayerInfo,
@@ -781,7 +807,7 @@ async def reveal_own_secret(
             eventInfo = NotifierSatterthwaiteWild(
                 payload=db_player_2_satterthquin_info(player,secret,selected_player)
             )
-            await manager.broadcast(game.id, eventInfo.model_dump()
+            await manager.broadcast(game.id, eventInfo.model_dump())
 
     except PlayerNotFoundError as e:
         raise HTTPException(
@@ -810,15 +836,15 @@ async def delay_the_murderers_escape(
     turn_info: DelayTheMurderInfo,
     db=Depends(get_db)
 ):
-  game = GameService(db).get_by_id(game_id)
-  if not game:
+    game = GameService(db).get_by_id(game_id)
+    if not game:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No game found {game_id}",
         )
   
-  player_id = turn_info.playerId
-  try:
+    player_id = turn_info.playerId
+    try:
         PlayService(db).delay_the_murder_effect(
             game=game,
             player_id=player_id,
@@ -845,14 +871,14 @@ async def delay_the_murderers_escape(
 
         await manager.broadcast(game.id, notifierDelayTheMurder.model_dump())
   
-  except PlayerNotFoundError as e:
+        return {"Delay the Murderers Escape success"}
+    except PlayerNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
         )
-  except NotPlayersTurnError as e:
+    except NotPlayersTurnError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"It's not the turn of player {player_id}",
         )
-   return {"Delay the Murderers Escape success"}

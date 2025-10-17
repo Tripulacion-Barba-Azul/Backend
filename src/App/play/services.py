@@ -530,7 +530,8 @@ class PlayService:
         
         sorted_cards = sorted(discard_deck.cards, key=lambda c: c.order, reverse=True)
         top_five_cards = sorted_cards[:6]
-        top_five_cards.pop(0)
+        if top_five_cards:
+            top_five_cards.pop(0)
         
         return top_five_cards
     

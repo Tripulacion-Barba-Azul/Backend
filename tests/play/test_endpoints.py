@@ -157,7 +157,7 @@ def test_select_any_player_endpoint_cards_off_the_table(client: TestClient, seed
     with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
         print(f"WebSocket connection established for player {player.id}")
         response = client.post(
-            f"/play/{game.id}/actions/select_any_player", 
+            f"/play/{game.id}/actions/select-any-player", 
             json={
                 "playerId": player.id,
                 "selectedPlayerId": selected_player.id

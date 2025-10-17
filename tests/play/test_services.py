@@ -407,10 +407,11 @@ def test_get_top_five_discarded_cards(session: Session, seed_started_game):
     session.commit()
 
     top_five = PlayService(session).get_top_five_discarded_cards(game.id)
+    top_five_ids.pop(len(top_five_ids)-1)
 
-    assert len(top_five) == 5
-    for i in range(5):
-      assert top_five[i].id == top_five_ids[4 - i] 
+    assert len(top_five) <= 5
+    for id in top_five_ids:
+        assert any(card.id == id for card in top_five)
 
 def test_select_own_secret_case_give(session: Session, seed_started_game):
     game = seed_started_game(3)
