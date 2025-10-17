@@ -27,5 +27,6 @@ class TurnAction(Enum):
     STEAL_SET = "stealSet"
     LOOK_INTO_THE_ASHES = "lookIntoTheAshes"
     DELAY_THE_MURDERER = "delayTheMurderer"
+    EARLY_TRAIN_TO_PADDINGTON = "earlyTrainToPaddington"
     NO_EFFECT = "notifierNoEffect" # Dont use as state in player
 

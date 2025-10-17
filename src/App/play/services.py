@@ -78,7 +78,8 @@ class PlayService:
             raise NotPlayableCard("You tried to play a card that is not playable.")
         
         self._card_service.unrelate_card_player(card_id, player_id)
-        self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+        if card.name != "Early Train to Paddington":
+            self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
         event = self._card_service.select_event_type(game, player, card)
         if event in [TurnAction.NO_ACTION, TurnAction.NO_EFFECT]:
             player.turn_status = TurnStatus.DISCARDING_OPT

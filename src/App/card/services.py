@@ -159,6 +159,8 @@ class CardService:
             return TurnAction.CARDS_OFF_THE_TABLE
         elif card.name == "Delay the Muderer's Escape":
             return TurnAction.DELAY_THE_MURDERER
+        elif card.name == "Early Train to Paddington":
+            return TurnAction.EARLY_TRAIN_TO_PADDINGTON
         else:
             return TurnAction.NO_ACTION
 
