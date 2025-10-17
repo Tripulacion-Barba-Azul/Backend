@@ -157,6 +157,8 @@ class CardService:
             return TurnAction.LOOK_INTO_THE_ASHES
         elif card.name == "Cards off the table":
             return TurnAction.CARDS_OFF_THE_TABLE
+        elif card.name == "Delay the Muderer's Escape":
+            return TurnAction.DELAY_THE_MURDERER
         else:
             return TurnAction.NO_ACTION
 

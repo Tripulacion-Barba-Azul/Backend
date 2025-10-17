@@ -15,11 +15,37 @@ from App.exceptions import (
     SecretNotRevealed)
 
 from App.games.enums import GameStatus
-from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo, TopFiveInfo
+from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
 from App.games.services import GameService
 
 from App.games.utils import db_game_2_game_detectives_lose, db_game_2_game_public_info
-from App.play.schemas import AndThenThereWasOneMoreInfo, DrawCardInfo, HideSecretInfo, LookIntoTheAshesInfo, NotifierAndThenThereWasOneMore, NotifierHideSecret, NotifierLookIntoTheAshes, NotifierRevealSecretForce, NotifierSatterthwaiteWild, PayloadAndThenThereWasOneMore, PayloadHideSecret, PayloadLookIntoTheAshes, PlayCard, RevealOwnSecretInfo, RevealSecretInfo, NotifierStealSet, StealSetInfo, SelectAnyPlayerInfo
+from App.play.schemas import (
+    AndThenThereWasOneMoreInfo, 
+    DelayTheMurderInfo, 
+    DrawCardInfo, 
+    HideSecretInfo, 
+    LookIntoTheAshesInfo, 
+    NotifierAndThenThereWasOneMore, 
+    NotifierDelayTheMurder, 
+    NotifierHideSecret, 
+    NotifierLookIntoTheAshes, 
+    NotifierRevealSecretForce, 
+    NotifierSatterthwaiteWild, 
+    NotifierStealSet, 
+    PayloadAndThenThereWasOneMore, 
+    PayloadDelayTheMurder, 
+    PayloadHideSecret, 
+    PayloadLookIntoTheAshes, 
+    PlayCard, 
+    RevealOwnSecretInfo, 
+    RevealSecretInfo, 
+    SelectAnyPlayerInfo, 
+    StealSetInfo, 
+    PayloadHideSecret, 
+    PayloadLookIntoTheAshes, 
+    PlayCard, 
+    RevealOwnSecretInfo, 
+    RevealSecretInfo, NotifierStealSet, StealSetInfo, SelectAnyPlayerInfo)
 
 from App.models.db import get_db
 
@@ -108,7 +134,15 @@ async def play_card(
 
             if player.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
                 top_cards = PlayService(db).get_top_five_discarded_cards(game.id)
-                topFiveCardsInfo = TopFiveInfo(payload = [db_card_2_card_info(c) for c in top_cards])
+                topFiveCardsInfo = TopFiveLookIntoTheAshes(payload = [db_card_2_card_info(c) for c in top_cards])
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=player.id,
+                    message=topFiveCardsInfo.model_dump()
+                    )
+            elif player.turn_action == TurnAction.DELAY_THE_MURDERER:
+                top_cards = PlayService(db).get_top_five_discarded_cards(game.id)
+                topFiveCardsInfo = TopFiveDelayTheMurder(payload = [db_card_2_card_info(c) for c in top_cards])
                 await manager.send_to_player(
                     game_id=game.id,
                     player_id=player.id,
@@ -468,7 +502,7 @@ async def endpoint_reveal_secret(
             detail=str(e),
         )
 
-@play_router.post(path="/{game_id}/actions/select_any_player", status_code=200)
+@play_router.post(path="/{game_id}/actions/select-any-player", status_code=200)
 async def select_any_player(
         game_id: int,
         select_player_info: SelectAnyPlayerInfo,
@@ -727,13 +761,13 @@ async def look_into_the_ashes(
             detail=str(e),
         )
     
+
 @play_router.post(path="/{game_id}/actions/reveal-own-secret", status_code=200)
 async def reveal_own_secret(
     game_id: int,
     turn_info: RevealOwnSecretInfo,
     db=Depends(get_db)
 ):
-    
     game = GameService(db).get_by_id(game_id)
 
     if not game:
@@ -741,6 +775,7 @@ async def reveal_own_secret(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No game found {game_id}",
         )
+
     player_id = turn_info.playerId
     secret_id = turn_info.secretId
 
@@ -773,10 +808,6 @@ async def reveal_own_secret(
                 payload=db_player_2_satterthquin_info(player,secret,selected_player)
             )
             await manager.broadcast(game.id, eventInfo.model_dump())
-        
-
-
-           
 
     except PlayerNotFoundError as e:
         raise HTTPException(
@@ -797,4 +828,57 @@ async def reveal_own_secret(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
+        )
+
+@play_router.post(path="/{game_id}/actions/delay-the-murderers-escape", status_code=200)
+async def delay_the_murderers_escape(
+    game_id: int,
+    turn_info: DelayTheMurderInfo,
+    db=Depends(get_db)
+):
+    game = GameService(db).get_by_id(game_id)
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+  
+    player_id = turn_info.playerId
+    try:
+        PlayService(db).delay_the_murder_effect(
+            game=game,
+            player_id=player_id,
+            cards=turn_info.cards,
+        )
+
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id, gamePublictInfo.model_dump())
+
+        for player in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(player))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+
+        notifierDelayTheMurder = NotifierDelayTheMurder(
+            payload=PayloadDelayTheMurder(
+                playerId=player_id
+            )
+        )
+
+        await manager.broadcast(game.id, notifierDelayTheMurder.model_dump())
+  
+        return {"Delay the Murderers Escape success"}
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"It's not the turn of player {player_id}",
         )

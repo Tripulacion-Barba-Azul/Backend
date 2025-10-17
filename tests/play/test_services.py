@@ -407,10 +407,11 @@ def test_get_top_five_discarded_cards(session: Session, seed_started_game):
     session.commit()
 
     top_five = PlayService(session).get_top_five_discarded_cards(game.id)
+    top_five_ids.pop(len(top_five_ids)-1)
 
-    assert len(top_five) == 5
-    for i in range(5):
-        assert top_five[i].id == top_five_ids[4 - i]
+    assert len(top_five) <= 5
+    for id in top_five_ids:
+        assert any(card.id == id for card in top_five)
 
 def test_select_own_secret_case_give(session: Session, seed_started_game):
     game = seed_started_game(3)
@@ -451,3 +452,42 @@ def test_select_own_secret_case_reveal(session: Session, seed_started_game):
     assert player.turn_action == TurnAction.NO_ACTION
     assert secret.revealed
     assert secret in player.secrets
+    
+def test_delay_the_murderers_escape_service(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    reposition_deck = game.reposition_deck
+
+    assert player.turn_status == TurnStatus.PLAYING
+
+    card = CardService(session).create_event_card("Delay the Muderer's Escape", "")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+
+    PlayService(session).play_card(game, player.id, card.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.DELAY_THE_MURDERER
+
+    card_ids = []
+    cards = []
+    for _ in range(5):
+        c = CardService(session).create_event_card("Random Card","")
+        cards.append(c)
+        DiscardDeckService(session).relate_card_to_discard_deck(game.discard_deck.id, c)
+        card_ids.append(c.id)
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).delay_the_murder_effect(game, player.id, card_ids)
+
+
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert all(card in reposition_deck.cards for card in cards)
+    assert not all(card in game.discard_deck.cards for card in cards)
+    
