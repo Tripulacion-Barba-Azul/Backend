@@ -618,8 +618,9 @@ class PlayService:
     def early_train_to_paddington(self, game: Game, player: Player):
         if player.turn_status != TurnStatus.TAKING_ACTION and player.turn_status != TurnStatus.DISCARDING_OPT and player.turn_status != TurnStatus.DISCARDING:
             raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
-        if player.turn_action != TurnAction.EARLY_TRAIN_TO_PADDINGTON:
-            raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
+        if player.turn_status == TurnStatus.TAKING_ACTION:
+            if player.turn_action != TurnAction.EARLY_TRAIN_TO_PADDINGTON:
+                raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
         
         discard_deck = game.discard_deck
         rep_deck = game.reposition_deck

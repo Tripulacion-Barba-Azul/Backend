@@ -23,7 +23,26 @@ def test_discard_card_service(session: Session, seed_game_player2_discard):
 
     assert len(player.cards) == 0
     assert player.turn_status == TurnStatus.DRAWING
+    if any(card.name == "Early Train to Paddington" for card in player.cards):
+        assert len(game.discard_deck.cards) == 12
     assert len(game.discard_deck.cards) == 7
+    
+def test_discard_card_service_with_early_train_to_paddington(session: Session, seed_game_player2_discard):
+    game: Game = seed_game_player2_discard[0]
+    player = seed_game_player2_discard[1]
+
+    card1 = CardService(session).create_event_card("Early Train to Paddington", "")
+    player.cards[0] = card1
+    cards_id = [card.id for card in player.cards]
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).discard(game, player.id, cards_id)    
+
+    assert len(player.cards) == 0
+    assert player.turn_status == TurnStatus.DRAWING
+    assert len(game.discard_deck.cards) == 12
 
 def test_draw_card_from_deck_success(session: Session, seed_game_player2_draw):
     game = seed_game_player2_draw[0]
