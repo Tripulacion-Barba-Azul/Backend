@@ -149,7 +149,13 @@ async def play_card(
                     message=topFiveCardsInfo.model_dump()
                     )
             elif player.turn_action == TurnAction.EARLY_TRAIN_TO_PADDINGTON:
-                PlayService(db).early_train_to_paddington_effect(game, player)
+                PlayService(db).early_train_to_paddington(game, player)
+                await manager.broadcast(game.id,gamePublictInfo.model_dump())
+                await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
             else:
                 await manager.send_to_player(
                     game_id=game.id,

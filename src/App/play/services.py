@@ -611,5 +611,32 @@ class PlayService:
         self._db.commit()
 
         return event, current_turn_player, secret, player
+    
+    def early_train_to_paddington(self, game: Game, player: Player):
+        if player.turn_status != TurnStatus.TAKING_ACTION:
+            raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
+        if player.turn_action != TurnAction.EARLY_TRAIN_TO_PADDINGTON:
+            raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
         
+        discard_deck = game.discard_deck
+        rep_deck = game.reposition_deck
+        
+        if rep_deck.number_of_cards >= 6:
+            for _ in range(6):
+                card = max(rep_deck.cards, key=lambda c: c.order)
+                CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
+                self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
+                
+        else:
+            while rep_deck.number_of_cards > 0:
+                card = max(rep_deck.cards, key=lambda c: c.order)
+                CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
+                self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
+            
+        
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.flush()
+        self._db.commit()
 

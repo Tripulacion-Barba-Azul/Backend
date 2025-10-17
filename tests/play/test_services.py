@@ -490,4 +490,26 @@ def test_delay_the_murderers_escape_service(session: Session, seed_started_game)
     assert player.turn_action == TurnAction.NO_ACTION
     assert all(card in reposition_deck.cards for card in cards)
     assert not all(card in game.discard_deck.cards for card in cards)
-    
+
+def test_early_train_to_paddington(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+
+    assert player.turn_status == TurnStatus.PLAYING
+
+    card = CardService(session).create_event_card("Early Train to Paddington", "")
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).play_card(game, player.id, card.id)
+
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.EARLY_TRAIN_TO_PADDINGTON
+
+    PlayService(session).early_train_to_paddington(game, player)
+
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert len(game.discard_deck.cards) == 7
