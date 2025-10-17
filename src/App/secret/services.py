@@ -28,8 +28,8 @@ assassin_secret = ("You are the murderer",
                    "If this card is revealed, you are caugth and lost the game",
                     SecretType.MURDERER)
 
-accomplice_secret = ("You are the acomplice",
-                     "If the Murderer escapes, you bpth win the game"
+accomplice_secret = ("You are the accomplice",
+                     "If the Murderer escapes, you both win the game"
                      " even if this card is revealed",
                      SecretType.ACCOMPLICE )
 
@@ -45,7 +45,7 @@ def get_secret(secret_id, db:Session):
         return secret
 
 
-def create_secret(new_name, new_description, new_type, db:Session, commit=False):
+def create_secret(new_name, new_description, new_type):
     new_secret = Secret(
                         name = new_name,
                         description = new_description,
@@ -53,11 +53,6 @@ def create_secret(new_name, new_description, new_type, db:Session, commit=False)
                         revealed = False
                         )
     
-    db.add(new_secret)
-    
-    if commit:
-        db.commit()
-        db.refresh(new_secret)
     return new_secret
 
 
@@ -100,57 +95,63 @@ def create_and_draw_secrets(game_id, db:Session):
             new_secret = create_secret(
                                 random_secret[0],
                                 random_secret[1],
-                                random_secret[2],
-                                db
+                                random_secret[2]
                                 )
             secret_list.append(new_secret)
         asn_secret = create_secret(
                                 assassin_secret[0],
                                 assassin_secret[1],
-                                assassin_secret[2],
-                                db
+                                assassin_secret[2]
                                 )
         secret_list.append(asn_secret)
-        db.commit()
-        for secret in secret_list:
-            db.refresh(secret)
     else:
         for i in range (3*len(players) - 2):
             random_secret = random.choice(generic_secrets)
             new_secret = create_secret(
                         random_secret[0],
                         random_secret[1],
-                        random_secret[2],
-                        db
+                        random_secret[2]
                         )
             secret_list.append(new_secret)
         asn_secret = create_secret(
                                 assassin_secret[0],
                                 assassin_secret[1],
-                                assassin_secret[2],
-                                db
+                                assassin_secret[2]
                                 )
         secret_list.append(asn_secret)
         acm_secret =create_secret(
                                 accomplice_secret[0],
                                 accomplice_secret[1],
-                                accomplice_secret[2],
-                                db
+                                accomplice_secret[2]
+                        
                                 )
         secret_list.append(acm_secret)
-        db.commit()
-        for secret in secret_list:
-            db.refresh(secret)
 
 
+    # mezclar la lista antes de añadir a la sesión para que los ids no sigan el orden de creación
     random.shuffle(secret_list)
+
+    # añadir todos los secretos a la sesión en el orden aleatorio y persistir una sola vez
+    for s in secret_list:
+        db.add(s)
+    db.commit()
+
+    # refrescar para obtener ids asignados por la BD
+    for secret in secret_list:
+        db.refresh(secret)
+
+
     secret_list_copy = secret_list.copy()
 
+    random.shuffle(secret_list_copy)
     for i in range (3):
         for player in players:
                 secret = secret_list_copy[0]
+                if secret.name == "You are the accomplice" and asn_secret in player.secrets:
+                    secret = secret_list_copy[1]
+
                 relate_secret_player(player, secret, db, commit=False)
-                secret_list_copy.pop(0)       
+                secret_list_copy.remove(secret)   
             
     db.commit()
     for secret in secret_list:

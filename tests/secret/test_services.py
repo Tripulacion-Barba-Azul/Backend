@@ -14,7 +14,7 @@ def sample_secret(session:Session):
     new_description = "test_description"
     new_type = SecretType.GENERIC
 
-    secret = create_secret(new_name, new_description, new_type, session)
+    secret = create_secret(new_name, new_description, new_type)
     return secret
 
 
@@ -140,7 +140,7 @@ def test_create_secret(session:Session):
     new_description = "test_description"
     new_type = SecretType.GENERIC
 
-    secret = create_secret(new_name, new_description, new_type, session)
+    secret = create_secret(new_name, new_description, new_type)
 
     session.add(secret)
     session.commit()
