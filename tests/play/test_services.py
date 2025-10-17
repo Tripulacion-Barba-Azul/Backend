@@ -210,13 +210,24 @@ def test_cards_off_the_table(session: Session, seed_started_game):
     
     card1 = CardService(session).create_event_card("Cards off the table","")
     player.cards[0] = card1
-    target_player.cards[0] = CardService(session).create_event_card("Cards off the table","")
-    target_player.cards[1] = CardService(session).create_instant_card("Not so Fast!", "")
-    target_player.cards[2] = CardService(session).create_event_card("Cards off the table","")
-    target_player.cards[3] = CardService(session).create_instant_card("Not so Fast!", "")
-    target_player.cards[4] = CardService(session).create_instant_card("Not so Fast!", "")
-    target_player.cards[5] = CardService(session).create_event_card("Cards off the table","")
+    target_player_cards = target_player.cards
+    for card in target_player_cards:
+        card = PlayService(session)._player_service.discard_card(target_player.id, card)
 
+    session.add(target_player)
+    session.flush()
+    session.commit()
+    
+    target_player.cards = [
+    CardService(session).create_event_card("Cards off the table", ""),
+    CardService(session).create_instant_card("Not so Fast!", ""),
+    CardService(session).create_instant_card("Not so Fast!", ""),
+    CardService(session).create_event_card("Cards off the table", ""),
+    CardService(session).create_event_card("Cards off the table", ""),
+    CardService(session).create_instant_card("Not so Fast!", "")
+]
+
+    session.add(target_player)
     session.flush()
     session.commit()
 
