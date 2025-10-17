@@ -164,13 +164,13 @@ def test_select_any_player_endpoint_cards_off_the_table(client: TestClient, seed
                 }
         )
         data = response.json()
-        print(f"Response data: {data}")
+        
         public_update_received = False
         private_update_received = False
 
         for i in range(3):
             result = websocket.receive_json()
-            print(f"Received event: {result}")
+            
             payload = result.get("payload", {})
             if result.get("event") == "publicUpdate":
                 public_update_received = True
@@ -528,6 +528,96 @@ def test_look_into_the_ashes_endpoint(client:TestClient, session:Session, seed_s
 
     assert response.status_code == 200
     
+
+def test_reveal_own_secret_reveal(
+        client: TestClient,
+        session: Session,
+        seed_started_game
+    ):
+        game = seed_started_game(3)
+        player = game.players[1]
+        player.turn_status = TurnStatus.TAKING_ACTION
+        
+        caller_player = game.players[2]
+        caller_player.turn_action = TurnAction.REVEAL_OWN_SECRET
+        secret = caller_player.secrets[0]
+
+        session.flush()
+        session.commit()
+     
+        with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+            
+            response = client.post(
+                f"/play/{game.id}/actions/reveal-own-secret", 
+                json={
+                    "playerId": caller_player.id,
+                    "secretId": secret.id
+                    }
+            )
+            data = response.json()
+            assert response.status_code == 200
+            
+            result = websocket.receive_json()
+            assert result["event"] == "publicUpdate"
+            result = websocket.receive_json()
+            assert result["event"] == "privateUpdate"
+            result = websocket.receive_json()
+            
+            assert result["event"] == "notifierRevealSecretForce"
+            payload = result["payload"]
+            assert payload["playerId"] == player.id
+            assert payload["secretId"] == secret.id
+            assert payload["selectedPlayerId"] == caller_player.id
+
+            assert caller_player.turn_action == TurnAction.NO_ACTION
+            assert player.turn_status == TurnStatus.DISCARDING_OPT
+            assert player.turn_action == TurnAction.NO_ACTION
+
+def test_reveal_own_secret_give(
+        client: TestClient,
+        session: Session,
+        seed_started_game
+    ):
+        game = seed_started_game(3)
+        player = game.players[1]
+        player.turn_status = TurnStatus.TAKING_ACTION
+        
+        caller_player = game.players[2]
+        caller_player.turn_action = TurnAction.GIVE_SECRET_AWAY
+        secret = caller_player.secrets[0]
+
+        session.flush()
+        session.commit()
+     
+        with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+            
+            response = client.post(
+                f"/play/{game.id}/actions/reveal-own-secret", 
+                json={
+                    "playerId": caller_player.id,
+                    "secretId": secret.id
+                    }
+            )
+            data = response.json()
+            assert response.status_code == 200
+            
+            result = websocket.receive_json()
+            assert result["event"] == "publicUpdate"
+            result = websocket.receive_json()
+            assert result["event"] == "privateUpdate"
+            result = websocket.receive_json()
+            
+            assert result["event"] == "notifierSatterthwaiteWild"
+            payload = result["payload"]
+            assert payload["playerId"] == player.id
+            assert payload["secretId"] == secret.id
+            assert payload["secretName"] == secret.name
+            assert payload["selectedPlayerId"] == caller_player.id
+
+            assert caller_player.turn_action == TurnAction.NO_ACTION
+            assert player.turn_status == TurnStatus.DISCARDING_OPT
+            assert player.turn_action == TurnAction.NO_ACTION
+
 def test_delay_the_murderers_escape_endpoint(client:TestClient, session:Session, seed_started_game):
     game = seed_started_game(3)
     player = game.players[1]

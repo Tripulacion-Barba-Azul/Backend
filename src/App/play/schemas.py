@@ -105,3 +105,28 @@ class PayloadDelayTheMurder(BaseModel):
 class NotifierDelayTheMurder(BaseModel):
     event: str = "notifierDelayTheMurderersEscape"
     payload: PayloadDelayTheMurder
+      
+class RevealOwnSecretInfo(BaseModel):
+    playerId: int
+    secretId : int
+
+
+class PayloadSatterthwaiteWild(BaseModel):
+    playerId: int
+    secretId: int
+    secretName: str
+    selectedPlayerId: int
+
+
+class NotifierSatterthwaiteWild(BaseModel):
+    event: str = "notifierSatterthwaiteWild"
+    payload: PayloadSatterthwaiteWild
+
+class PayloadRevealSecretForce(BaseModel):
+    playerId: int
+    secretId: int
+    selectedPlayerId: int
+
+class NotifierRevealSecretForce(BaseModel):
+    event: str = "notifierRevealSecretForce"
+    payload: PayloadRevealSecretForce
