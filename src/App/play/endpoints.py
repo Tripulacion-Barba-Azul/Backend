@@ -19,7 +19,7 @@ from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, 
 from App.games.services import GameService
 
 from App.games.utils import db_game_2_game_detectives_lose, db_game_2_game_public_info
-from App.play.schemas import AndThenThereWasOneMoreInfo, DrawCardInfo, HideSecretInfo, LookIntoTheAshesInfo, NotifierAndThenThereWasOneMore, NotifierHideSecret, NotifierLookIntoTheAshes, PayloadAndThenThereWasOneMore, PayloadHideSecret, PayloadLookIntoTheAshes, PlayCard, RevealSecretInfo, NotifierStealSet, StealSetInfo, SelectAnyPlayerInfo
+from App.play.schemas import AndThenThereWasOneMoreInfo, DrawCardInfo, HideSecretInfo, LookIntoTheAshesInfo, NotifierAndThenThereWasOneMore, NotifierHideSecret, NotifierLookIntoTheAshes, NotifierRevealSecretForce, NotifierSatterthwaiteWild, PayloadAndThenThereWasOneMore, PayloadHideSecret, PayloadLookIntoTheAshes, PlayCard, RevealOwnSecretInfo, RevealSecretInfo, NotifierStealSet, StealSetInfo, SelectAnyPlayerInfo
 
 from App.models.db import get_db
 
@@ -27,12 +27,13 @@ from App.play.services import PlayService
 from App.players.enums import TurnAction
 from App.players.models import Player
 
-from App.players.utils import db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_cards_off_the_tables_info
+from App.players.utils import db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
 
 
 from App.websockets import manager
 from App.play.enums import ActionType
 from App.sets.services import DetectiveSetService
+from App.games.models import Game
 
 play_router = APIRouter()
 
@@ -75,11 +76,11 @@ async def play_card(
                 player_id=player.id,
                 message=playerPrivateInfo.model_dump()
             )
-            event = DetectiveSetService(db).select_event_type(game, played_set.type).value
+            event = DetectiveSetService(db).select_event_type(game, played_set.type)
             await manager.send_to_player(
                 game_id=game.id,
                 player_id=player.id,
-                message={"event": event}
+                message={"event": turn_action_enum_2_str(event)}
             )
 
             playedCards = db_player_2_played_cards_played_info(player, played_set, cards_id, ActionType.SET)
@@ -117,7 +118,7 @@ async def play_card(
                 await manager.send_to_player(
                     game_id=game.id,
                     player_id=player.id,
-                    message={"event": event.value}
+                    message={"event": turn_action_enum_2_str(event)}
                 )
 
 
@@ -391,7 +392,7 @@ async def steal_set(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Detective set {set_id} not found",
     )
-  
+
 @play_router.post(path="/{game_id}/actions/reveal-secret", status_code=200)
 async def endpoint_reveal_secret(
     game_id: int,
@@ -473,34 +474,40 @@ async def select_any_player(
         select_player_info: SelectAnyPlayerInfo,
         db=Depends(get_db)
         ):
-    
+    player_id = select_player_info.playerId
+    selected_player_id = select_player_info.selectedPlayerId
     try:
-        game, player, selected_player = PlayService(db).select_any_player(
+        game, player, selected_player, event, countNotSoFast = PlayService(db).select_any_player(
             game_id,
-            select_player_info.playerId,
-            select_player_info.selectedPlayerId
+            player_id,
+            selected_player_id
         )
         
-        event = player.turn_action
         if event == TurnAction.CARDS_OFF_THE_TABLE:
-            countNotSoFast = PlayService(db).cards_off_the_tables(game, player, selected_player)
 
+            gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id, gamePublicInfo.model_dump())
+
+            for p in game.players:
+                playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=p.id,
+                    message=playerPrivateInfo.model_dump()
+                )
+            if not countNotSoFast:
+                countNotSoFast = 0
             cardsOffTheTableInfo = db_player_cards_off_the_tables_info(player, selected_player, countNotSoFast)
             await manager.broadcast(game.id, cardsOffTheTableInfo.model_dump())
 
-        """ elif event == TurnAction.SELECT_ANY_PLAYER_SETS:
-            await manager.broadcast(game.id, event_type = "select_any_player_sets") """
-            
-        gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-        await manager.broadcast(game.id, gamePublicInfo.model_dump())
-
-        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
-        await manager.send_to_player(
-            game_id=game.id,
-            player_id=player.id,
-            message=playerPrivateInfo.model_dump()
-        )
-        
+        elif event in [TurnAction.SELECT_ANY_PLAYER, TurnAction.SATTERWAITEWILD]:
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=selected_player.id,
+                message={"event": turn_action_enum_2_str(selected_player.turn_action)}
+            )
+              
     except (GameNotFoundError, PlayerNotFoundError) as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -581,7 +588,6 @@ async def hide_secret(
             detail=str(e),
         )
     
-
 @play_router.post(path="/{game_id}/actions/and-then-there-was-one-more", status_code=200)
 async def and_then_there_was_one_more(
     game_id:int,
@@ -655,7 +661,7 @@ async def and_then_there_was_one_more(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-    
+
 @play_router.post(path="/{game_id}/actions/look-into-the-ashes", status_code=200)
 async def look_into_the_ashes(
     game_id: int,
@@ -716,6 +722,78 @@ async def look_into_the_ashes(
             detail=str(e),
         )
     except SecretNotRevealed as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    
+@play_router.post(path="/{game_id}/actions/reveal-own-secret", status_code=200)
+async def reveal_own_secret(
+    game_id: int,
+    turn_info: RevealOwnSecretInfo,
+    db=Depends(get_db)
+):
+    
+    game = GameService(db).get_by_id(game_id)
+
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+    player_id = turn_info.playerId
+    secret_id = turn_info.secretId
+
+    try:
+        event, player, secret, selected_player = PlayService(db).select_own_secret(
+            game,
+            player_id,
+            secret_id
+        )
+
+        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            
+        for p in game.players:
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(p))
+
+            await manager.send_to_player(
+                game_id=game.id, 
+                player_id=p.id,
+                message=playerPrivateInfo.model_dump()
+            )
+
+        if event == TurnAction.REVEAL_OWN_SECRET:
+            eventInfo = NotifierRevealSecretForce(
+                payload=db_player_2_reveal_secret_force(player,secret,selected_player)
+            )
+            await manager.broadcast(game.id, eventInfo.model_dump())
+        elif event == TurnAction.GIVE_SECRET_AWAY:
+            eventInfo = NotifierSatterthwaiteWild(
+                payload=db_player_2_satterthquin_info(player,secret,selected_player)
+            )
+            await manager.broadcast(game.id, eventInfo.model_dump())
+        
+
+
+           
+
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"It's not the turn of player {player_id}",
+        )
+    except SecretNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except SecretAlreadyRevealedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
