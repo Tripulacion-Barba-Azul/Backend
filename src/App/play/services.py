@@ -176,7 +176,10 @@ class PlayService:
         for card_id in cards_id:
             card = self._card_service.get_card(card_id)
             card = self._player_service.discard_card(player_id, card)
-            self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+            if card.name != "Early Train to Paddington":
+                self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+            else:
+                self.early_train_to_paddington(game, player)
 
         player.turn_status = TurnStatus.DRAWING
 
@@ -613,7 +616,7 @@ class PlayService:
         return event, current_turn_player, secret, player
     
     def early_train_to_paddington(self, game: Game, player: Player):
-        if player.turn_status != TurnStatus.TAKING_ACTION:
+        if player.turn_status != TurnStatus.TAKING_ACTION and player.turn_status != TurnStatus.DISCARDING_OPT and player.turn_status != TurnStatus.DISCARDING:
             raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
         if player.turn_action != TurnAction.EARLY_TRAIN_TO_PADDINGTON:
             raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
