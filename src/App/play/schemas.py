@@ -92,3 +92,28 @@ class PayloadLookIntoTheAshes(BaseModel):
 class NotifierLookIntoTheAshes(BaseModel):
     event: str = "notifierLookIntoTheAshes"
     payload: PayloadLookIntoTheAshes
+
+class RevealOwnSecretInfo(BaseModel):
+    playerId: int
+    secretId : int
+
+
+class PayloadSatterthwaiteWild(BaseModel):
+    playerId: int
+    secretId: int
+    secretName: str
+    selectedPlayerId: int
+
+
+class NotifierSatterthwaiteWild(BaseModel):
+    event: str = "notifierSatterthwaiteWild"
+    payload: PayloadSatterthwaiteWild
+
+class PayloadRevealSecretForce(BaseModel):
+    playerId: int
+    secretId: int
+    selectedPlayerId: int
+
+class NotifierRevealSecretForce(BaseModel):
+    event: str = "notifierRevealSecretForce"
+    payload: PayloadRevealSecretForce

@@ -556,10 +556,10 @@ class PlayService:
                     current_turn_player = p
         if not current_turn_player:
                 raise PlayerNotFoundError(f"Player not found")
-        
+
         secret.revealed = True
-        
-        event = player.turn_action        
+
+        event = player.turn_action
         if event is TurnAction.GIVE_SECRET_AWAY:
             print("se entro en GIVE_SECRET_AWAY")
             unrelate_secret_player(player, secret, self._db)
@@ -572,6 +572,6 @@ class PlayService:
         self._db.flush()
         self._db.commit()
 
-        return event, secret
+        return event, current_turn_player, secret, player
         
         
