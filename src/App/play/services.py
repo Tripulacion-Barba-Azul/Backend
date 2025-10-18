@@ -644,8 +644,9 @@ class PlayService:
                 card = max(rep_deck.cards, key=lambda c: c.order)
                 CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
                 self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
-            
-        
+
+        self.end_game(game.id)
+
         player.turn_status = TurnStatus.DISCARDING_OPT
         player.turn_action = TurnAction.NO_ACTION
 

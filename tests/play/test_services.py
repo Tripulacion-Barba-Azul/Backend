@@ -16,6 +16,7 @@ from App.sets.models import DetectiveSet
 def test_discard_card_service(session: Session, seed_game_player2_discard):
     game: Game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
+    ettp_in_player = any(card.name == "Early Train to Paddington" for card in player.cards)
 
     cards_id = [card.id for card in player.cards]
 
@@ -23,7 +24,7 @@ def test_discard_card_service(session: Session, seed_game_player2_discard):
 
     assert len(player.cards) == 0
     assert player.turn_status == TurnStatus.DRAWING
-    if any(card.name == "Early Train to Paddington" for card in player.cards):
+    if ettp_in_player:
         assert len(game.discard_deck.cards) == [12,17]
     else:
         assert len(game.discard_deck.cards) == 7

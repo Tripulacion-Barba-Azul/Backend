@@ -158,7 +158,6 @@ async def play_card(
                     player_id=player.id,
                     message=playerPrivateInfo.model_dump()
                     )
-                game = PlayService(db).end_game(game_id)
                 if game.status == GameStatus.FINISHED:
                     gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                     await manager.broadcast(game.id, gameEndInfo.model_dump())
@@ -243,6 +242,10 @@ async def discard_cards(
                 player_id=player.id,
                 message=playerPrivateInfo.model_dump()
             )
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
     except PlayerNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
