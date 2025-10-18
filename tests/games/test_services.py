@@ -7,6 +7,7 @@ from App.games.models import Game
 from App.games.services import GameService
 from App.players.dtos import PlayerDTO
 from App.players.models import Player
+from App.players.services import PlayerService
 
 
 def test_create_game_service(session: Session):
@@ -46,3 +47,36 @@ def test_create_game_service(session: Session):
     assert db_game.owner_id == db_player.id
     assert db_game.owner == db_player
     assert db_game.players == [db_player]
+
+
+def test_exit_game_service(session: Session, seed_games, sample_player):
+
+    game = seed_games["games"][0]
+    player = sample_player  
+
+    player_dto = PlayerDTO(
+        name=player.name,
+        avatar=player.avatar,
+        birthday=player.birthday
+    )
+    
+    owner_id = game.owner_id
+
+    GameService(session).join(
+        game_id=game.id,
+        player_dto=player_dto
+    )
+    
+    session.commit()
+    session.refresh(game)
+
+    GameService(session).exit_game_service(game.id, player.id)
+
+    db_game = session.query(Game).filter_by(id=game.id).first()
+    db_player: Player | None = session.query(Player).filter_by(id=player.id).first()
+
+    assert db_game is not None
+    assert db_player is None
+    assert db_game.num_players == 1
+    assert db_game.owner_id == owner_id
+   

@@ -176,13 +176,17 @@ class PlayService:
         for card_id in cards_id:
             card = self._card_service.get_card(card_id)
             card = self._player_service.discard_card(player_id, card)
-            if card.name != "Early Train to Paddington":
+            if card.name != "Early Train to Paddington" and card not in player.cards:
                 self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
             else:
                 self.early_train_to_paddington(game, player)
-
+        
+    
         player.turn_status = TurnStatus.DRAWING
 
+        if len(player.cards) == 6:
+            self.end_turn(game.id, player.id)
+            
         self._db.add(player)
         self._db.flush()
         self._db.commit()
@@ -533,9 +537,8 @@ class PlayService:
             raise DeckNotFoundError(f"Game {game_id} does not have a discard deck")
         
         sorted_cards = sorted(discard_deck.cards, key=lambda c: c.order, reverse=True)
-        top_five_cards = sorted_cards[:6]
-        if top_five_cards:
-            top_five_cards.pop(0)
+        top_five_cards = sorted_cards[:5]
+        
         
         return top_five_cards
     
@@ -628,6 +631,9 @@ class PlayService:
         if rep_deck.number_of_cards >= 6:
             for _ in range(6):
                 card = max(rep_deck.cards, key=lambda c: c.order)
+                if card.name == "Early Train to Paddington":
+                    CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
+                    CardService(self._db).relate_card_player(player.id, card.id, commit=True)
                 CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
                 self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
                 

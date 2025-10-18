@@ -14,7 +14,7 @@ from App.games.enums import GameStatus
 from App.players.dtos import PlayerDTO
 from App.players.enums import PlayerRole, TurnStatus
 from App.players.services import PlayerService
-from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame
+from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame, PlayerNotFoundError
 from App.players.utils import sort_players
 from App.secret.enums import SecretType
 from App.secret.services import create_and_draw_secrets
@@ -166,3 +166,21 @@ class GameService:
         
         return b
 
+    def exit_game_service(self, game_id: int, player_id: int) -> None:
+
+        db_game: Game | None = self._db.query(Game).filter(Game.id == game_id).first()
+        if not db_game:
+            raise GameNotFoundError(f"Game with id: {game_id} not found.")
+
+        player_to_remove: Player | None = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player_to_remove:
+            raise PlayerNotFoundError(f"Player with id: {player_id} not found in the game.")
+        
+        db_game.players.remove(player_to_remove)
+        db_game.num_players -= 1
+
+        self._db.delete(player_to_remove)
+        self._db.add(db_game)
+        self._db.flush()
+        self._db.commit()
+        self._db.refresh(db_game)

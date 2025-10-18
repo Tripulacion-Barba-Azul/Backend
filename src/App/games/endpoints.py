@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 
-from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
+from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
     db_game_2_game_info,
@@ -20,6 +20,7 @@ from App.exceptions import (
     GameAlreadyStartedError,
     NotEnoughPlayers,
     NotTheOwnerOfTheGame,
+    PlayerNotFoundError,
 )
 
 games_router = APIRouter()
@@ -129,3 +130,31 @@ async def start_game(
         )
     
     return db_game_2_game_info(db_game)
+
+@games_router.post(path="/{game_id}/exit", status_code=status.HTTP_200_OK)
+async def exit_game(
+    game_id: int,
+    player_id: int,
+    db=Depends(get_db)
+) -> None:
+    
+    try:
+        GameService(db).exit_game_service(game_id, player_id)
+
+        await manager.broadcast(
+            game_id,
+            NotifierPlayerExit(payload = PlayerExitInfo(playerId=player_id)).model_dump()
+        )
+
+    except GameNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+    return {"detail": "Player has exited the game"}
