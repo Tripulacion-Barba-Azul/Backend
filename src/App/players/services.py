@@ -57,12 +57,13 @@ class PlayerService:
         in_social_disgrace = all(secret.revealed for secret in player.secrets)
         
         if player.role == PlayerRole.ACCOMPLICE:
-            accomplice_secret = next(secret for secret in secrets if secret.type == SecretType.ACCOMPLICE)
-            in_social_disgrace = accomplice_secret.revealed
-
+            accomplice_secret = next((secret for secret in secrets if secret.type == SecretType.ACCOMPLICE), None)
+            in_social_disgrace = accomplice_secret.revealed if accomplice_secret else True
+      
         player.in_social_disgrace = in_social_disgrace
         self._db.flush()
         self._db.commit()
 
         return in_social_disgrace
+    
     

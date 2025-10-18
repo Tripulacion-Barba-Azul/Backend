@@ -2,7 +2,7 @@
 from pydantic import BaseModel
 
 from App.card.schemas import CardGameInfo, CardPublicInfo
-from App.players.schemas import PlayerGameInfo
+from App.players.schemas import CardsPlayedInfo, PlayerGameInfo
 from App.card.schemas import CardGameInfo
     
 class PlayCardInfo(BaseModel):
@@ -130,3 +130,12 @@ class PayloadRevealSecretForce(BaseModel):
 class NotifierRevealSecretForce(BaseModel):
     event: str = "notifierRevealSecretForce"
     payload: PayloadRevealSecretForce
+
+
+class PayloadDiscardEvent(BaseModel):
+    playerId: int
+    cards: list[CardPublicInfo]
+
+class DiscardEventInfo(BaseModel):
+    event: str = "discardEvent"
+    payload: PayloadDiscardEvent

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from App.card.utils import db_card_2_card_info
 from App.exceptions import (
     GameNotFoundError,
+    InSocialDisgraceException,
     InvalididDetectiveSet,
     NotCardInHand,
     NotPlayersTurnError,
@@ -53,7 +54,7 @@ from App.play.services import PlayService
 from App.players.enums import TurnAction
 from App.players.models import Player
 
-from App.players.utils import db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
+from App.players.utils import db_player_2_discarded_cards_info, db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
 
 
 from App.websockets import manager
@@ -230,7 +231,7 @@ async def discard_cards(
         )
 
     try:
-        PlayService(db).discard(game, turn_info.playerId, turn_info.cards)
+        discarded_cards = PlayService(db).discard(game, turn_info.playerId, turn_info.cards)
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
@@ -242,6 +243,14 @@ async def discard_cards(
                 player_id=player.id,
                 message=playerPrivateInfo.model_dump()
             )
+        
+        discardEventinfo = db_player_2_discarded_cards_info(
+            player_id=turn_info.playerId,
+            discarded_cards=discarded_cards
+        )
+        await manager.broadcast_except(game.id,turn_info.playerId,discardEventinfo.model_dump())
+
+        
         if game.status == GameStatus.FINISHED:
             gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
             await manager.broadcast(game.id, gameEndInfo.model_dump())
@@ -257,6 +266,11 @@ async def discard_cards(
             detail=f"It's not the turn of player {turn_info.playerId}",
         )
     except ObligatoryDiscardError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except InSocialDisgraceException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -301,7 +315,7 @@ async def draw_card(
         try:
             PlayService(db).draw_card_from_deck(game_id, player_id)
 
-            if len(player.cards) == 6:
+            if player.in_social_disgrace or len(player.cards) == 6:
                 PlayService(db).end_turn(game_id, player_id)
 
             gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
@@ -350,7 +364,7 @@ async def draw_card(
             
             PlayService(db).draw_card_from_draft(game_id, player_id, order)
 
-            if len(player.cards) == 6:
+            if player.in_social_disgrace or len(player.cards) == 6:
                     PlayService(db).end_turn(game_id, player_id)
                 
             gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
@@ -453,7 +467,7 @@ async def endpoint_reveal_secret(
     ):
 
     game = GameService(db).get_by_id(game_id)
-  
+
   
     if not game:
         raise HTTPException(
@@ -466,7 +480,7 @@ async def endpoint_reveal_secret(
     secret_id = action.secretId
     revealed_player_id = action.revealedPlayerId
 
-    if not isPlayerInGame:  
+    if not isPlayerInGame:
             raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Player {player_id} not found in game {game_id}",
@@ -474,7 +488,7 @@ async def endpoint_reveal_secret(
     
     isPlayerInGame = GameService(db).player_in_game(game_id, revealed_player_id)
 
-    if not isPlayerInGame:  
+    if not isPlayerInGame:
             raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Player {revealed_player_id} not found in game {game_id}",
