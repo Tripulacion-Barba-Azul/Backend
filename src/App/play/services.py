@@ -198,6 +198,8 @@ class PlayService:
         
     
         player.turn_status = TurnStatus.DRAWING
+        if len(player.cards) == 6:
+            self.end_turn(game.id,player.id)
 
         if len(player.cards) == 6:
             self.end_turn(game.id, player.id)
