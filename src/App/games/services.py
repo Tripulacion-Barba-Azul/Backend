@@ -30,6 +30,16 @@ class GameService:
         query = self._db.query(Game).filter(Game.status==GameStatus.WAITING)
         return query.all()
     
+    def get_active_games_by_ids(self, game_ids: list[int]) -> list[Game]:
+        if not game_ids:
+            return []
+        return (
+            self._db.query(Game)
+            .filter(Game.id.in_(game_ids))
+            .filter(Game.status == GameStatus.IN_PROGRESS)
+            .all()
+        )
+    
     def get_by_id(self, id: int) -> Game | None:
         return self._db.query(Game).filter(Game.id == id).first()
 

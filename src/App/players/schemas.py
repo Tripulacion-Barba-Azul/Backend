@@ -27,6 +27,9 @@ class PlayerInfo(BaseModel):
     playerName: str
     birthDate: date
 
+class PlayerPlaysIn(BaseModel):
+    games: list[dict[str, int]]
+
 class PlayerGameInfo(BaseModel):
     id: int
     name: str
