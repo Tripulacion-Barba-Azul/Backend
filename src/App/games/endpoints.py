@@ -33,17 +33,20 @@ games_router = APIRouter()
 @games_router.get(path="", status_code=status.HTTP_200_OK)
 async def get_games(
     activeGames: bool | None = None,
-    playerPlaysIn: Annotated[str | None, Cookie()] = None,
+    playersGames: Annotated[str | None, Cookie()] = None,
     db=Depends(get_db)) -> list[GameLobbyInfo]:
-
-    if activeGames and playerPlaysIn:
+    print("GET GAMES 2")
+    if activeGames and playersGames:
         try:
-            player_games = json.loads(playerPlaysIn)
-            game_ids = [entry["gameId"] for entry in player_games]
+            print("GET ACTIVE GAMES")
+            player_games = json.loads(playersGames)
+            game_ids = [entry["gameId"] for entry in player_games["games"]]
+            print(game_ids)
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid cookie format")
 
         games = GameService(db).get_active_games_by_ids(game_ids)
+        print([game.name for game in games])
     elif activeGames:
         games = []
     else:
@@ -107,10 +110,10 @@ async def create_game(
             game_dto=game_info.to_dto()
         )
         if playersGames:
-            players_game = PlayerPlaysIn(**json.loads(playersGames))
+            parsed = json.loads(playersGames)
+            players_game = PlayerPlaysIn(games=parsed.get("games", []))
         else:
             players_game = PlayerPlaysIn(games=[])
-        
         players_game.games.append({
             "gameId": created_game.id, 
             "playerId": created_game.owner_id
@@ -118,7 +121,11 @@ async def create_game(
         response.set_cookie(
         key="playersGames",
         value=json.dumps(players_game.model_dump()),
-    )
+        secure=False,
+        httponly=False,
+        samesite="lax",
+        path="/"
+        )
 
     except Exception as e:
         raise HTTPException(
@@ -152,7 +159,12 @@ async def join_game(
         response.set_cookie(
         key="playersGames",
         value=json.dumps(players_game.model_dump()),
+        secure=False,
+        httponly=False,
+        samesite="lax",
+        path="/"
         )
+
         await manager.broadcast(joined_game.id,{"event": "player_joined", "player": player_info.playerName})
         
     except GameNotFoundError as e:
