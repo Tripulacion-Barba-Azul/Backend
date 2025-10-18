@@ -258,13 +258,13 @@ class PlayService:
         deck = game.reposition_deck
         if len(deck.cards) == 0:
             game.status = GameStatus.FINISHED
-            game.winner = Winners.MURDERER
+            game.winners = Winners.MURDERER
 
         murderer = next(player for player in game.players if player.role == PlayerRole.MURDERER)
         murderer_secret = next((secret for secret in murderer.secrets if secret.type == SecretType.MURDERER), None)
         if not murderer_secret or murderer_secret.revealed:
             game.status = GameStatus.FINISHED
-            game.winner = Winners.DETECTIVE
+            game.winners = Winners.DETECTIVE
 
         self._db.add(game)
         self._db.flush()
