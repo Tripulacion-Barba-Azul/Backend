@@ -78,7 +78,8 @@ class PlayService:
             raise NotPlayableCard("You tried to play a card that is not playable.")
         
         self._card_service.unrelate_card_player(card_id, player_id)
-        self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+        if card.name != "Early Train to Paddington" and card.name != "Delay the Muderer's Escape":
+            self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
         event = self._card_service.select_event_type(game, player, card)
         if event in [TurnAction.NO_ACTION, TurnAction.NO_EFFECT]:
             player.turn_status = TurnStatus.DISCARDING_OPT
@@ -175,7 +176,10 @@ class PlayService:
         for card_id in cards_id:
             card = self._card_service.get_card(card_id)
             card = self._player_service.discard_card(player_id, card)
-            self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+            if card.name != "Early Train to Paddington":
+                self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+            else:
+                self.early_train_to_paddington(game, player)
 
         player.turn_status = TurnStatus.DRAWING
 
@@ -610,5 +614,33 @@ class PlayService:
         self._db.commit()
 
         return event, current_turn_player, secret, player
+    
+    def early_train_to_paddington(self, game: Game, player: Player):
+        if player.turn_status != TurnStatus.TAKING_ACTION and player.turn_status != TurnStatus.DISCARDING_OPT and player.turn_status != TurnStatus.DISCARDING:
+            raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
+        if player.turn_status == TurnStatus.TAKING_ACTION:
+            if player.turn_action != TurnAction.EARLY_TRAIN_TO_PADDINGTON:
+                raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
         
+        discard_deck = game.discard_deck
+        rep_deck = game.reposition_deck
+        
+        if rep_deck.number_of_cards >= 6:
+            for _ in range(6):
+                card = max(rep_deck.cards, key=lambda c: c.order)
+                CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
+                self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
+                
+        else:
+            while rep_deck.number_of_cards > 0:
+                card = max(rep_deck.cards, key=lambda c: c.order)
+                CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
+                self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
+            
+        
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.flush()
+        self._db.commit()
 
