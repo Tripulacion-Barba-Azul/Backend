@@ -9,6 +9,7 @@ from App.games.services import GameService
 from App.play.services import PlayService
 from App.players.dtos import PlayerDTO
 from App.players.models import Player
+from App.players.enums import PlayerRole
 
 
 @pytest.fixture(name="sample_player")
@@ -48,7 +49,7 @@ def seed_started_game(session: Session):
             player = PlayerDTO(
                 name=f"Player {i}",
                 avatar=1,
-                birthday=date(1990+i,(7+i) % 13,13+i) # Player 2 always start,
+                birthday=date(1990+i,(7+i) if 7+i <= 12 else 1,13+i) # Player 2 always start,
             )
             GameService(session).join(game_id=game.id, player_dto=player)
 
@@ -114,3 +115,21 @@ def seed_game_player2_reveal(session: Session, seed_started_game):
     new_set = PlayService(session).play_set(game, player.id, card_ids)
 
     return game, player
+
+@pytest.fixture(name="seed_finished_game_murderer_wins")
+def seed_finished_game_murderer_wins(session: Session, seed_started_game):
+    game = seed_started_game(6)
+
+    murderer = next(player for player in game.players if player.role == PlayerRole.MURDERER)
+    accomplice = next(player for player in game.players if player.role == PlayerRole.ACCOMPLICE)
+
+    game.reposition_deck.cards = []
+    game.reposition_deck.number_of_cards = 0
+
+    session.commit()
+    session.refresh(game.reposition_deck)
+
+    PlayService(session).end_game(game.id)
+    session.refresh(game)
+
+    return game, murderer, accomplice

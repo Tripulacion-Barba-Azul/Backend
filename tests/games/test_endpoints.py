@@ -44,6 +44,40 @@ def test_get_game_by_id_not_found(client: TestClient, seed_games):
     assert response.status_code == 404
     assert response.json() == {"detail": f"Game {id} does not exist"}
 
+
+
+def test_get_in_progress_game_by_id(client: TestClient, seed_started_game):
+    game = seed_started_game(3)
+
+    assert game.status == GameStatus.IN_PROGRESS
+    with client.websocket_connect(f"/ws/{game.id}/{1}") as websocket:
+        response = client.get(f"/games/{game.id}")
+        assert response.status_code == 200
+
+        result = websocket.receive_json()
+        assert result["event"] == "publicUpdate"
+        result = websocket.receive_json()
+        assert result["event"] == "privateUpdate"
+
+def test_get_finished_game_by_id(client: TestClient, seed_finished_game_murderer_wins):
+    game, murderer, accomplice = seed_finished_game_murderer_wins
+
+    assert game.status == GameStatus.FINISHED
+    with client.websocket_connect(f"/ws/{game.id}/{1}") as websocket:
+        response = client.get(f"/games/{game.id}")
+        assert response.status_code == 200
+        
+        result = websocket.receive_json()
+        assert result["event"] == "publicUpdate"
+        result = websocket.receive_json()
+        assert result["event"] == "privateUpdate"
+        result = websocket.receive_json()
+        assert result["event"] == "gameEnded"
+        payload = result["payload"]
+        winners_names = [winner["name"] for winner in payload]
+        assert murderer.name in winners_names
+        assert accomplice.name in winners_names
+
 def test_create_game_success(client: TestClient):
     
     player_info = {
@@ -293,3 +327,6 @@ def test_start_game_not_found(client: TestClient):
     detail = response.json()["detail"]
     assert response.status_code == 404
     assert detail == "Se lanza cuando no se encuentra un juego con el id especificado."
+
+
+
