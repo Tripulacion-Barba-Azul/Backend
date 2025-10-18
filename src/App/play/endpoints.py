@@ -150,12 +150,19 @@ async def play_card(
                     )
             elif player.turn_action == TurnAction.EARLY_TRAIN_TO_PADDINGTON:
                 PlayService(db).early_train_to_paddington(game, player)
+                gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
                 await manager.broadcast(game.id,gamePublictInfo.model_dump())
+                playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
                 await manager.send_to_player(
-                game_id=game.id,
-                player_id=player.id,
-                message=playerPrivateInfo.model_dump()
-            )
+                    game_id=game.id,
+                    player_id=player.id,
+                    message=playerPrivateInfo.model_dump()
+                    )
+                game = PlayService(db).end_game(game_id)
+                if game.status == GameStatus.FINISHED:
+                    gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
+                    await manager.broadcast(game.id, gameEndInfo.model_dump())
+                    return {"message": "The game has ended"}
             else:
                 await manager.send_to_player(
                     game_id=game.id,
