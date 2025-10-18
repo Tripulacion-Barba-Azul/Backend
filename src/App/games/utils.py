@@ -1,5 +1,6 @@
 
 from App.card.utils import db_card_2_card_info
+from App.games.enums import Winners
 from App.games.models import Game
 
 from App.games.schemas import GameInfo, GameInfoPlayer, GameLobbyInfo, GamePublicInfo, GameWaitingInfo
@@ -59,8 +60,14 @@ def db_game_2_game_public_info(db_game: Game) -> GamePublicInfo:
         players=[db_player_2_player_public_info(player) for player in db_game.players]
     )
     
-def db_game_2_game_detectives_lose(db_game: Game) -> list[PlayerWinInfo]:
-    return [PlayerWinInfo(
+def db_game_2_game_end_info(db_game: Game) -> list[PlayerWinInfo]:
+    if db_game.winners == Winners.DETECTIVE:
+        return [PlayerWinInfo(
+                name=player.name,
+                role=player.role.value
+            ) for player in db_game.players if player.role == PlayerRole.DETECTIVE]
+    else:
+        return [PlayerWinInfo(
                 name=player.name,
                 role=player.role.value
             ) for player in db_game.players if player.role != PlayerRole.DETECTIVE]

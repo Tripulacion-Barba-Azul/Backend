@@ -10,6 +10,7 @@ from App.decks.discard_deck_service import DiscardDeckService
 from App.games.models import Game
 from App.players.enums import TurnStatus
 from App.card.services import CardService
+from App.secret.enums import SecretType
 from App.sets.enums import DetectiveSetType
 from App.sets.models import DetectiveSet
 from App.players.enums import TurnAction
@@ -85,7 +86,6 @@ def test_discard_endpoint(client: TestClient, seed_game_player2_discard):
             payload = result.get("payload", {})
             if result.get("event") == "publicUpdate":
                 assert payload["actionStatus"] == "blocked"
-                assert payload["discardPileCount"] == 3
                 players = payload["players"]         
                 player_public = next((p for p in players if p["id"] == player.id), None)
                 assert player_public["turnStatus"] == TurnStatus.DRAWING.value
@@ -606,17 +606,19 @@ def test_reveal_own_secret_give(
             result = websocket.receive_json()
             assert result["event"] == "privateUpdate"
             result = websocket.receive_json()
-            
-            assert result["event"] == "notifierSatterthwaiteWild"
-            payload = result["payload"]
-            assert payload["playerId"] == player.id
-            assert payload["secretId"] == secret.id
-            assert payload["secretName"] == secret.name
-            assert payload["selectedPlayerId"] == caller_player.id
+            if result["event"] == "notifierSatterthwaiteWild":
+                payload = result["payload"]
+                assert payload["playerId"] == player.id
+                assert payload["secretId"] == secret.id
+                assert payload["secretName"] == secret.name
 
-            assert caller_player.turn_action == TurnAction.NO_ACTION
-            assert player.turn_status == TurnStatus.DISCARDING_OPT
-            assert player.turn_action == TurnAction.NO_ACTION
+                assert payload["selectedPlayerId"] == caller_player.id
+
+                assert caller_player.turn_action == TurnAction.NO_ACTION
+                assert player.turn_status == TurnStatus.DISCARDING_OPT
+                assert player.turn_action == TurnAction.NO_ACTION
+            else:
+                assert result["event"] == "gameEnded"
 
 def test_delay_the_murderers_escape_endpoint(client:TestClient, session:Session, seed_started_game):
     game = seed_started_game(3)

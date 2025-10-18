@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, relationship, mapped_column
 from App.decks.discard_deck_model import DiscardDeck
 from App.decks.draft_deck_model import DraftDeck
 from App.models.db import Base
-from App.games.enums import ActionStatus, GameStatus
+from App.games.enums import ActionStatus, GameStatus, Winners
 from App.players.models import Player
 from App.decks.reposition_deck_model import RepositionDeck
 
@@ -45,14 +45,16 @@ class Game(Base):
     max_players: Mapped[int] = mapped_column(Integer, nullable=False)
     num_players: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     turn_number: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    action_status: Mapped[ActionStatus] = mapped_column(SqlEnum(ActionStatus),
-                                                        default=ActionStatus.BLOCKED,
-                                                        nullable=False)
     owner: Mapped[Player] = relationship(Player, foreign_keys=[owner_id])
     players: Mapped[list[Player]] = relationship(
         Player,
         secondary="game_players_association",
         backref=None
+    )
+    winners: Mapped[Winners | None] = mapped_column(
+        SqlEnum(Winners),
+        default=None,
+        nullable=True
     )
 
     reposition_deck: Mapped[RepositionDeck] = relationship(

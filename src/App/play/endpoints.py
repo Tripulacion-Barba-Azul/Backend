@@ -19,7 +19,7 @@ from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
 from App.games.services import GameService
 
-from App.games.utils import db_game_2_game_detectives_lose, db_game_2_game_public_info
+from App.games.utils import db_game_2_game_end_info, db_game_2_game_public_info
 from App.play.schemas import (
     AndThenThereWasOneMoreInfo, 
     DelayTheMurderInfo, 
@@ -159,9 +159,9 @@ async def play_card(
                     player_id=player.id,
                     message=playerPrivateInfo.model_dump()
                     )
-                game = PlayService(db).end_game(game_id)
+                
                 if game.status == GameStatus.FINISHED:
-                    gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
+                    gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                     await manager.broadcast(game.id, gameEndInfo.model_dump())
                     return {"message": "The game has ended"}
             else:
@@ -252,6 +252,10 @@ async def discard_cards(
         await manager.broadcast_except(game.id,turn_info.playerId,discardEventinfo.model_dump())
 
         
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
     except PlayerNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -327,7 +331,7 @@ async def draw_card(
 
             game = PlayService(db).end_game(game_id)
             if game.status == GameStatus.FINISHED:
-                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
+                gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                 await manager.broadcast(game.id, gameEndInfo.model_dump())
                 return {"message": "The game has ended"}
         
@@ -376,7 +380,7 @@ async def draw_card(
 
             game = PlayService(db).end_game(game_id)
             if game.status == GameStatus.FINISHED:
-                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
+                gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                 await manager.broadcast(game.id, gameEndInfo.model_dump())
                 return {"message": "The game has ended"}
             
@@ -506,6 +510,11 @@ async def endpoint_reveal_secret(
             )
         )
         await manager.broadcast(game.id, notifierRevealSecret.model_dump())
+        game = PlayService(db).end_game(game_id)
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
 
         return {"message": "Secret revealed successfully"}
 
@@ -826,7 +835,7 @@ async def reveal_own_secret(
                 player_id=p.id,
                 message=playerPrivateInfo.model_dump()
             )
-
+        
         if event == TurnAction.REVEAL_OWN_SECRET:
             eventInfo = NotifierRevealSecretForce(
                 payload=db_player_2_reveal_secret_force(player,secret,selected_player)
@@ -837,6 +846,11 @@ async def reveal_own_secret(
                 payload=db_player_2_satterthquin_info(player,secret,selected_player)
             )
             await manager.broadcast(game.id, eventInfo.model_dump())
+        game = PlayService(db).end_game(game_id)
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
 
     except PlayerNotFoundError as e:
         raise HTTPException(

@@ -6,7 +6,7 @@ from App.games.enums import GameStatus
 from App.games.schemas import GameCreate, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
-    db_game_2_game_detectives_lose,
+    db_game_2_game_end_info,
     db_game_2_game_info,
     db_game_2_game_info_player,
     db_game_2_game_lobby_info,
@@ -69,7 +69,7 @@ async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
                 player_id=p.id,
                 message=playerPrivateInfo.model_dump()
             )
-            gameEndInfo = GameEndInfo(payload=db_game_2_game_detectives_lose(game))
+            gameEndInfo = GameEndInfo(payload=db_game_2_game_end_info(game))
             await manager.broadcast(game.id, gameEndInfo.model_dump())
             
 

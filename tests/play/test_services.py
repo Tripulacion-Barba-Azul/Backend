@@ -2,11 +2,11 @@ from itertools import count
 from sqlalchemy.orm import Session
 
 from App.decks.discard_deck_service import DiscardDeckService
-from App.games.enums import GameStatus
+from App.games.enums import GameStatus, Winners
 from App.games.models import Game
 from App.games.services import GameService
 from App.play.services import PlayService
-from App.players.enums import TurnStatus
+from App.players.enums import PlayerRole, TurnStatus
 from App.card.services import CardService
 from App.players.enums import TurnAction
 from App.sets.enums import DetectiveSetType
@@ -16,6 +16,7 @@ from App.sets.models import DetectiveSet
 def test_discard_card_service(session: Session, seed_game_player2_discard):
     game: Game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
+    ettp_in_player = any(card.name == "Early Train to Paddington" for card in player.cards)
 
     cards_id = [card.id for card in player.cards]
 
@@ -23,8 +24,8 @@ def test_discard_card_service(session: Session, seed_game_player2_discard):
 
     assert len(player.cards) == 0
     assert player.turn_status == TurnStatus.DRAWING
-    if any(card.name == "Early Train to Paddington" for card in player.cards):
-        assert len(game.discard_deck.cards) == [12,17]
+    if ettp_in_player:
+        assert len(game.discard_deck.cards) in [12,17]
     else:
         assert len(game.discard_deck.cards) == 7
     
@@ -37,6 +38,8 @@ def test_discard_card_service_with_early_train_to_paddington(session: Session, s
         player.cards[0] = card1
         cards_id = [card.id for card in player.cards]
 
+    count_ettp = sum(1 for card in player.cards if card.name == "Early Train to Paddington")
+
     session.flush()
     session.commit()
 
@@ -44,6 +47,7 @@ def test_discard_card_service_with_early_train_to_paddington(session: Session, s
 
     assert len(player.cards) == 0
     assert player.turn_status == TurnStatus.DRAWING
+    assert count_ettp in [1,2]
     assert len(game.discard_deck.cards) in [12,17]
 
 def test_draw_card_from_deck_success(session: Session, seed_game_player2_draw):
@@ -116,8 +120,8 @@ def test_end_game_not_finished(session: Session, seed_game_player2_discard):
 
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.IN_PROGRESS
-    
-def test_end_game_(session: Session, seed_game_player2_discard):
+
+def test_end_game_win_murderer(session: Session, seed_game_player2_discard):
     game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
     card = player.cards[0]
@@ -138,6 +142,19 @@ def test_end_game_(session: Session, seed_game_player2_discard):
 
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.FINISHED
+    assert game.winners == Winners.MURDERER
+    
+def test_end_game_win_detectives(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    murderer = next(player for player in game.players if player.role == PlayerRole.MURDERER)
+
+    for secret in murderer.secrets:
+        secret.revealed = True
+
+    PlayService(session).end_game(game.id)
+    assert game.status == GameStatus.FINISHED
+    assert game.winners == Winners.DETECTIVE
 
 def test_play_set(session: Session, seed_started_game):
 
