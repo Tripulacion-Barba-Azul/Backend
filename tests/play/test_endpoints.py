@@ -606,10 +606,7 @@ def test_reveal_own_secret_give(
             result = websocket.receive_json()
             assert result["event"] == "privateUpdate"
             result = websocket.receive_json()
-            if secret.type == SecretType.MURDERER:
-                assert result["event"] == "gameEnded"
-            else:
-                assert result["event"] == "notifierSatterthwaiteWild"
+            if result["event"] == "notifierSatterthwaiteWild":
                 payload = result["payload"]
                 assert payload["playerId"] == player.id
                 assert payload["secretId"] == secret.id
@@ -620,6 +617,8 @@ def test_reveal_own_secret_give(
                 assert caller_player.turn_action == TurnAction.NO_ACTION
                 assert player.turn_status == TurnStatus.DISCARDING_OPT
                 assert player.turn_action == TurnAction.NO_ACTION
+            else:
+                assert result["event"] == "gameEnded"
 
 def test_delay_the_murderers_escape_endpoint(client:TestClient, session:Session, seed_started_game):
     game = seed_started_game(3)

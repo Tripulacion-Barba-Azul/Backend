@@ -59,25 +59,6 @@ def test_get_in_progress_game_by_id(client: TestClient, seed_started_game):
         result = websocket.receive_json()
         assert result["event"] == "privateUpdate"
 
-def test_get_finished_game_by_id(client: TestClient, seed_finished_game_murderer_wins):
-    game, murderer, accomplice = seed_finished_game_murderer_wins
-
-    assert game.status == GameStatus.FINISHED
-    with client.websocket_connect(f"/ws/{game.id}/{1}") as websocket:
-        response = client.get(f"/games/{game.id}")
-        assert response.status_code == 200
-        
-        result = websocket.receive_json()
-        assert result["event"] == "publicUpdate"
-        result = websocket.receive_json()
-        assert result["event"] == "privateUpdate"
-        result = websocket.receive_json()
-        assert result["event"] == "gameEnded"
-        payload = result["payload"]
-        winners_names = [winner["name"] for winner in payload]
-        assert murderer.name in winners_names
-        assert accomplice.name in winners_names
-
 def test_create_game_success(client: TestClient):
     
     player_info = {

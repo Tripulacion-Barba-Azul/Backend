@@ -3,7 +3,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from App.games.enums import GameStatus
-from App.games.schemas import GameCreate, GameEndInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
+from App.games.schemas import GameCreate, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
     db_game_2_game_end_info,
