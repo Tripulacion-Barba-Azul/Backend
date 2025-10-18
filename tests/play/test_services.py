@@ -38,6 +38,8 @@ def test_discard_card_service_with_early_train_to_paddington(session: Session, s
         player.cards[0] = card1
         cards_id = [card.id for card in player.cards]
 
+    count_ettp = sum(1 for card in player.cards if card.name == "Early Train to Paddington")
+
     session.flush()
     session.commit()
 
@@ -45,6 +47,7 @@ def test_discard_card_service_with_early_train_to_paddington(session: Session, s
 
     assert len(player.cards) == 0
     assert player.turn_status == TurnStatus.DRAWING
+    assert count_ettp in [1,2]
     assert len(game.discard_deck.cards) in [12,17]
 
 def test_draw_card_from_deck_success(session: Session, seed_game_player2_draw):

@@ -820,12 +820,6 @@ async def reveal_own_secret(
                 player_id=p.id,
                 message=playerPrivateInfo.model_dump()
             )
-
-        game = PlayService(db).end_game(game_id)
-        if game.status == GameStatus.FINISHED:
-            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
-            await manager.broadcast(game.id, gameEndInfo.model_dump())
-            return {"message": "The game has ended"}
         
         if event == TurnAction.REVEAL_OWN_SECRET:
             eventInfo = NotifierRevealSecretForce(
@@ -837,6 +831,11 @@ async def reveal_own_secret(
                 payload=db_player_2_satterthquin_info(player,secret,selected_player)
             )
             await manager.broadcast(game.id, eventInfo.model_dump())
+        game = PlayService(db).end_game(game_id)
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
 
     except PlayerNotFoundError as e:
         raise HTTPException(
