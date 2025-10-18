@@ -20,10 +20,11 @@ from App.exceptions import (
     SecretNotRevealed)
 from App.games.models import Game
 from App.games.services import GameService
-from App.games.enums import GameStatus
+from App.games.enums import GameStatus, Winners
+from App.secret.enums import SecretType
 from App.secret.services import get_secret, relate_secret_player, reveal_secret, unrelate_secret_player
 from App.players.models import Player
-from App.players.enums import TurnAction, TurnStatus
+from App.players.enums import PlayerRole, TurnAction, TurnStatus
 from App.players.services import PlayerService
 from App.sets.services import DetectiveSetService
 from App.card.models import Card, Event
@@ -257,7 +258,14 @@ class PlayService:
         deck = game.reposition_deck
         if len(deck.cards) == 0:
             game.status = GameStatus.FINISHED
-            
+            game.winner = Winners.MURDERER
+
+        murderer = next(player for player in game.players if player.role == PlayerRole.MURDERER)
+        murderer_secret = next((secret for secret in murderer.secrets if secret.type == SecretType.MURDERER), None)
+        if not murderer_secret or murderer_secret.revealed:
+            game.status = GameStatus.FINISHED
+            game.winner = Winners.DETECTIVE
+
         self._db.add(game)
         self._db.flush()
         self._db.commit()
