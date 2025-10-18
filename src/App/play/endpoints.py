@@ -486,11 +486,6 @@ async def endpoint_reveal_secret(
         gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublicInfo.model_dump())
 
-        game = PlayService(db).end_game(game_id)
-        if game.status == GameStatus.FINISHED:
-            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
-            await manager.broadcast(game.id, gameEndInfo.model_dump())
-            return {"message": "The game has ended"}
 
         notifierRevealSecret = NotifierRevealSecret(
             payload=SecretRevealedInfo(
@@ -500,6 +495,11 @@ async def endpoint_reveal_secret(
             )
         )
         await manager.broadcast(game.id, notifierRevealSecret.model_dump())
+        game = PlayService(db).end_game(game_id)
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
 
         return {"message": "Secret revealed successfully"}
 
