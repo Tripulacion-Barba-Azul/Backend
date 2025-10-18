@@ -176,9 +176,9 @@ class PlayService:
         for card_id in cards_id:
             card = self._card_service.get_card(card_id)
             card = self._player_service.discard_card(player_id, card)
-            if card.name != "Early Train to Paddington":
+            if card.name != "Early Train to Paddington" and card.name != "Delay the Muderer's Escape":
                 self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
-            else:
+            elif card.name == "Early Train to Paddington":
                 self.early_train_to_paddington(game, player)
 
         player.turn_status = TurnStatus.DRAWING
