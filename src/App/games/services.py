@@ -147,7 +147,8 @@ class GameService:
             if p.turn_order == player_order_number:
                 player = p
                 p.turn_status = TurnStatus.PLAYING
-                
+                if p.in_social_disgrace:
+                    p.turn_status = TurnStatus.DISCARDING
                 self._db.add(p)
                 self._db.flush()
                 self._db.commit()

@@ -40,6 +40,7 @@ class PlayerPublicInfo(BaseModel):
     id: int
     name: str
     avatar: int
+    socialDisgrace: bool
     turnOrder: int
     turnStatus: str
     cardCount: int

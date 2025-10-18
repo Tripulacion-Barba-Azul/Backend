@@ -1,9 +1,11 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 
-from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
+from App.games.schemas import GameCreate, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
+    db_game_2_game_detectives_lose,
     db_game_2_game_info,
     db_game_2_game_info_player,
     db_game_2_game_lobby_info,
@@ -22,6 +24,7 @@ from App.exceptions import (
     NotTheOwnerOfTheGame,
 )
 
+
 games_router = APIRouter()
 
 @games_router.get(path="", status_code=status.HTTP_200_OK)
@@ -38,6 +41,7 @@ async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Game {id} does not exist",
         )
+    
     return db_game_2_game_wtg_info(db_game)
     
 
