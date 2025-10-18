@@ -55,4 +55,7 @@ class SecretNotFoundError(Exception):
 class NotPlayableCard(Exception):
     """You tried to play a card that is not playable."""
 
+class InSocialDisgraceException(Exception):
+    """Player is in social disgrace. Cannot do that action normally."""
+
 

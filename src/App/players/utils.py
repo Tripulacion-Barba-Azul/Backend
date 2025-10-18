@@ -6,7 +6,7 @@ from App import players
 from App.card.utils import db_card_2_card_info, db_card_2_card_private_info
 from App.games.models import Game
 from App.models import db
-from App.play.schemas import CardsOffTheTableInfo, NotifierCardsOffTheTable, PayloadRevealSecretForce, PayloadSatterthwaiteWild
+from App.play.schemas import CardsOffTheTableInfo, DiscardEventInfo, NotifierCardsOffTheTable, PayloadDiscardEvent, PayloadRevealSecretForce, PayloadSatterthwaiteWild
 from App.players.enums import PlayerRole, TurnAction
 from App.players.models import Player
 from App.players.schemas import AllyInfo, CardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPrivateInfo, PlayerPublicInfo
@@ -63,6 +63,7 @@ def db_player_2_player_public_info(db_player: Player) -> PlayerPublicInfo:
         id=db_player.id,
         name=db_player.name,
         avatar=db_player.avatar,
+        socialDisgrace=db_player.in_social_disgrace,
         turnOrder=db_player.turn_order,
         turnStatus=db_player.turn_status.value,
         cardCount=len(db_player.cards),
@@ -139,6 +140,20 @@ def db_player_2_played_card_info(
             actionType=action_type.value
         )
     return CardsPlayedInfo(payload=payload)
+
+def db_player_2_discarded_cards_info(
+        player_id: int,
+        discarded_cards: list[Card]
+) -> DiscardEventInfo:
+    
+    payload = PayloadDiscardEvent(
+        playerId=player_id,
+        cards=[db_card_2_card_info(card) for card in discarded_cards]
+    )
+    return DiscardEventInfo(
+        payload=payload
+    )
+    
 
 def db_player_2_satterthquin_info(player: Player,
                                   secret: Secret,

@@ -4,6 +4,8 @@ from App.card.models import Card
 from App.players.dtos import PlayerDTO
 from App.players.models import Player
 from App.secret.models import Secret
+from App.players.enums import PlayerRole
+from App.secret.enums import SecretType
 
 class PlayerService:
 
@@ -45,5 +47,23 @@ class PlayerService:
         self._db.commit()
         self._db.refresh(player)
         return card
+    
+    def set_social_disgrace(self, player):
+        secrets = player.secrets
+        if not secrets:
+            in_social_disgrace = True
+            return in_social_disgrace
+        
+        in_social_disgrace = all(secret.revealed for secret in player.secrets)
+        
+        if player.role == PlayerRole.ACCOMPLICE:
+            accomplice_secret = next((secret for secret in secrets if secret.type == SecretType.ACCOMPLICE), None)
+            in_social_disgrace = accomplice_secret.revealed if accomplice_secret else True
+      
+        player.in_social_disgrace = in_social_disgrace
+        self._db.flush()
+        self._db.commit()
+
+        return in_social_disgrace
     
     

@@ -25,6 +25,7 @@ from App.exceptions import (
     NotTheOwnerOfTheGame,
 )
 
+
 games_router = APIRouter()
 
 @games_router.get(path="", status_code=status.HTTP_200_OK)
