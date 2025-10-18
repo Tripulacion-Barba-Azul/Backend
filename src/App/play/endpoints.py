@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from App.card.utils import db_card_2_card_info
 from App.exceptions import (
     GameNotFoundError,
+    InSocialDisgraceException,
     InvalididDetectiveSet,
     NotCardInHand,
     NotPlayersTurnError,
@@ -18,7 +19,7 @@ from App.games.enums import GameStatus
 from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
 from App.games.services import GameService
 
-from App.games.utils import db_game_2_game_detectives_lose, db_game_2_game_public_info
+from App.games.utils import db_game_2_game_end_info, db_game_2_game_public_info
 from App.play.schemas import (
     AndThenThereWasOneMoreInfo, 
     DelayTheMurderInfo, 
@@ -53,7 +54,7 @@ from App.play.services import PlayService
 from App.players.enums import TurnAction
 from App.players.models import Player
 
-from App.players.utils import db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
+from App.players.utils import db_player_2_discarded_cards_info, db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
 
 
 from App.websockets import manager
@@ -158,9 +159,9 @@ async def play_card(
                     player_id=player.id,
                     message=playerPrivateInfo.model_dump()
                     )
-                game = PlayService(db).end_game(game_id)
+                
                 if game.status == GameStatus.FINISHED:
-                    gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
+                    gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                     await manager.broadcast(game.id, gameEndInfo.model_dump())
                     return {"message": "The game has ended"}
             else:
@@ -231,7 +232,7 @@ async def discard_cards(
         )
 
     try:
-        PlayService(db).discard(game, turn_info.playerId, turn_info.cards)
+        discarded_cards = PlayService(db).discard(game, turn_info.playerId, turn_info.cards)
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
@@ -243,6 +244,18 @@ async def discard_cards(
                 player_id=player.id,
                 message=playerPrivateInfo.model_dump()
             )
+        
+        discardEventinfo = db_player_2_discarded_cards_info(
+            player_id=turn_info.playerId,
+            discarded_cards=discarded_cards
+        )
+        await manager.broadcast_except(game.id,turn_info.playerId,discardEventinfo.model_dump())
+
+        
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
     except PlayerNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -254,6 +267,11 @@ async def discard_cards(
             detail=f"It's not the turn of player {turn_info.playerId}",
         )
     except ObligatoryDiscardError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except InSocialDisgraceException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -298,7 +316,7 @@ async def draw_card(
         try:
             PlayService(db).draw_card_from_deck(game_id, player_id)
 
-            if len(player.cards) == 6:
+            if player.in_social_disgrace or len(player.cards) == 6:
                 PlayService(db).end_turn(game_id, player_id)
 
             gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
@@ -313,7 +331,7 @@ async def draw_card(
 
             game = PlayService(db).end_game(game_id)
             if game.status == GameStatus.FINISHED:
-                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
+                gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                 await manager.broadcast(game.id, gameEndInfo.model_dump())
                 return {"message": "The game has ended"}
         
@@ -347,7 +365,7 @@ async def draw_card(
             
             PlayService(db).draw_card_from_draft(game_id, player_id, order)
 
-            if len(player.cards) == 6:
+            if player.in_social_disgrace or len(player.cards) == 6:
                     PlayService(db).end_turn(game_id, player_id)
                 
             gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
@@ -362,7 +380,7 @@ async def draw_card(
 
             game = PlayService(db).end_game(game_id)
             if game.status == GameStatus.FINISHED:
-                gameEndInfo = GameEndInfo(payload= db_game_2_game_detectives_lose(game))
+                gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                 await manager.broadcast(game.id, gameEndInfo.model_dump())
                 return {"message": "The game has ended"}
             
@@ -450,7 +468,7 @@ async def endpoint_reveal_secret(
     ):
 
     game = GameService(db).get_by_id(game_id)
-  
+
   
     if not game:
         raise HTTPException(
@@ -463,7 +481,7 @@ async def endpoint_reveal_secret(
     secret_id = action.secretId
     revealed_player_id = action.revealedPlayerId
 
-    if not isPlayerInGame:  
+    if not isPlayerInGame:
             raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Player {player_id} not found in game {game_id}",
@@ -471,7 +489,7 @@ async def endpoint_reveal_secret(
     
     isPlayerInGame = GameService(db).player_in_game(game_id, revealed_player_id)
 
-    if not isPlayerInGame:  
+    if not isPlayerInGame:
             raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Player {revealed_player_id} not found in game {game_id}",
@@ -492,6 +510,11 @@ async def endpoint_reveal_secret(
             )
         )
         await manager.broadcast(game.id, notifierRevealSecret.model_dump())
+        game = PlayService(db).end_game(game_id)
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
 
         return {"message": "Secret revealed successfully"}
 
@@ -812,7 +835,7 @@ async def reveal_own_secret(
                 player_id=p.id,
                 message=playerPrivateInfo.model_dump()
             )
-
+        
         if event == TurnAction.REVEAL_OWN_SECRET:
             eventInfo = NotifierRevealSecretForce(
                 payload=db_player_2_reveal_secret_force(player,secret,selected_player)
@@ -823,6 +846,11 @@ async def reveal_own_secret(
                 payload=db_player_2_satterthquin_info(player,secret,selected_player)
             )
             await manager.broadcast(game.id, eventInfo.model_dump())
+        game = PlayService(db).end_game(game_id)
+        if game.status == GameStatus.FINISHED:
+            gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            return {"message": "The game has ended"}
 
     except PlayerNotFoundError as e:
         raise HTTPException(

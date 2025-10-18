@@ -1,7 +1,7 @@
 """Players Models."""
 
 from datetime import date
-from sqlalchemy import (Integer, Table, String , Date, ForeignKey, 
+from sqlalchemy import (Boolean, Integer, Table, String , Date, ForeignKey, 
         Column, Enum as SqlEnum)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List
@@ -49,6 +49,7 @@ class Player(Base):
     secrets: Mapped[List[Secret]] = relationship("Secret",
                                              secondary="player_secrets_association",
                                              backref="players")
+    in_social_disgrace: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     turn_status: Mapped[TurnStatus] = mapped_column(
         SqlEnum(TurnStatus),
         default=TurnStatus.WAITING,

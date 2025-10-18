@@ -10,3 +10,6 @@ class ActionStatus(Enum):
     BLOCKED = "blocked"
     UNBLOCKED = "unblocked"
 
+class Winners(Enum):
+    DETECTIVE = "detective"
+    MURDERER = "murderer"

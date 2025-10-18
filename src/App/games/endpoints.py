@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
 
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
+    db_game_2_game_end_info,
     db_game_2_game_info,
     db_game_2_game_info_player,
     db_game_2_game_lobby_info,
@@ -23,6 +25,7 @@ from App.exceptions import (
     PlayerNotFoundError,
 )
 
+
 games_router = APIRouter()
 
 @games_router.get(path="", status_code=status.HTTP_200_OK)
@@ -33,13 +36,44 @@ async def get_games(db=Depends(get_db)) -> list[GameLobbyInfo]:
 
 @games_router.get(path="/{game_id}", status_code=status.HTTP_200_OK)
 async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
-    db_game = GameService(db).get_by_id(game_id)
-    if not db_game:
+    game = GameService(db).get_by_id(game_id)
+    if not game:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Game {id} does not exist",
         )
-    return db_game_2_game_wtg_info(db_game)
+    if game.status == GameStatus.IN_PROGRESS:
+        await asyncio.sleep(0.5)
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+        
+        for p in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message=playerPrivateInfo.model_dump()
+            )
+        
+    if game.status == GameStatus.FINISHED:
+        await asyncio.sleep(0.3)
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+        
+        for p in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message=playerPrivateInfo.model_dump()
+            )
+            gameEndInfo = GameEndInfo(payload=db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            
+
+    return db_game_2_game_wtg_info(game)
     
 
 @games_router.post(path="", status_code=status.HTTP_201_CREATED)
