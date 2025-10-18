@@ -293,3 +293,56 @@ def test_start_game_not_found(client: TestClient):
     detail = response.json()["detail"]
     assert response.status_code == 404
     assert detail == "Se lanza cuando no se encuentra un juego con el id especificado."
+
+
+def test_exit_game_success(client: TestClient, seed_games):
+    # Create a game to join
+    player_info = {
+                "playerName":"Barba Azul",
+                "avatar": 1,
+                "birthDate":date(2000,1,1).strftime("%Y-%m-%d")
+    }
+
+    game_info = {
+                "gameName":"Tripulación de Barba Azul",
+                "minPlayers":2,
+                "maxPlayers":4
+    }
+    
+    response = client.post(
+        "/games", 
+        json = {
+            "player_info": player_info,
+            "game_info": game_info,
+        },
+    )
+    data = response.json()
+    game_id = data["gameId"]
+    
+
+
+    new_player_info = {
+                "playerName":"Capitan",
+                "avatar": 1,
+                "birthDate":date(2001,4,5).strftime("%Y-%m-%d")
+    }
+
+    response = client.post(
+        f"/games/{game_id}/join", 
+        json = new_player_info,
+    )
+
+    data = response.json()
+    player_id = data["actualPlayerId"]
+    
+    assert response.status_code == 200
+
+    with client.websocket_connect(f"/ws/{game_id}/{player_id}") as websocket:
+        
+        response = client.post(f"/games/{game_id}/exit", params={"player_id": player_id})
+        data = response.json()
+
+        result = websocket.receive_json()
+        assert result == {"event": "playerExit", "payload": {"playerId": player_id}}
+
+    assert response.status_code == 200

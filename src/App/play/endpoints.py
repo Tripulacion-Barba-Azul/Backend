@@ -133,7 +133,7 @@ async def play_card(
             )
 
             if player.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
-                top_cards = PlayService(db).get_top_five_discarded_cards(game.id)
+                top_cards = PlayService(db).get_top_five_discarded_cards(player,game.id)
                 topFiveCardsInfo = TopFiveLookIntoTheAshes(payload = [db_card_2_card_info(c) for c in top_cards])
                 await manager.send_to_player(
                     game_id=game.id,
@@ -141,7 +141,7 @@ async def play_card(
                     message=topFiveCardsInfo.model_dump()
                     )
             elif player.turn_action == TurnAction.DELAY_THE_MURDERER:
-                top_cards = PlayService(db).get_top_five_discarded_cards(game.id)
+                top_cards = PlayService(db).get_top_five_discarded_cards(player, game.id)
                 topFiveCardsInfo = TopFiveDelayTheMurder(payload = [db_card_2_card_info(c) for c in top_cards])
                 await manager.send_to_player(
                     game_id=game.id,

@@ -526,7 +526,7 @@ class PlayService:
 
         return card
     
-    def get_top_five_discarded_cards(self, game_id):
+    def get_top_five_discarded_cards(self, player, game_id):
         game = self._db.query(Game).filter_by(id=game_id).first()
         
         if not game:
@@ -536,9 +536,14 @@ class PlayService:
         if not discard_deck:
             raise DeckNotFoundError(f"Game {game_id} does not have a discard deck")
         
-        sorted_cards = sorted(discard_deck.cards, key=lambda c: c.order, reverse=True)
-        top_five_cards = sorted_cards[:5]
         
+        sorted_cards = sorted(discard_deck.cards, key=lambda c: c.order, reverse=True)
+
+        if player.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
+            top_five_cards = sorted_cards[:6]
+            top_five_cards.pop(0)
+        else:
+            top_five_cards = sorted_cards[:5]
         
         return top_five_cards
     

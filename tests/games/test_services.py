@@ -49,15 +49,15 @@ def test_create_game_service(session: Session):
     assert db_game.players == [db_player]
 
 
-def test_exit_game_service(session: Session, seed_games, sample_player):
+def test_exit_game_service(session: Session, seed_games):
 
     game = seed_games["games"][0]
-    player = sample_player  
+    
 
     player_dto = PlayerDTO(
-        name=player.name,
-        avatar=player.avatar,
-        birthday=player.birthday
+        name="sample_player",
+        avatar="asdas",
+        birthday=date(2000,1,1)
     )
     
     owner_id = game.owner_id
@@ -66,9 +66,10 @@ def test_exit_game_service(session: Session, seed_games, sample_player):
         game_id=game.id,
         player_dto=player_dto
     )
-    
+
     session.commit()
     session.refresh(game)
+    player = session.query(Player).filter_by(name="sample_player").first()
 
     GameService(session).exit_game_service(game.id, player.id)
 
