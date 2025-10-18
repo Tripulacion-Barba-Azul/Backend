@@ -93,3 +93,10 @@ class TopFiveLookIntoTheAshes(BaseModel):
 class TopFiveDelayTheMurder(BaseModel):
     event: str = "delayTheMurderersEscape"
     payload: list[CardPublicInfo]
+
+class PlayerExitInfo(BaseModel):
+    playerId: int
+
+class NotifierPlayerExit(BaseModel):
+    event: str = "playerExit"
+    payload: PlayerExitInfo
