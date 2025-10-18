@@ -159,6 +159,7 @@ async def play_card(
                     player_id=player.id,
                     message=playerPrivateInfo.model_dump()
                     )
+                
                 if game.status == GameStatus.FINISHED:
                     gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                     await manager.broadcast(game.id, gameEndInfo.model_dump())
