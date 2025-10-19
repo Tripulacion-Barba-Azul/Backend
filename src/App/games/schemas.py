@@ -32,6 +32,7 @@ class GameInfoPlayer(BaseModel):
 class GameLobbyInfo(BaseModel):
     gameId: int
     gameName: str
+    gameStatus: str
     minPlayers: int
     maxPlayers: int
     actualPlayers: int

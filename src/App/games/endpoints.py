@@ -1,6 +1,8 @@
 import asyncio
-
-from fastapi import APIRouter, Depends, HTTPException, status
+import json
+from typing import Annotated
+from venv import create
+from fastapi import APIRouter,Cookie, Depends, HTTPException, Response, status
 
 from App.games.enums import GameStatus
 from App.games.schemas import GameCreate, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
@@ -14,7 +16,7 @@ from App.games.utils import (
     db_game_2_game_wtg_info
 )
 from App.models.db import get_db
-from App.players.schemas import PlayerCreate, PlayerPrivateInfo
+from App.players.schemas import PlayerCreate, PlayerPlaysIn, PlayerPrivateInfo
 from App.players.utils import db_player_2_player_private_info
 from App.websockets import manager
 from App.exceptions import (
@@ -29,10 +31,28 @@ from App.exceptions import (
 games_router = APIRouter()
 
 @games_router.get(path="", status_code=status.HTTP_200_OK)
-async def get_games(db=Depends(get_db)) -> list[GameLobbyInfo]:
-    return [db_game_2_game_lobby_info(game)
-        for game in GameService(db).get_games()
-    ]
+async def get_games(
+    activeGames: bool | None = None,
+    playersGames: Annotated[str | None, Cookie()] = None,
+    db=Depends(get_db)) -> list[GameLobbyInfo]:
+    print("GET GAMES 2")
+    if activeGames and playersGames:
+        try:
+            print("GET ACTIVE GAMES")
+            player_games = json.loads(playersGames)
+            game_ids = [entry["gameId"] for entry in player_games["games"]]
+            print(game_ids)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid cookie format")
+
+        games = GameService(db).get_active_games_by_ids(game_ids)
+        print([game.name for game in games])
+    elif activeGames:
+        games = []
+    else:
+        games = GameService(db).get_games()
+
+    return [db_game_2_game_lobby_info(game) for game in games]
 
 @games_router.get(path="/{game_id}", status_code=status.HTTP_200_OK)
 async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
@@ -80,6 +100,8 @@ async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
 async def create_game(
     player_info: PlayerCreate,
     game_info: GameCreate,
+    response: Response,
+    playersGames: Annotated[str | None, Cookie()] = None,
     db=Depends(get_db)
 ) -> GameInfo:
     try:
@@ -87,6 +109,24 @@ async def create_game(
             player_dto=player_info.to_dto(),
             game_dto=game_info.to_dto()
         )
+        if playersGames:
+            parsed = json.loads(playersGames)
+            players_game = PlayerPlaysIn(games=parsed.get("games", []))
+        else:
+            players_game = PlayerPlaysIn(games=[])
+        players_game.games.append({
+            "gameId": created_game.id, 
+            "playerId": created_game.owner_id
+        })
+        response.set_cookie(
+        key="playersGames",
+        value=json.dumps(players_game.model_dump()),
+        secure=False,
+        httponly=False,
+        samesite="lax",
+        path="/"
+        )
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -98,12 +138,31 @@ async def create_game(
 async def join_game(
     game_id: int,
     player_info: PlayerCreate,
+    response: Response,
+    playersGames: Annotated[str | None, Cookie()] = None,
     db=Depends(get_db)
 ) -> GameInfoPlayer:
     try:
         joined_game, new_player = GameService(db).join(
             game_id=game_id,
             player_dto=player_info.to_dto()
+        )
+        if playersGames:
+            players_game = PlayerPlaysIn(**json.loads(playersGames))
+        else:
+            players_game = PlayerPlaysIn(games=[])
+        
+        players_game.games.append({
+            "gameId": game_id, 
+            "playerId": new_player.id
+        })
+        response.set_cookie(
+        key="playersGames",
+        value=json.dumps(players_game.model_dump()),
+        secure=False,
+        httponly=False,
+        samesite="lax",
+        path="/"
         )
 
         await manager.broadcast(joined_game.id,{"event": "player_joined", "player": player_info.playerName})

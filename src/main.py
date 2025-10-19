@@ -9,7 +9,7 @@ from App.websockets import websocket_router
 
 app = FastAPI()
 
-origins = ["*"]
+origins = ["http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,

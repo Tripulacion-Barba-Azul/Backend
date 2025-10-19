@@ -198,6 +198,8 @@ class PlayService:
                 self.early_train_to_paddington(game, player)
 
         player.turn_status = TurnStatus.DRAWING
+        if len(player.cards) == 6:
+            self.end_turn(game.id,player.id)
 
         self._db.add(player)
         self._db.flush()

@@ -26,6 +26,7 @@ def db_game_2_game_lobby_info(db_game: Game) -> GameLobbyInfo:
     return GameLobbyInfo(
         gameId=db_game.id,
         gameName=db_game.name,
+        gameStatus=db_game.status.value,
         minPlayers=db_game.min_players,
         maxPlayers=db_game.max_players,
         actualPlayers=db_game.num_players,
