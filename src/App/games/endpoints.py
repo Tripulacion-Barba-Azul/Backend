@@ -4,7 +4,8 @@ from typing import Annotated
 from venv import create
 from fastapi import APIRouter,Cookie, Depends, HTTPException, Response, status
 
-from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate
+from App.games.enums import GameStatus
+from App.games.schemas import GameCreate, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
     db_game_2_game_end_info,
@@ -228,7 +229,9 @@ async def start_game(
 async def exit_game(
     game_id: int,
     player_id: int,
-    db=Depends(get_db)
+    response: Response,
+    playersGames: Annotated[str | None, Cookie()] = None,
+    db=Depends(get_db),
 ) -> None:
     
     try:
@@ -238,6 +241,23 @@ async def exit_game(
             game_id,
             NotifierPlayerExit(payload = PlayerExitInfo(playerId=player_id)).model_dump()
         )
+
+        if playersGames:
+            try:
+                parsed = json.loads(playersGames)
+                games_list = parsed.get("games", [])
+                games_list = [g for g in games_list if g.get("gameId") != game_id]
+                new_cookie = json.dumps({"games": games_list})
+                response.set_cookie(
+                    key="playersGames",
+                    value=new_cookie,
+                    secure=False,
+                    httponly=False,
+                    samesite="lax",
+                    path="/"
+                )
+            except Exception:
+                pass
 
     except GameNotFoundError as e:
         raise HTTPException(
