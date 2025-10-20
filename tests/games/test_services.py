@@ -46,3 +46,39 @@ def test_create_game_service(session: Session):
     assert db_game.owner_id == db_player.id
     assert db_game.owner == db_player
     assert db_game.players == [db_player]
+
+
+def test_delete_game_service(session: Session):
+
+    game_service = GameService(session)
+
+    player_dto = PlayerDTO(
+        name="Barba Azul",
+        avatar=1,
+        birthday=date(2000,1,1)
+    )
+
+    game_dto = GameDTO(
+        name="Tripulación de Barba Azul",
+        min_players = 2,
+        max_players = 4,
+    )
+
+    game = game_service.create(
+        player_dto=player_dto,
+        game_dto=game_dto
+    )
+
+    db_player = session.query(Player).filter_by(name="Barba Azul").first()
+    db_game = session.query(Game).filter_by(name="Tripulación de Barba Azul").first()
+
+    assert db_player is not None
+    assert db_game is not None
+
+    game_service.delete_game_service(game, db_player.id)
+
+    deleted_game = session.query(Game).filter_by(id=db_game.id).first()
+    deleted_player = session.query(Player).filter_by(id=db_player.id).first()
+
+    assert deleted_game is None
+    assert deleted_player is None

@@ -311,3 +311,17 @@ def test_start_game_not_found(client: TestClient):
 
 
 
+def test_delete_game_success(client: TestClient, seed_games):
+    game = seed_games["games"][0]
+    owner_id = game.owner_id
+
+    with client.websocket_connect(f"/ws/{game.id}/{owner_id}") as websocket:
+        response = client.post(f"/games/{game.id}/delete", params={"player_id": owner_id})
+        data = response.json()
+
+        assert response.status_code == 200
+
+        result = websocket.receive_json()
+        assert result["event"] == "gameDeleted"
+        assert result["payload"]["ownerName"] == game.owner.name
+        assert result["payload"]["gameName"] == game.name
