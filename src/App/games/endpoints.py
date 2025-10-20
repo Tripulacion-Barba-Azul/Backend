@@ -27,6 +27,7 @@ from App.exceptions import (
     GameAlreadyStartedError,
     NotEnoughPlayers,
     NotTheOwnerOfTheGame,
+    OwnerMustntLeave,
     PlayerNotFoundError,
 )
 from App.players.enums import TurnAction
@@ -278,6 +279,12 @@ async def exit_game(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
         )
+    except OwnerMustntLeave as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
 
     return {"detail": "Player has exited the game"}
 
