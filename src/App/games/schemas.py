@@ -94,3 +94,7 @@ class TopFiveLookIntoTheAshes(BaseModel):
 class TopFiveDelayTheMurder(BaseModel):
     event: str = "delayTheMurderersEscape"
     payload: list[CardPublicInfo]
+
+class GameDeletedInfo(BaseModel):
+    event: str = "gameDeleted"
+    payload: dict

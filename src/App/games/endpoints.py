@@ -5,7 +5,8 @@ from venv import create
 from fastapi import APIRouter,Cookie, Depends, HTTPException, Response, status
 
 from App.games.enums import GameStatus
-from App.games.schemas import GameCreate, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
+from App.games.models import Game
+from App.games.schemas import GameCreate, GameDeletedInfo, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
     db_game_2_game_end_info,
@@ -16,6 +17,7 @@ from App.games.utils import (
     db_game_2_game_wtg_info
 )
 from App.models.db import get_db
+from App.players.models import Player
 from App.players.schemas import PlayerCreate, PlayerPlaysIn, PlayerPrivateInfo
 from App.players.utils import db_player_2_player_private_info
 from App.websockets import manager
@@ -223,3 +225,36 @@ async def start_game(
         )
     
     return db_game_2_game_info(db_game)
+
+
+@games_router.post(path="/{game_id}/delete", status_code=status.HTTP_200_OK)
+async def delete_game(
+    game_id: int,
+    player_id: int,
+    db=Depends(get_db),
+)->None:
+    
+    game = GameService(db).get_by_id(game_id)
+    if not game:    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Game {game_id} does not exist",
+        )
+    try:
+        gameName = game.name
+        ownerName = db.query(Player).filter(Player.id == game.owner_id).first().name
+        gameDeletedInfo = GameDeletedInfo(payload={"ownerName" : ownerName, "gameName": gameName})
+        await manager.broadcast(game.id, gameDeletedInfo.model_dump())
+        GameService(db).delete_game_service(game, player_id)
+
+    except GameNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotTheOwnerOfTheGame as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        )
+    return

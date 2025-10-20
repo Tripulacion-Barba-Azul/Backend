@@ -177,3 +177,12 @@ class GameService:
         
         return b
 
+    def delete_game_service(self, game, player_id):
+        if game.owner_id != player_id:
+            raise NotTheOwnerOfTheGame("Not the owner of the game, GO AWAY.")
+        for player in game.players:
+            self._db.delete(player)
+
+        self._db.delete(game)
+        self._db.commit()
+    
