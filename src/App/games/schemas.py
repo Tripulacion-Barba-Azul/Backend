@@ -98,3 +98,11 @@ class TopFiveDelayTheMurder(BaseModel):
 class GameDeletedInfo(BaseModel):
     event: str = "gameDeleted"
     payload: dict
+
+class PlayerExitInfo(BaseModel):
+    playerId: int
+
+class NotifierPlayerExit(BaseModel):
+    event: str = "playerExit"
+    payload: PlayerExitInfo
+

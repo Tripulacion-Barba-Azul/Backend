@@ -6,7 +6,7 @@ from fastapi import APIRouter,Cookie, Depends, HTTPException, Response, status
 
 from App.games.enums import GameStatus
 from App.games.models import Game
-from App.games.schemas import GameCreate, GameDeletedInfo, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, PrivateUpdate, PublicUpdate
+from App.games.schemas import GameCreate, GameDeletedInfo, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate
 from App.games.services import GameService
 from App.games.utils import (
     db_game_2_game_end_info,
@@ -19,7 +19,7 @@ from App.games.utils import (
 from App.models.db import get_db
 from App.players.models import Player
 from App.players.schemas import PlayerCreate, PlayerPlaysIn, PlayerPrivateInfo
-from App.players.utils import db_player_2_player_private_info
+from App.players.utils import db_player_2_player_private_info, turn_action_enum_2_str
 from App.websockets import manager
 from App.exceptions import (
     GameNotFoundError,
@@ -27,7 +27,9 @@ from App.exceptions import (
     GameAlreadyStartedError,
     NotEnoughPlayers,
     NotTheOwnerOfTheGame,
+    PlayerNotFoundError,
 )
+from App.players.enums import TurnAction
 
 
 games_router = APIRouter()
@@ -76,6 +78,12 @@ async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
                 game_id=game.id,
                 player_id=p.id,
                 message=playerPrivateInfo.model_dump()
+            )
+            if p.turn_action != TurnAction.NO_ACTION:
+                await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message={"event": turn_action_enum_2_str(p.turn_action)}
             )
         
     if game.status == GameStatus.FINISHED:
@@ -226,6 +234,52 @@ async def start_game(
     
     return db_game_2_game_info(db_game)
 
+@games_router.post(path="/{game_id}/exit", status_code=status.HTTP_200_OK)
+async def exit_game(
+    game_id: int,
+    player_id: int,
+    response: Response,
+    playersGames: Annotated[str | None, Cookie()] = None,
+    db=Depends(get_db),
+):
+    
+    try:
+        GameService(db).exit_game_service(game_id, player_id)
+
+        await manager.broadcast(
+            game_id,
+            NotifierPlayerExit(payload = PlayerExitInfo(playerId=player_id)).model_dump()
+        )
+
+        if playersGames:
+            try:
+                parsed = json.loads(playersGames)
+                games_list = parsed.get("games", [])
+                games_list = [g for g in games_list if g.get("gameId") != game_id]
+                new_cookie = json.dumps({"games": games_list})
+                response.set_cookie(
+                    key="playersGames",
+                    value=new_cookie,
+                    secure=False,
+                    httponly=False,
+                    samesite="lax",
+                    path="/"
+                )
+            except Exception:
+                pass
+
+    except GameNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+    return {"detail": "Player has exited the game"}
 
 @games_router.post(path="/{game_id}/delete", status_code=status.HTTP_200_OK)
 async def delete_game(
