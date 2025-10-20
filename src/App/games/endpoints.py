@@ -17,7 +17,7 @@ from App.games.utils import (
 )
 from App.models.db import get_db
 from App.players.schemas import PlayerCreate, PlayerPlaysIn, PlayerPrivateInfo
-from App.players.utils import db_player_2_player_private_info
+from App.players.utils import db_player_2_player_private_info, turn_action_enum_2_str
 from App.websockets import manager
 from App.exceptions import (
     GameNotFoundError,
@@ -27,6 +27,7 @@ from App.exceptions import (
     NotTheOwnerOfTheGame,
     PlayerNotFoundError,
 )
+from App.players.enums import TurnAction
 
 
 games_router = APIRouter()
@@ -75,6 +76,12 @@ async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
                 game_id=game.id,
                 player_id=p.id,
                 message=playerPrivateInfo.model_dump()
+            )
+            if p.turn_action != TurnAction.NO_ACTION:
+                await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message={"event": turn_action_enum_2_str(p.turn_action)}
             )
         
     if game.status == GameStatus.FINISHED:
@@ -232,7 +239,7 @@ async def exit_game(
     response: Response,
     playersGames: Annotated[str | None, Cookie()] = None,
     db=Depends(get_db),
-) -> None:
+):
     
     try:
         GameService(db).exit_game_service(game_id, player_id)
