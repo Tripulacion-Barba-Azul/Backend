@@ -257,8 +257,8 @@ class PlayService:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         if player.turn_status != TurnStatus.DRAWING:
             raise NotPlayersTurnError(f"Player {player_id} cannot end turn now")
-        if len(player.cards) != 6:
-            raise PlayerNeedSixCardsError(f"Player {player_id} needs to have six cards to end turn")
+        # if len(player.cards) != 6:
+        #     raise PlayerNeedSixCardsError(f"Player {player_id} needs to have six cards to end turn")
         
         player.turn_status = TurnStatus.WAITING
         game.turn_number += 1
@@ -334,6 +334,7 @@ class PlayService:
 
             if selected_player.in_social_disgrace:
                 selected_player.turn_action = TurnAction.NO_ACTION
+                player.turn_status = TurnStatus.DISCARDING_OPT
             else:
                 selected_player.turn_action = TurnAction.REVEAL_OWN_SECRET
 
@@ -341,6 +342,7 @@ class PlayService:
             player.turn_action = TurnAction.NO_ACTION
             if selected_player.in_social_disgrace:
                 selected_player.turn_action = TurnAction.NO_ACTION
+                player.turn_status = TurnStatus.DISCARDING_OPT
             else:
                 selected_player.turn_action = TurnAction.GIVE_SECRET_AWAY
 
