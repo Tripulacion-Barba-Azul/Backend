@@ -4,6 +4,10 @@
 *Agatha Christie: Death on the Cards* is a multiplayer murder mystery card game inspired by the classic works of Agatha Christie. Players assume different roles, each with their own clues and secret objectives, and work together (or against each other) to solve a fictional murder.
 
 This repository contains the backend for the web version of the card game.
+
+## Cloning the Repository
+### API definition:
+    https://docs.google.com/spreadsheets/d/1yGESwe0XBWM6WqJdIJk8Frrl3bl4HbfxNNSNcHZxcIc/edit?gid=0#gid=0
 ## Configuration
 
 ### Cloning the Repository
