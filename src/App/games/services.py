@@ -1,5 +1,10 @@
-from App.decks.reposition_deck_services import create_reposition_deck, draw_reposition_deck
+from App.card.schemas import CardGameInfo
+from App.games.utils import db_game_2_game_public_info
+from App.decks.reposition_deck_services import RepositionDeckService
 from App.games.enums import GameStatus
+from App.games.schemas import GameStartInfo
+from App.players.schemas import PlayerGameInfo
+from App.secret.schemas import SecretGameInfo
 from sqlalchemy.orm import Session
 
 from App import players
@@ -7,9 +12,9 @@ from App.games.dtos import GameDTO
 from App.games.models import Game, Player
 from App.games.enums import GameStatus
 from App.players.dtos import PlayerDTO
-from App.players.enums import PlayerRol
+from App.players.enums import PlayerRole, TurnStatus
 from App.players.services import PlayerService
-from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame
+from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame, OwnerMustntLeave, PlayerNotFoundError
 from App.players.utils import sort_players
 from App.secret.enums import SecretType
 from App.secret.services import create_and_draw_secrets
@@ -24,6 +29,16 @@ class GameService:
     def get_games(self) -> list[Game]:
         query = self._db.query(Game).filter(Game.status==GameStatus.WAITING)
         return query.all()
+    
+    def get_active_games_by_ids(self, game_ids: list[int]) -> list[Game]:
+        if not game_ids:
+            return []
+        return (
+            self._db.query(Game)
+            .filter(Game.id.in_(game_ids))
+            .filter(Game.status == GameStatus.IN_PROGRESS)
+            .all()
+        )
     
     def get_by_id(self, id: int) -> Game | None:
         return self._db.query(Game).filter(Game.id == id).first()
@@ -78,7 +93,7 @@ class GameService:
         return game, new_player
     
 
-    def start(
+    def start_game(
             self,
             game_id: int,
             owner_id: int
@@ -103,22 +118,31 @@ class GameService:
         # ordenar jugadores
         players = sort_players(db_game.players)
         for idx, player in enumerate(players):
-            player.order = idx + 1
+            player.turn_order = idx + 1
 
+        self.select_player_turn(game_id)
         # asignar roles jugador
         create_and_draw_secrets(game_id, self._db)
+        murderer = None
+        accomplice = None
         for player in players:
             for secret in player.secrets:
                 if secret.type == SecretType.MURDERER:
-                    player.rol = PlayerRol.MURDERER
+                    player.role = PlayerRole.MURDERER
+                    murderer = player
                 elif secret.type == SecretType.ACCOMPLICE:
-                    player.rol = PlayerRol.ACCOMPLICE
+                    player.role = PlayerRole.ACCOMPLICE
+                    accomplice = player
+
+        if accomplice and murderer:
+            murderer.ally = accomplice.id
+            accomplice.ally = murderer.id        
 
         self._db.commit()
 
         # inicializa mazo
-        create_reposition_deck(game_id, self._db)
-        draw_reposition_deck(game_id, self._db)
+        RepositionDeckService(self._db).create_reposition_deck(game_id)
+        RepositionDeckService(self._db).draw_reposition_deck(game_id)
 
         return db_game
             
@@ -130,12 +154,59 @@ class GameService:
         player_order_number = (db_game.turn_number-1) % db_game.num_players + 1
 
         for p in db_game.players:
-            if p.order == player_order_number:
+            if p.turn_order == player_order_number:
                 player = p
+                p.turn_status = TurnStatus.PLAYING
+                if p.in_social_disgrace:
+                    p.turn_status = TurnStatus.DISCARDING
+                self._db.add(p)
+                self._db.flush()
+                self._db.commit()
         
         return player.id # type: ignore
         
+    def player_in_game(self, game_id: int, player_id: int) -> bool:
+        db_game: Game | None = self._db.query(Game).filter(Game.id == game_id).first()
+        if not db_game:
+            raise GameNotFoundError("Se lanza cuando no se encuentra un juego con el id especificado.")
+        
+        b = False
+        for p in db_game.players:
+            if p.id == player_id:
+                b = True
+        
+        return b
 
 
+    def exit_game_service(self, game_id: int, player_id: int) -> None:
 
+        db_game: Game | None = self._db.query(Game).filter(Game.id == game_id).first()
+        if not db_game:
+            raise GameNotFoundError(f"Game with id: {game_id} not found.")
+
+        player_to_remove: Player | None = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player_to_remove:
+            raise PlayerNotFoundError(f"Player with id: {player_id} not found in the game.")
+
+        if player_to_remove.id == db_game.owner_id:
+            raise OwnerMustntLeave("The owner of the game cant leave the game")
+
+        db_game.players.remove(player_to_remove)
+        db_game.num_players -= 1
+
+        self._db.delete(player_to_remove)
+        self._db.add(db_game)
+        self._db.flush()
+        self._db.commit()
+        self._db.refresh(db_game)
+
+    
+    def delete_game_service(self, game, player_id):
+        if game.owner_id != player_id:
+            raise NotTheOwnerOfTheGame("Not the owner of the game, GO AWAY.")
+        for player in game.players:
+            self._db.delete(player)
+
+        self._db.delete(game)
+        self._db.commit()
 

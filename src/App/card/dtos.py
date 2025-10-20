@@ -33,3 +33,4 @@ class InstantDTO(CardDTO):
     def playable(self, game):
         action_made =game.action_made #Representa que se realizo una accion en el juego
         return action_made
+

@@ -1,8 +1,22 @@
 from datetime import date
 import random
+
+from sqlalchemy.orm import Session
 from App import players
+from App.card.utils import db_card_2_card_info, db_card_2_card_private_info
+from App.games.models import Game
+from App.models import db
+from App.play.schemas import CardsOffTheTableInfo, DiscardEventInfo, NotifierCardsOffTheTable, PayloadDiscardEvent, PayloadRevealSecretForce, PayloadSatterthwaiteWild
+from App.players.enums import PlayerRole, TurnAction
 from App.players.models import Player
-from App.players.schemas import PlayerInfo
+from App.players.schemas import AllyInfo, CardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPrivateInfo, PlayerPublicInfo
+from App.secret.utils import db_secret_2_secret_private_info, db_secret_2_secret_public_info
+from App.sets.utils import db_dset_2_set_public_info
+from App.card.schemas import CardPublicInfo
+from App.play.enums import ActionType
+from App.sets.models import DetectiveSet
+from App.card.models import Card
+from App.secret.models import Secret
 
 
 def db_player_2_player_info(db_player: Player) -> PlayerInfo:
@@ -43,3 +57,132 @@ def sort_players(players: list[Player]):
     players = [selected_player] + remaining_players
     
     return players
+
+def db_player_2_player_public_info(db_player: Player) -> PlayerPublicInfo:
+    return PlayerPublicInfo(
+        id=db_player.id,
+        name=db_player.name,
+        avatar=db_player.avatar,
+        socialDisgrace=db_player.in_social_disgrace,
+        turnOrder=db_player.turn_order,
+        turnStatus=db_player.turn_status.value,
+        cardCount=len(db_player.cards),
+        secrets=[db_secret_2_secret_public_info(secret) 
+                for secret in db_player.secrets
+            ],
+        sets= [db_dset_2_set_public_info(dset) for dset in db_player.sets]
+    )
+
+def db_player_2_player_private_info(db_player: Player) -> PlayerPrivateInfo:
+
+    ally = None
+
+    if db_player.ally:
+        
+        if db_player.role == PlayerRole.MURDERER:
+            allyRole = PlayerRole.ACCOMPLICE.value
+        else:
+            allyRole = PlayerRole.MURDERER.value
+
+        ally = AllyInfo(
+            id=db_player.ally,
+            role=allyRole
+        )
+        
+    return PlayerPrivateInfo(
+        cards=[db_card_2_card_private_info(card) for card in db_player.cards],
+        secrets=[db_secret_2_secret_private_info(secret) 
+                for secret in db_player.secrets
+            ],
+        role=db_player.role.value,
+        ally=ally
+    )
+    
+def db_player_2_played_cards_played_info(
+        db_player: Player,
+        db_set: DetectiveSet,
+        cards_played: list[int],
+        action_type: ActionType
+
+    ) -> CardsPlayedInfo:
+
+        payload = PlayerPlayedCardsInfo(
+            playerId = db_player.id,
+            cards = [db_card_2_card_info(card) for card in db_set.cards if card.id in cards_played],
+            actionType=action_type.value
+        )
+
+        return CardsPlayedInfo(payload=payload)
+
+def db_player_cards_off_the_tables_info(
+    db_player: Player,
+    db_player_selected: Player,
+    not_so_fast: int
+) -> NotifierCardsOffTheTable:
+
+    payload = CardsOffTheTableInfo(
+        playerId = db_player.id,
+        quantity = not_so_fast,
+        selectedPlayerId = db_player_selected.id
+    )
+
+    return NotifierCardsOffTheTable(payload=payload)
+
+def db_player_2_played_card_info(
+        db_player: Player,
+        card_played: Card,
+        action_type: ActionType
+    ) -> CardsPlayedInfo:
+    
+    payload = PlayerPlayedCardsInfo(
+            playerId = db_player.id,
+            cards = [db_card_2_card_info(card_played)],
+            actionType=action_type.value
+        )
+    return CardsPlayedInfo(payload=payload)
+
+def db_player_2_discarded_cards_info(
+        player_id: int,
+        discarded_cards: list[Card]
+) -> DiscardEventInfo:
+    
+    payload = PayloadDiscardEvent(
+        playerId=player_id,
+        cards=[db_card_2_card_info(card) for card in discarded_cards]
+    )
+    return DiscardEventInfo(
+        payload=payload
+    )
+    
+
+def db_player_2_satterthquin_info(player: Player,
+                                  secret: Secret,
+                                  selected_player: Player
+) -> PayloadSatterthwaiteWild:
+    return PayloadSatterthwaiteWild(
+        playerId=player.id,
+        secretId=secret.id,
+        secretName=secret.name,
+        selectedPlayerId=selected_player.id
+    )
+
+def db_player_2_reveal_secret_force(player: Player,
+                                  secret: Secret,
+                                  selected_player: Player
+) -> PayloadRevealSecretForce:
+    return PayloadRevealSecretForce(
+        playerId=player.id,
+        secretId=secret.id,
+        selectedPlayerId=selected_player.id
+    )
+    
+
+def turn_action_enum_2_str(turn_action: TurnAction) -> str:
+    if turn_action == TurnAction.SELECT_ANY_PLAYER:
+        return "selectAnyPlayer"
+    elif turn_action == TurnAction.SATTERWAITEWILD:
+        return "selectAnyPlayer"
+    elif turn_action == TurnAction.GIVE_SECRET_AWAY:
+        return "revealOwnSecret"
+    else:
+        return turn_action.value

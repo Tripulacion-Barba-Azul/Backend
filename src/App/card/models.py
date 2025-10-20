@@ -19,10 +19,10 @@ class Card(Base):
     name : Mapped[str] = mapped_column (String, nullable=False)
     effect: Mapped[str]  = mapped_column(String, nullable=False)
     type: Mapped[str] = mapped_column(String, nullable=False)
-    playable_on_turn: Mapped[bool] = mapped_column(Boolean, nullable=True)
+    playable_on_turn: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
     number_to_set: Mapped[int] = mapped_column(Integer, nullable=True)
-    playable: Mapped[bool] = mapped_column(Boolean, nullable=True)
-                                         
+    playable: Mapped[bool] = mapped_column(Boolean, nullable=True, default=True)
+    order: Mapped[int] = mapped_column(Integer, nullable=True, default=0)
 
     __mapper_args__ = {
         "polymorphic_on": type,            # usa la columna type para definir la subclase

@@ -3,3 +3,4 @@ sqlalchemy
 pydantic
 pydantic-settings
 pytest
+pytest-cov

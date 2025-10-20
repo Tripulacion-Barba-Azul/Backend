@@ -1,53 +1,136 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
+import json
+from typing import Annotated
+from venv import create
+from fastapi import APIRouter,Cookie, Depends, HTTPException, Response, status
 
-from App.card.schemas import CardGameInfo
-from App.card.services import get_cards_by_player
+from App.card.utils import db_card_2_card_info
+from App.games.enums import GameStatus
 from App.games.models import Game
-from App.games.schemas import GameCreate, GameInfo, GameInfoPlayer, GameLobbyInfo, GameStartInfo, GameWaitingInfo
+from App.games.schemas import GameCreate, GameDeletedInfo, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
 from App.games.services import GameService
 from App.games.utils import (
+    db_game_2_game_end_info,
     db_game_2_game_info,
     db_game_2_game_info_player,
     db_game_2_game_lobby_info,
+    db_game_2_game_public_info,
     db_game_2_game_wtg_info
 )
 from App.models.db import get_db
-from App.players.schemas import PlayerCreate, PlayerGameInfo
-from App.secret.schemas import SecretGameInfo
-from App.secret.services import get_secrets_by_player
-from App.websockets import get_manager, create_manager
+from App.play.services import PlayService
+from App.players.models import Player
+from App.players.schemas import PlayerCreate, PlayerPlaysIn, PlayerPrivateInfo
+from App.players.utils import db_player_2_player_private_info, turn_action_enum_2_str
+from App.websockets import manager
 from App.exceptions import (
     GameNotFoundError,
     GameFullError,
     GameAlreadyStartedError,
     NotEnoughPlayers,
     NotTheOwnerOfTheGame,
-    WebsocketManagerNotFoundError
+    OwnerMustntLeave,
+    PlayerNotFoundError,
 )
+from App.players.enums import TurnAction
+
 
 games_router = APIRouter()
 
 @games_router.get(path="", status_code=status.HTTP_200_OK)
-async def get_games(db=Depends(get_db)) -> list[GameLobbyInfo]:
-    return [db_game_2_game_lobby_info(game)
-        for game in GameService(db).get_games()
-    ]
+async def get_games(
+    activeGames: bool | None = None,
+    playersGames: Annotated[str | None, Cookie()] = None,
+    db=Depends(get_db)) -> list[GameLobbyInfo]:
+    print("GET GAMES 2")
+    if activeGames and playersGames:
+        try:
+            print("GET ACTIVE GAMES")
+            player_games = json.loads(playersGames)
+            game_ids = [entry["gameId"] for entry in player_games["games"]]
+            print(game_ids)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid cookie format")
+
+        games = GameService(db).get_active_games_by_ids(game_ids)
+        print([game.name for game in games])
+    elif activeGames:
+        games = []
+    else:
+        games = GameService(db).get_games()
+
+    return [db_game_2_game_lobby_info(game) for game in games]
 
 @games_router.get(path="/{game_id}", status_code=status.HTTP_200_OK)
 async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
-    db_game = GameService(db).get_by_id(game_id)
-    if not db_game:
+    game = GameService(db).get_by_id(game_id)
+    if not game:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Game {id} does not exist",
         )
-    return db_game_2_game_wtg_info(db_game)
+    if game.status == GameStatus.IN_PROGRESS:
+        await asyncio.sleep(0.5)
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+        
+        for p in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message=playerPrivateInfo.model_dump()
+            )
+            if p.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
+                top_cards = PlayService(db).get_top_five_discarded_cards(p,game.id)
+                topFiveCardsInfo = TopFiveLookIntoTheAshes(payload = [db_card_2_card_info(c) for c in top_cards])
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=p.id,
+                    message=topFiveCardsInfo.model_dump()
+                    )
+            elif p.turn_action == TurnAction.DELAY_THE_MURDERER:
+                top_cards = PlayService(db).get_top_five_discarded_cards(p, game.id)
+                topFiveCardsInfo = TopFiveDelayTheMurder(payload = [db_card_2_card_info(c) for c in top_cards])
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=p.id,
+                    message=topFiveCardsInfo.model_dump()
+                    )
+            elif p.turn_action != TurnAction.NO_ACTION:
+                await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message={"event": turn_action_enum_2_str(p.turn_action)}
+            )
+        
+    if game.status == GameStatus.FINISHED:
+        await asyncio.sleep(0.3)
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+        
+        for p in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message=playerPrivateInfo.model_dump()
+            )
+            gameEndInfo = GameEndInfo(payload=db_game_2_game_end_info(game))
+            await manager.broadcast(game.id, gameEndInfo.model_dump())
+            
+
+    return db_game_2_game_wtg_info(game)
     
 
 @games_router.post(path="", status_code=status.HTTP_201_CREATED)
 async def create_game(
     player_info: PlayerCreate,
     game_info: GameCreate,
+    response: Response,
+    playersGames: Annotated[str | None, Cookie()] = None,
     db=Depends(get_db)
 ) -> GameInfo:
     try:
@@ -55,18 +138,24 @@ async def create_game(
             player_dto=player_info.to_dto(),
             game_dto=game_info.to_dto()
         )
-
-        create_manager(created_game.id)
-        manager= get_manager(created_game.id)
-        if not manager:
-            raise WebsocketManagerNotFoundError("No WebSocket manager for this game")
-        await manager.broadcast({"event": "player_joined", "player": player_info.playerName})
-        
-    except WebsocketManagerNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+        if playersGames:
+            parsed = json.loads(playersGames)
+            players_game = PlayerPlaysIn(games=parsed.get("games", []))
+        else:
+            players_game = PlayerPlaysIn(games=[])
+        players_game.games.append({
+            "gameId": created_game.id, 
+            "playerId": created_game.owner_id
+        })
+        response.set_cookie(
+        key="playersGames",
+        value=json.dumps(players_game.model_dump()),
+        secure=False,
+        httponly=False,
+        samesite="lax",
+        path="/"
         )
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -78,6 +167,8 @@ async def create_game(
 async def join_game(
     game_id: int,
     player_info: PlayerCreate,
+    response: Response,
+    playersGames: Annotated[str | None, Cookie()] = None,
     db=Depends(get_db)
 ) -> GameInfoPlayer:
     try:
@@ -85,10 +176,26 @@ async def join_game(
             game_id=game_id,
             player_dto=player_info.to_dto()
         )
+        if playersGames:
+            players_game = PlayerPlaysIn(**json.loads(playersGames))
+        else:
+            players_game = PlayerPlaysIn(games=[])
+        
+        players_game.games.append({
+            "gameId": game_id, 
+            "playerId": new_player.id
+        })
+        response.set_cookie(
+        key="playersGames",
+        value=json.dumps(players_game.model_dump()),
+        secure=False,
+        httponly=False,
+        samesite="lax",
+        path="/"
+        )
 
-        manager = get_manager(game_id)
-        await manager.broadcast({"event": "player_joined", "player": player_info.playerName}) # type: ignore
-
+        await manager.broadcast(joined_game.id,{"event": "player_joined", "player": player_info.playerName})
+        
     except GameNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -110,48 +217,9 @@ async def start_game(
     db=Depends(get_db)
 ) -> GameInfo:
     try:
-        db_game = GameService(db).start(game_id, owner_id)
+        db_game = GameService(db).start_game(game_id, owner_id)
+        gameStartInfo = PublicUpdate(payload = db_game_2_game_public_info(db_game))
 
-        player_turn_id = GameService(db).select_player_turn(db_game.id)
-        players = []
-        for player in db_game.players:
-            players.append(PlayerGameInfo(
-                id=player.id,
-                name=player.name,
-                rol=str(player.rol)
-            ))
-        
-        number_deck_cards = len(db_game.reposition_deck.cards)
-
-        cards = []
-        for player in db_game.players:
-            for card in get_cards_by_player(player.id, db):
-                cards.append(CardGameInfo(
-                    cardOwnerID=player.id,
-                    cardID=card.id,
-                    cardName=card.name
-                ))
-        
-        secrets = []
-        for player in db_game.players:
-            for secret in get_secrets_by_player(player.id, db):
-                secrets.append(SecretGameInfo(
-                    secretOwnerID=player.id,
-                    secretName=secret.name,
-                    revealed=secret.revealed
-                ))
-
-        gameStartInfo = GameStartInfo(
-            playerTurnId=player_turn_id,
-            numberOfRemainingCards=number_deck_cards,
-            players=players,
-            cards=cards,
-            secrets=secrets
-        )
-        manager = get_manager(db_game.id)
-        await manager.broadcast(gameStartInfo.model_dump()) # type: ignore
-
-        return db_game_2_game_info(db_game)
     except GameNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -172,3 +240,100 @@ async def start_game(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
         )
+    await manager.broadcast(db_game.id, gameStartInfo.model_dump())
+
+    for player in db_game.players:
+        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+
+        await manager.send_to_player(
+            game_id=db_game.id, 
+            player_id=player.id,
+            message=playerPrivateInfo.model_dump()
+        )
+    
+    return db_game_2_game_info(db_game)
+
+@games_router.post(path="/{game_id}/exit", status_code=status.HTTP_200_OK)
+async def exit_game(
+    game_id: int,
+    player_id: int,
+    response: Response,
+    playersGames: Annotated[str | None, Cookie()] = None,
+    db=Depends(get_db),
+):
+    
+    try:
+        GameService(db).exit_game_service(game_id, player_id)
+
+        await manager.broadcast(
+            game_id,
+            NotifierPlayerExit(payload = PlayerExitInfo(playerId=player_id)).model_dump()
+        )
+
+        if playersGames:
+            try:
+                parsed = json.loads(playersGames)
+                games_list = parsed.get("games", [])
+                games_list = [g for g in games_list if g.get("gameId") != game_id]
+                new_cookie = json.dumps({"games": games_list})
+                response.set_cookie(
+                    key="playersGames",
+                    value=new_cookie,
+                    secure=False,
+                    httponly=False,
+                    samesite="lax",
+                    path="/"
+                )
+            except Exception:
+                pass
+
+    except GameNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except OwnerMustntLeave as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
+
+
+    return {"detail": "Player has exited the game"}
+
+@games_router.post(path="/{game_id}/delete", status_code=status.HTTP_200_OK)
+async def delete_game(
+    game_id: int,
+    player_id: int,
+    db=Depends(get_db),
+)->None:
+    
+    game = GameService(db).get_by_id(game_id)
+    if not game:    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Game {game_id} does not exist",
+        )
+    try:
+        gameName = game.name
+        ownerName = db.query(Player).filter(Player.id == game.owner_id).first().name
+        gameDeletedInfo = GameDeletedInfo(payload={"ownerName" : ownerName, "gameName": gameName})
+        await manager.broadcast(game.id, gameDeletedInfo.model_dump())
+        GameService(db).delete_game_service(game, player_id)
+
+    except GameNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotTheOwnerOfTheGame as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        )
+    return

@@ -1,7 +1,11 @@
 from sqlalchemy.orm import Session
 
+from App.card.models import Card
 from App.players.dtos import PlayerDTO
 from App.players.models import Player
+from App.secret.models import Secret
+from App.players.enums import PlayerRole
+from App.secret.enums import SecretType
 
 class PlayerService:
 
@@ -11,10 +15,55 @@ class PlayerService:
     def create(self, player_dto: PlayerDTO) -> Player:
         new_player = Player(
             name=player_dto.name,
+            avatar=player_dto.avatar,
             birthday=player_dto.birthday
         )
         self._db.add(new_player)
         self._db.flush()
         self._db.commit()
         return new_player
+    
+    def get_secrets(self, player_id) -> list[Secret]:
+        player = self._db.query(Player).filter_by(id = player_id).first()
+        if not player:
+            raise Exception(f"Player {player_id} does not exist")
+        secrets = player.secrets
+        return secrets
+    
+    def get_cards(self, player_id) -> list[Card]:
+        player = self._db.query(Player).filter_by(id = player_id).first()
+        if not player:
+            raise Exception(f"Player {player_id} does not exist")
+        cards = player.cards
+        return cards
+    
+    def discard_card(self, player_id, card):
+        player = self._db.query(Player).filter_by(id = player_id).first()
+        if not player:
+            raise ValueError(f"Player {player_id} does not exist")
+        if card not in player.cards:
+            raise ValueError(f"Card {card.id} is not in player {player_id}'s hand")
+        player.cards.remove(card)
+        self._db.commit()
+        self._db.refresh(player)
+        return card
+    
+    def set_social_disgrace(self, player):
+        secrets = player.secrets
+        if not secrets:
+            in_social_disgrace = True
+            return in_social_disgrace
+        
+        in_social_disgrace = all(secret.revealed for secret in player.secrets)
+        
+        if player.role == PlayerRole.ACCOMPLICE:
+            accomplice_secret = next((secret for secret in secrets if secret.type == SecretType.ACCOMPLICE), None)
+            in_social_disgrace = accomplice_secret.revealed if accomplice_secret else True
+      
+        player.in_social_disgrace = in_social_disgrace
+        self._db.flush()
+        self._db.commit()
+
+        return in_social_disgrace
+    
     

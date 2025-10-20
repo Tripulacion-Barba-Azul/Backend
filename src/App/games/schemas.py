@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
 
-from App.card.schemas import CardGameInfo
+from App.card.schemas import CardGameInfo, CardPublicInfo
 from App.games.dtos import GameDTO
-from App.players.schemas import PlayerGameInfo, PlayerInfo
+from App.players.schemas import PlayerGameInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo, PlayerWinInfo
 from App.secret.schemas import SecretGameInfo
 
 class GameCreate(BaseModel):
@@ -32,6 +32,7 @@ class GameInfoPlayer(BaseModel):
 class GameLobbyInfo(BaseModel):
     gameId: int
     gameName: str
+    gameStatus: str
     minPlayers: int
     maxPlayers: int
     actualPlayers: int
@@ -54,3 +55,54 @@ class GameStartInfo(BaseModel):
     players: list[PlayerGameInfo]
     cards: list[CardGameInfo]
     secrets: list[SecretGameInfo]
+
+
+class GamePublicInfo(BaseModel):
+    actionStatus: str  #”blocked” | “unblocked”
+    gameStatus: str  #“waiting” | “inProgress” | “finished”
+    regularDeckCount: int
+    discardPileTop: CardPublicInfo | None
+    draftCards:list[CardPublicInfo] = []
+    discardPileCount: int = 1
+    players: list[PlayerPublicInfo]
+
+class PublicUpdate(BaseModel):
+    event: str = "publicUpdate"
+    payload: GamePublicInfo
+
+class PrivateUpdate(BaseModel):
+    event: str = "privateUpdate"
+    payload: PlayerPrivateInfo
+
+class GameEndInfo(BaseModel):
+    event: str = "gameEnded"
+    payload: list[PlayerWinInfo]
+
+class SecretRevealedInfo(BaseModel):
+    playerId: int
+    secretId: int
+    selectedPlayerId: int
+    
+class NotifierRevealSecret(BaseModel):
+    event: str = "notifierRevealSecret"
+    payload: SecretRevealedInfo
+
+class TopFiveLookIntoTheAshes(BaseModel):
+    event: str = "lookIntoTheAshes"
+    payload: list[CardPublicInfo]
+
+class TopFiveDelayTheMurder(BaseModel):
+    event: str = "delayTheMurderersEscape"
+    payload: list[CardPublicInfo]
+
+class GameDeletedInfo(BaseModel):
+    event: str = "gameDeleted"
+    payload: dict
+
+class PlayerExitInfo(BaseModel):
+    playerId: int
+
+class NotifierPlayerExit(BaseModel):
+    event: str = "playerExit"
+    payload: PlayerExitInfo
+
