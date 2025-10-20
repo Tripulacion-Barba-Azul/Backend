@@ -433,7 +433,7 @@ def test_look_into_the_ashes_effect(session: Session, seed_started_game):
     
 def test_get_top_five_discarded_cards(session: Session, seed_started_game):
     game = seed_started_game(3)
-
+    player = game.players[1]
 
     top_five_ids = []
     for _ in range(5):
@@ -444,7 +444,7 @@ def test_get_top_five_discarded_cards(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    top_five = PlayService(session).get_top_five_discarded_cards(game.id)
+    top_five = PlayService(session).get_top_five_discarded_cards(player, game.id)
     top_five_ids.pop(len(top_five_ids)-1)
 
     assert len(top_five) <= 5
