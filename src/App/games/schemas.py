@@ -95,9 +95,14 @@ class TopFiveDelayTheMurder(BaseModel):
     event: str = "delayTheMurderersEscape"
     payload: list[CardPublicInfo]
 
+class GameDeletedInfo(BaseModel):
+    event: str = "gameDeleted"
+    payload: dict
+
 class PlayerExitInfo(BaseModel):
     playerId: int
 
 class NotifierPlayerExit(BaseModel):
     event: str = "playerExit"
     payload: PlayerExitInfo
+

@@ -58,4 +58,7 @@ class NotPlayableCard(Exception):
 class InSocialDisgraceException(Exception):
     """Player is in social disgrace. Cannot do that action normally."""
 
+class  OwnerMustntLeave(Exception):
+    """The owner of the game cannot leave the game"""
+
 
