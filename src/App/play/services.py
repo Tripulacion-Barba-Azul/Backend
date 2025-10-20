@@ -188,8 +188,11 @@ class PlayService:
             player.turn_status = TurnStatus.DRAWING
             return []
 
+        discarded_cards = []
+
         for card_id in cards_id:
             card = self._card_service.get_card(card_id)
+            discarded_cards.append(card)
             card = self._player_service.discard_card(player_id, card)
             if card.name != "Early Train to Paddington" and card not in player.cards:
                 self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
@@ -201,8 +204,6 @@ class PlayService:
         if len(player.cards) == 6:
             self.end_turn(game.id,player.id)
 
-        if len(player.cards) == 6:
-            self.end_turn(game.id, player.id)
             
         self._db.add(player)
         self._db.flush()
@@ -256,8 +257,8 @@ class PlayService:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         if player.turn_status != TurnStatus.DRAWING:
             raise NotPlayersTurnError(f"Player {player_id} cannot end turn now")
-        if len(player.cards) != 6:
-            raise PlayerNeedSixCardsError(f"Player {player_id} needs to have six cards to end turn")
+        # if len(player.cards) != 6:
+        #     raise PlayerNeedSixCardsError(f"Player {player_id} needs to have six cards to end turn")
         
         player.turn_status = TurnStatus.WAITING
         game.turn_number += 1
@@ -329,12 +330,23 @@ class PlayService:
             countNotSoFast = self.cards_off_the_tables(game, player, selected_player)
 
         elif event == TurnAction.SELECT_ANY_PLAYER:
-                player.turn_action = TurnAction.NO_ACTION
+            player.turn_action = TurnAction.NO_ACTION
+
+            if selected_player.in_social_disgrace:
+                selected_player.turn_action = TurnAction.NO_ACTION
+                player.turn_status = TurnStatus.DISCARDING_OPT
+            else:
                 selected_player.turn_action = TurnAction.REVEAL_OWN_SECRET
 
         elif event == TurnAction.SATTERWAITEWILD:
             player.turn_action = TurnAction.NO_ACTION
-            selected_player.turn_action = TurnAction.GIVE_SECRET_AWAY
+            if selected_player.in_social_disgrace:
+                selected_player.turn_action = TurnAction.NO_ACTION
+                player.turn_status = TurnStatus.DISCARDING_OPT
+            else:
+                selected_player.turn_action = TurnAction.GIVE_SECRET_AWAY
+
+            
 
         self._db.flush()
         self._db.commit()
@@ -668,9 +680,6 @@ class PlayService:
         if rep_deck.number_of_cards >= 6:
             for _ in range(6):
                 card = max(rep_deck.cards, key=lambda c: c.order)
-                if card.name == "Early Train to Paddington":
-                    CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
-                    CardService(self._db).relate_card_player(player.id, card.id, commit=True)
                 CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
                 self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
                 

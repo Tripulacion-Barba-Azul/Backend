@@ -579,6 +579,7 @@ async def select_any_player(
                 player_id=selected_player.id,
                 message={"event": turn_action_enum_2_str(selected_player.turn_action)}
             )
+            
               
     except (GameNotFoundError, PlayerNotFoundError) as e:
         raise HTTPException(

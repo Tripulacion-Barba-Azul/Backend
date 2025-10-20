@@ -4,9 +4,10 @@ from typing import Annotated
 from venv import create
 from fastapi import APIRouter,Cookie, Depends, HTTPException, Response, status
 
+from App.card.utils import db_card_2_card_info
 from App.games.enums import GameStatus
 from App.games.models import Game
-from App.games.schemas import GameCreate, GameDeletedInfo, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate
+from App.games.schemas import GameCreate, GameDeletedInfo, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
 from App.games.services import GameService
 from App.games.utils import (
     db_game_2_game_end_info,
@@ -17,6 +18,7 @@ from App.games.utils import (
     db_game_2_game_wtg_info
 )
 from App.models.db import get_db
+from App.play.services import PlayService
 from App.players.models import Player
 from App.players.schemas import PlayerCreate, PlayerPlaysIn, PlayerPrivateInfo
 from App.players.utils import db_player_2_player_private_info, turn_action_enum_2_str
@@ -80,7 +82,23 @@ async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
                 player_id=p.id,
                 message=playerPrivateInfo.model_dump()
             )
-            if p.turn_action != TurnAction.NO_ACTION:
+            if p.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
+                top_cards = PlayService(db).get_top_five_discarded_cards(p,game.id)
+                topFiveCardsInfo = TopFiveLookIntoTheAshes(payload = [db_card_2_card_info(c) for c in top_cards])
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=p.id,
+                    message=topFiveCardsInfo.model_dump()
+                    )
+            elif p.turn_action == TurnAction.DELAY_THE_MURDERER:
+                top_cards = PlayService(db).get_top_five_discarded_cards(p, game.id)
+                topFiveCardsInfo = TopFiveDelayTheMurder(payload = [db_card_2_card_info(c) for c in top_cards])
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=p.id,
+                    message=topFiveCardsInfo.model_dump()
+                    )
+            elif p.turn_action != TurnAction.NO_ACTION:
                 await manager.send_to_player(
                 game_id=game.id,
                 player_id=p.id,

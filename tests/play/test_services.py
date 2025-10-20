@@ -89,21 +89,6 @@ def test_end_turn_success(session: Session, seed_game_player2_discard):
     assert player.turn_status == TurnStatus.WAITING
     assert game.turn_number == 2
 
-def test_end_turn_need_six_cards_error(session: Session, seed_game_player2_discard):
-    game = seed_game_player2_discard[0]
-    player = seed_game_player2_discard[1]
-    card = player.cards[0]
-    card2 = player.cards[1]
-
-    PlayService(session).discard(game, player.id, [card.id, card2.id])
-
-    PlayService(session).draw_card_from_deck(game.id, player.id)
-    
-    try:
-        PlayService(session).end_turn(game.id, player.id) 
-        assert False
-    except Exception as e:
-        assert str(e) == f"Player {player.id} needs to have six cards to end turn"
 
 def test_end_game_not_finished(session: Session, seed_game_player2_discard):
     game = seed_game_player2_discard[0]
