@@ -580,6 +580,20 @@ async def select_any_player(
                 message={"event": turn_action_enum_2_str(selected_player.turn_action)}
             )
             
+        elif event == TurnAction.NO_ACTION:
+
+            gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id, gamePublicInfo.model_dump())
+
+            for p in game.players:
+                playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=p.id,
+                    message=playerPrivateInfo.model_dump()
+                )
+            
               
     except (GameNotFoundError, PlayerNotFoundError) as e:
         raise HTTPException(

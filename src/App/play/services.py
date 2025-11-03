@@ -335,6 +335,7 @@ class PlayService:
             if selected_player.in_social_disgrace:
                 selected_player.turn_action = TurnAction.NO_ACTION
                 player.turn_status = TurnStatus.DISCARDING_OPT
+                event = TurnAction.NO_ACTION
             else:
                 selected_player.turn_action = TurnAction.REVEAL_OWN_SECRET
 
@@ -343,6 +344,7 @@ class PlayService:
             if selected_player.in_social_disgrace:
                 selected_player.turn_action = TurnAction.NO_ACTION
                 player.turn_status = TurnStatus.DISCARDING_OPT
+                event = TurnAction.NO_ACTION
             else:
                 selected_player.turn_action = TurnAction.GIVE_SECRET_AWAY
 
