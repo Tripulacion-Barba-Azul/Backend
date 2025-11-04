@@ -28,7 +28,7 @@ class Event(Base):
     selected_player_id: Mapped[int] = mapped_column(Integer, ForeignKey("players.id"), nullable=True)
     played_card_id: Mapped[int] = mapped_column(Integer,ForeignKey("cards.id"), nullable=True)
     dset_id: Mapped[int] = mapped_column(Integer, ForeignKey("detective_sets.id"), nullable=True)
-    cancelable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    cancelable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     game: Mapped["Game"] = relationship("Game", back_populates="events")
@@ -36,6 +36,3 @@ class Event(Base):
     selected_player: Mapped[Player] = relationship('Player', foreign_keys=[selected_player_id]) # actor secundario del evento
     played_card: Mapped[Card] = relationship('Card', foreign_keys=[played_card_id])
     dset: Mapped[DetectiveSet] = relationship('DetectiveSet', foreign_keys=[dset_id])
-    
-
-    

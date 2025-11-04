@@ -4,8 +4,10 @@ from App.players.models import Player
 from App.games.models import Game
 from App.events.enums import EventType
 from App.events.models import Event
+from App.events.resolvers.factory import get_resolver
 from App.card.models import Card
 from App.sets.models import DetectiveSet
+from App.sets.enums import DetectiveSetType
 
 
 class EventManager:
@@ -21,7 +23,7 @@ class EventManager:
             selected_player: Player | None = None,
             played_card: Card | None = None,
             dset: DetectiveSet | None = None,
-            cancelable: bool = False,
+            cancelable: bool = True,
             resolved: bool = False
     ) -> Event:
         new_event = Event(
@@ -38,3 +40,94 @@ class EventManager:
         self._db.flush()
         self._db.commit()
         return new_event
+
+
+    def get_unresolved_events_by_game(self, game_id: int) -> list[Event]:
+        return (
+            self._db.query(Event)
+            .filter(Event.game_id == game_id)
+            .filter(Event.resolved == False)
+            .all()
+        )
+    
+    def resolve(self, game_id: int):
+        """
+        Procesa los eventos no resueltos de un juego.
+        Regla:
+        - PLAY_NSF cancela el evento anterior si es cancelable.
+        - Si el anterior no es cancelable, el PLAY_NSF no tiene efecto.
+        - Si el último evento no es PLAY_NSF, se resuelve normalmente.
+        """
+        unresolved = self.get_unresolved_events_by_game(game_id)
+        if not unresolved:
+            return None
+
+        canceled = []
+        resolved = []
+
+        while len(unresolved) > 1 and unresolved[-1].type == EventType.PLAY_NSF:
+            last_event = unresolved.pop()
+            prev_event = unresolved[-1]
+
+            if prev_event.cancelable:
+
+                prev_event.resolved = True
+                last_event.resolved = True
+                unresolved.pop()
+
+                if (prev_event.type is EventType.PLAY_SET and 
+                    prev_event.dset.type is DetectiveSetType.LADY_EILEEN_BRENT):
+                    player = prev_event.main_player
+                    dset = prev_event.dset
+
+                    for card in dset.cards:
+                        player.cards.append(card)
+                    
+                    if dset in player.sets:
+                        player.sets.remove(dset)
+
+                    self._db.delete(dset)
+                    self._db.flush()
+                    self._db.commit()
+                
+                if (prev_event.type is EventType.PLAY_DETECTIVE and 
+                    prev_event.dset.type is DetectiveSetType.LADY_EILEEN_BRENT):
+                    player = prev_event.main_player
+                    dset = prev_event.dset
+                    card = prev_event.played_card
+                    
+                    player.cards.append(card)
+                    dset.cards.remove(card)
+
+                    self._db.flush()
+                    self._db.commit()
+
+                self._db.commit()
+                canceled.append(prev_event.id)
+                resolved.append(last_event.id)
+            else:
+                last_event.resolved = True
+                self._db.commit()
+                resolved.append(last_event.id)
+                break
+
+        if unresolved:
+            base_event = unresolved[-1]
+            resolver = get_resolver(base_event, self._db)
+            if not base_event.resolved:
+                if resolver:
+                    resolver.resolve()
+                    base_event.resolved = True
+                    self._db.commit()
+                else:
+                    base_event.resolved = True
+                    self._db.commit()
+
+                resolved.append(base_event.id)
+
+        return {
+            "action": "resolved_chain",
+            "resolved_events": resolved,
+            "canceled_events": canceled
+        }
+

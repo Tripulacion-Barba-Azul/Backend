@@ -12,7 +12,6 @@ from App.exceptions import (
     NotPlayableCard,
     NotPlayersTurnError,
     ObligatoryDiscardError,
-    PlayerNeedSixCardsError,
     PlayerNotFoundError,
     PlayerHave6CardsError,
     DeckNotFoundError,
@@ -23,7 +22,7 @@ from App.games.models import Game
 from App.games.services import GameService
 from App.games.enums import GameStatus, Winners
 from App.secret.enums import SecretType
-from App.secret.services import get_secret, relate_secret_player, reveal_secret, unrelate_secret_player
+from App.secret.services import relate_secret_player, reveal_secret, unrelate_secret_player
 from App.players.models import Player
 from App.players.enums import PlayerRole, TurnAction, TurnStatus
 from App.players.services import PlayerService
@@ -101,7 +100,6 @@ class PlayService:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         
         cards = player.cards
-        
                 
         if player.turn_status != TurnStatus.PLAYING:
             raise NotPlayersTurnError(f"It's not the turn of player {player_id}")
