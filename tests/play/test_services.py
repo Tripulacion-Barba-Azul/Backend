@@ -106,7 +106,7 @@ def test_end_game_not_finished(session: Session, seed_game_player2_discard):
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.IN_PROGRESS
 
-def test_end_game_win_murderer(session: Session, seed_game_player2_discard):
+def test_end_game_win_murderer_for_deck(session: Session, seed_game_player2_discard):
     game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
     card = player.cards[0]
@@ -128,7 +128,22 @@ def test_end_game_win_murderer(session: Session, seed_game_player2_discard):
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.FINISHED
     assert game.winners == Winners.MURDERER
-    
+
+def test_end_game_win_murderer_for_social_disgrace(session: Session, seed_game_player2_discard):
+    game = seed_game_player2_discard[0]
+    detectives = [player for player in game.players if player.role == PlayerRole.DETECTIVE]
+
+    assert game.status != GameStatus.FINISHED
+
+    for detective in detectives:
+        detective.in_social_disgrace = True
+
+    game = GameService(session).get_by_id(game.id)
+    PlayService(session).end_game(game.id)
+
+    assert game.status == GameStatus.FINISHED
+    assert game.winners == Winners.MURDERER
+
 def test_end_game_win_detectives(session: Session, seed_started_game):
     game = seed_started_game(3)
     player = game.players[1]
