@@ -501,6 +501,13 @@ async def endpoint_reveal_secret(
         gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublicInfo.model_dump())
 
+        for player in game.players:
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
 
         notifierRevealSecret = NotifierRevealSecret(
             payload=SecretRevealedInfo(
