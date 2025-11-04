@@ -339,8 +339,9 @@ def test_reveal_secret_endpoint(client: TestClient, seed_game_player2_reveal):
 
         notifier_received = False
         public_update_received = False
+        private_update_received = False
 
-        for i in range(2):
+        for i in range(3):
             result = websocket.receive_json()
             payload = result.get("payload", {})
             if result.get("event") == "notifierRevealSecret":
@@ -355,9 +356,12 @@ def test_reveal_secret_endpoint(client: TestClient, seed_game_player2_reveal):
                 secret_rev = next((s for s in selected_player.get("secrets", []) if s["id"] == secret.id), None)
                 assert secret_rev["revealed"] is True
                 public_update_received = True
-        
+            elif result.get("event") == "privateUpdate":
+                private_update_received = True
+
         assert notifier_received
-        assert public_update_received    
+        assert public_update_received
+        assert private_update_received
 
     assert response.status_code == 200
 
