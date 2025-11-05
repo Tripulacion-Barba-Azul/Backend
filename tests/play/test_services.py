@@ -33,6 +33,8 @@ def test_discard_card_service_with_early_train_to_paddington(session: Session, s
     game: Game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
 
+    cards_id = [card.id for card in player.cards]
+
     if any(card.name != "Early Train to Paddington" for card in player.cards):
         card1 = CardService(session).create_event_card("Early Train to Paddington", "")
         player.cards[0] = card1
@@ -43,7 +45,7 @@ def test_discard_card_service_with_early_train_to_paddington(session: Session, s
     session.flush()
     session.commit()
 
-    PlayService(session).discard(game, player.id, cards_id)    
+    PlayService(session).discard(game, player.id, cards_id)  
 
     assert len(player.cards) == 0
     assert player.turn_status == TurnStatus.DRAWING
@@ -106,7 +108,7 @@ def test_end_game_not_finished(session: Session, seed_game_player2_discard):
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.IN_PROGRESS
 
-def test_end_game_win_murderer(session: Session, seed_game_player2_discard):
+def test_end_game_win_murderer_for_deck(session: Session, seed_game_player2_discard):
     game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
     card = player.cards[0]
@@ -128,7 +130,22 @@ def test_end_game_win_murderer(session: Session, seed_game_player2_discard):
     PlayService(session).end_game(game.id)
     assert game.status == GameStatus.FINISHED
     assert game.winners == Winners.MURDERER
-    
+
+def test_end_game_win_murderer_for_social_disgrace(session: Session, seed_game_player2_discard):
+    game = seed_game_player2_discard[0]
+    detectives = [player for player in game.players if player.role == PlayerRole.DETECTIVE]
+
+    assert game.status != GameStatus.FINISHED
+
+    for detective in detectives:
+        detective.in_social_disgrace = True
+
+    game = GameService(session).get_by_id(game.id)
+    PlayService(session).end_game(game.id)
+
+    assert game.status == GameStatus.FINISHED
+    assert game.winners == Winners.MURDERER
+
 def test_end_game_win_detectives(session: Session, seed_started_game):
     game = seed_started_game(3)
     player = game.players[1]
@@ -399,6 +416,8 @@ def test_look_into_the_ashes_effect(session: Session, seed_started_game):
 
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.LOOK_INTO_THE_ASHES
+
+    card_id = None
 
     for _ in range(5):
         c = CardService(session).create_event_card("Random Card","")

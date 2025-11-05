@@ -286,6 +286,11 @@ class PlayService:
             game.status = GameStatus.FINISHED
             game.winners = Winners.DETECTIVE
 
+        detectives: list[Player] = [player for player in game.players if player.role == PlayerRole.DETECTIVE]
+        if all(detective.in_social_disgrace for detective in detectives):
+            game.status = GameStatus.FINISHED
+            game.winners = Winners.MURDERER
+
         self._db.add(game)
         self._db.flush()
         self._db.commit()
