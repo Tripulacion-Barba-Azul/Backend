@@ -79,7 +79,7 @@ play_router = APIRouter()
 active_timers: dict[int, asyncio.Task] = {}
 
 # Duración del timer (en segundos)
-TIMER_DURATION = 5
+TIMER_DURATION = 11
 
 async def start_timer(game_id: int, db):
     """Crea un timer que envía updates cada 1s y resuelve al finalizar."""
@@ -226,9 +226,7 @@ async def resolve_event(game_id:int, db):
                 player_id=player.id,
                 message={"event": turn_action_enum_2_str(eventType)}
             )
-    
-
-    
+ 
 @play_router.post(path="/{game_id}/actions/play-card", status_code=200)
 async def play_card(
     game_id: int,
@@ -515,7 +513,6 @@ async def play_nsf(
     )
 
     return {"message": "Not So Fast played successfully"}
-
 
 @play_router.post(path="/{game_id}/actions/discard", status_code=200)
 async def discard_cards(
