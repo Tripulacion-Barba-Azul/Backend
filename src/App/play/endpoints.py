@@ -21,6 +21,7 @@ from App.games.services import GameService
 
 from App.games.utils import db_game_2_game_end_info, db_game_2_game_public_info
 from App.play.schemas import (
+    AddDetectiveInfo,
     AndThenThereWasOneMoreInfo, 
     DelayTheMurderInfo, 
     DrawCardInfo, 
@@ -122,6 +123,16 @@ async def play_card(
         elif len(cards_id) == 1:
             card_id = cards_id[0]
             card, event = PlayService(db).play_card(game, player_id, card_id)
+
+
+
+
+
+
+
+
+
+
 
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
@@ -895,10 +906,10 @@ async def reveal_own_secret(
             detail=str(e),
         )
 
-@play_router.post(path="/{game_id}/actions/delay-the-murderers-escape", status_code=200)
-async def delay_the_murderers_escape(
+@play_router.post(path="/{game_id}/actions/play-add-detective", status_code=200)
+async def add_detective(
     game_id: int,
-    turn_info: DelayTheMurderInfo,
+    turn_info: AddDetectiveInfo,
     db=Depends(get_db)
 ):
     game = GameService(db).get_by_id(game_id)
@@ -909,13 +920,15 @@ async def delay_the_murderers_escape(
         )
   
     player_id = turn_info.playerId
+    set_id = turn_info.setId
+    card_id = turn_info.cardId
     try:
-        PlayService(db).delay_the_murder_effect(
-            game=game,
-            player_id=player_id,
-            cards=turn_info.cards,
-        )
+        PlayService(db).add_detective(game, player_id, set_id, card_id)
 
+
+
+
+        
         gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublictInfo.model_dump())
 
@@ -947,3 +960,5 @@ async def delay_the_murderers_escape(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"It's not the turn of player {player_id}",
         )
+    
+

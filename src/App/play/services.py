@@ -26,6 +26,7 @@ from App.secret.services import relate_secret_player, reveal_secret, unrelate_se
 from App.players.models import Player
 from App.players.enums import PlayerRole, TurnAction, TurnStatus
 from App.players.services import PlayerService
+from App.sets.models import DetectiveSet
 from App.sets.services import DetectiveSetService
 from App.card.models import Card, Event
 
@@ -690,6 +691,45 @@ class PlayService:
                 self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
 
         self.end_game(game.id)
+
+        player.turn_status = TurnStatus.DISCARDING_OPT
+        player.turn_action = TurnAction.NO_ACTION
+
+        self._db.flush()
+        self._db.commit()
+
+    def add_detective(self, game: Game, player_id: int, set_id: int, card_id: int):
+
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+
+        if player.turn_action != TurnStatus.PLAYING:
+            raise NotPlayersTurnError(f"Player {player_id} cannot add detective now")
+        
+        dset = self._db.query(DetectiveSet).filter(DetectiveSet.id == set_id).first()
+        if not dset:
+            raise InvalididDetectiveSet(f"Detective set {set_id} not found")
+        
+        set_cards = dset.cards
+
+        card = CardService(self._db).get_card(card_id)
+        new_set = []
+
+        for c in set_cards:
+            new_set.append(c)
+
+        new_set.append(card)
+
+        if card.name == "Ariadne Oliver":
+            card = self._player_service.discard_card(player_id, card)
+            self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+
+        set_type = self._detective_set_service.validate_play_set(new_set)
+        if not set_type:
+            raise InvalididDetectiveSet("Not a valid detective set. Learn the rules little cheater.")
+        
+        
 
         player.turn_status = TurnStatus.DISCARDING_OPT
         player.turn_action = TurnAction.NO_ACTION
