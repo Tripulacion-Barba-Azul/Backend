@@ -139,3 +139,12 @@ class PayloadDiscardEvent(BaseModel):
 class DiscardEventInfo(BaseModel):
     event: str = "discardEvent"
     payload: PayloadDiscardEvent
+
+
+class PlayNSF(BaseModel):
+    playerId: int
+    cardId: int | None
+
+class TimeInfo(BaseModel):
+    event: str = "timer"
+    payload: dict[str, int]
