@@ -88,6 +88,11 @@ class PlayService:
             self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
 
         turn_status = self._card_service.select_event_type(game, player, card)
+
+        cancelable = True
+        if card.name == "Cards off the table":
+            cancelable = False
+
         event = self._event_managaer.create(
             type=EventType.PLAY_CARD,
             game=game,
@@ -95,9 +100,11 @@ class PlayService:
             played_card=card
         )
 
-        game.action_status = ActionStatus.UNBLOCKED
-        for p in game.players:
-            p.turn_action = TurnAction.PLAY_NSF
+        if cancelable:
+            game.action_status = ActionStatus.UNBLOCKED
+
+            for p in game.players:
+                p.turn_action = TurnAction.PLAY_NSF
             
         self._db.flush()
         self._db.commit()

@@ -291,7 +291,7 @@ async def play_card(
                     game_id=game.id,
                     player_id=player.id,
                     message={"event": turn_action_enum_2_str(event)}
-                )          
+                )       
 
             return {"setId": played_set.id}
         
@@ -322,21 +322,26 @@ async def play_card(
             # TIME TO PLAY NSF
             if game.action_status is ActionStatus.UNBLOCKED:
                 reset_timer(game_id, db)
-
-            # TIME TO PLAY NSF
-            reset_timer(game_id, db)
-
-            # BROADCAST INFO
-            if game.status == GameStatus.FINISHED:
-                gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
-                await manager.broadcast(game.id, gameEndInfo.model_dump())
-                return {"message": "The game has ended"}
             else:
+            # RESOLVE NOT CANCELABLE EVENTS  
+                EventManager(db).resolve(game.id)
                 await manager.send_to_player(
                     game_id=game.id,
                     player_id=player.id,
                     message={"event": turn_action_enum_2_str(event)}
                 )
+
+            # BROADCAST INFO
+            # if game.status == GameStatus.FINISHED:
+            #     gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
+            #     await manager.broadcast(game.id, gameEndInfo.model_dump())
+            #     return {"message": "The game has ended"}
+            # else:
+            #     await manager.send_to_player(
+            #         game_id=game.id,
+            #         player_id=player.id,
+            #         message={"event": turn_action_enum_2_str(event)}
+            #     )
 
             playedCard = db_player_2_played_card_info(player, card, ActionType.EVENT)
             await manager.broadcast_except(
