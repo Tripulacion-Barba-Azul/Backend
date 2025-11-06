@@ -82,6 +82,22 @@ async def websocket_endpoint(websocket: WebSocket, game_id: int, player_id: int)
     await manager.connect(game_id, player_id, websocket)
     try:
         while True:
-            await websocket.receive_text()
+            data = await websocket.receive_json()
+            # {
+            #   "event": "chatMessage",
+            #   "payload": { "playerId": <int>, "msg": <str>, "gameId": <int> }
+            # }
+            event = data.get("event")
+            payload = data.get("payload") or {}
+
+            if event == "chatMessage":
+                target_game_id = int(payload.get("gameId", game_id))
+                await manager.broadcast(target_game_id, data)
+            else:
+                await websocket.send_json({
+                    "event": "error",
+                    "payload": {"detail": f"No supported event: {event}"}
+                })
+
     except WebSocketDisconnect:
         manager.disconnect(game_id, player_id)
