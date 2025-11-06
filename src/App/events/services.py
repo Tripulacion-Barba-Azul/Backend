@@ -49,7 +49,16 @@ class EventManager:
             .filter(Event.resolved == False)
             .all()
         )
-    
+
+    def get_unresolved_events_by_event_type(self, game_id: int, event_type: EventType) -> list[Event]:
+        return (
+            self._db.query(Event)
+            .filter(Event.game_id == game_id)
+            .filter(Event.type == event_type)
+            .filter(Event.resolved == False)
+            .all()
+        )
+
     def resolve(self, game_id: int):
         """
         Procesa los eventos no resueltos de un juego.
