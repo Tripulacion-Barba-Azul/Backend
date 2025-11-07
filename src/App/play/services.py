@@ -747,7 +747,7 @@ class PlayService:
             self.resolver_dead_card_folly(game, related_events)
             actionResolved = True
 
-        return actionResolved
+        return actionResolved, event_type, card
     
     def resolver_card_trade(self, event: list[GameEvent]):
         player1 = event[0].main_player

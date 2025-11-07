@@ -139,3 +139,18 @@ class PayloadDiscardEvent(BaseModel):
 class DiscardEventInfo(BaseModel):
     event: str = "discardEvent"
     payload: PayloadDiscardEvent
+
+class PayloadCardTrade(BaseModel):
+    playerId: int
+    cardName: str
+
+class NotifierCardTrade(BaseModel):
+    event: str = "notifierCardTrade"
+    payload: PayloadCardTrade
+
+class NotifierDeadCardFolly(BaseModel):
+    event: str = "notifierDeadCardFolly"
+
+class SelectOwnCardInfo(BaseModel):
+    playerId: int
+    cardId: int

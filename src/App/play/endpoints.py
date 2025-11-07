@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from App.card.utils import db_card_2_card_info
+from App.events.enums import EventType
 from App.exceptions import (
     GameNotFoundError,
     InSocialDisgraceException,
@@ -26,21 +27,25 @@ from App.play.schemas import (
     DrawCardInfo, 
     HideSecretInfo, 
     LookIntoTheAshesInfo, 
-    NotifierAndThenThereWasOneMore, 
+    NotifierAndThenThereWasOneMore,
+    NotifierCardTrade,
+    NotifierDeadCardFolly, 
     NotifierDelayTheMurder, 
     NotifierHideSecret, 
     NotifierLookIntoTheAshes, 
     NotifierRevealSecretForce, 
     NotifierSatterthwaiteWild, 
     NotifierStealSet, 
-    PayloadAndThenThereWasOneMore, 
+    PayloadAndThenThereWasOneMore,
+    PayloadCardTrade, 
     PayloadDelayTheMurder, 
     PayloadHideSecret, 
     PayloadLookIntoTheAshes, 
     PlayCard, 
     RevealOwnSecretInfo, 
     RevealSecretInfo, 
-    SelectAnyPlayerInfo, 
+    SelectAnyPlayerInfo,
+    SelectOwnCardInfo,
     StealSetInfo, 
     PayloadHideSecret, 
     PayloadLookIntoTheAshes, 
@@ -935,7 +940,7 @@ async def delay_the_murderers_escape(
         )
 
         await manager.broadcast(game.id, notifierDelayTheMurder.model_dump())
-  
+
         return {"Delay the Murderers Escape success"}
     except PlayerNotFoundError as e:
         raise HTTPException(
@@ -947,3 +952,63 @@ async def delay_the_murderers_escape(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"It's not the turn of player {player_id}",
         )
+
+@play_router.post(path="/{game_id}/actions/select-own-card", status_code=200)
+async def get_select_own_card(
+    game_id: int,
+    select_own_card_info: SelectOwnCardInfo,
+    db=Depends(get_db)
+):
+    game = GameService(db).get_by_id(game_id)
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+
+    player_id = select_own_card_info.playerId
+    card_id = select_own_card_info.cardId
+    try:
+        resolved, event_type, card = PlayService(db).select_own_card(
+            game=game,
+            player_id=player_id,
+            card_id=card_id
+        )
+        print(resolved, event_type, card)
+
+        if resolved:
+            gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+            await manager.broadcast(game.id, gamePublictInfo.model_dump())
+
+            for player in game.players:
+                playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(player))
+
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=player.id,
+                    message=playerPrivateInfo.model_dump()
+                )
+            if event_type == EventType.CARD_TRADE:
+                notifierCardTrade = NotifierCardTrade(
+                    payload=PayloadCardTrade(
+                        playerId=player_id,
+                        cardName=card.name
+                    )
+                )
+                await manager.broadcast(game.id, notifierCardTrade.model_dump())
+            elif event_type == EventType.DEAD_CARD_FOLLY:
+                notifierDeadCardFolly = NotifierDeadCardFolly()
+                await manager.broadcast(game.id, notifierDeadCardFolly.model_dump())
+
+    except (PlayerNotFoundError, NotCardInHand) as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"It's not the turn of player {player_id}",
+        )
+
+    return {"message": "Get Select Own Card success"}

@@ -175,6 +175,14 @@ def db_player_2_reveal_secret_force(player: Player,
         secretId=secret.id,
         selectedPlayerId=selected_player.id
     )
+
+def db_player_2_card_trade_info(player: Player,
+                           card: Card
+) -> PayloadCardTrade:
+    return PayloadCardTrade(
+        playerId=player.id,
+        cardName=card.name
+    )
     
 
 def turn_action_enum_2_str(turn_action: TurnAction) -> str:
