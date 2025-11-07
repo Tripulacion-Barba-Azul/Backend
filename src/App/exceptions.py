@@ -64,3 +64,5 @@ class  OwnerMustntLeave(Exception):
 class GameIsBlocked(Exception):
     """It's not the time to play a Not So Fast"""
 
+class IncorrectDirectionError(Exception):
+    """The direction selected is not valid."""

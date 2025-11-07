@@ -13,5 +13,5 @@ class EventType(Enum):
     DEAD_CARD_FOLLY_DIRECTION = "dead card folly direction"
 
 class Direction(Enum):
-    CLOCKWISE = "clockwise"
-    COUNTERCLOCKWISE = "counterclockwise"
+    CLOCKWISE = "left"
+    COUNTERCLOCKWISE = "right"

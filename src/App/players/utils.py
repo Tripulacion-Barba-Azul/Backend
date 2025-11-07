@@ -6,7 +6,7 @@ from App import players
 from App.card.utils import db_card_2_card_info, db_card_2_card_private_info
 from App.games.models import Game
 from App.models import db
-from App.play.schemas import CardsOffTheTableInfo, DiscardEventInfo, NotifierCardsOffTheTable, PayloadDiscardEvent, PayloadRevealSecretForce, PayloadSatterthwaiteWild
+from App.play.schemas import CardsOffTheTableInfo, DiscardEventInfo, NotifierCardsOffTheTable, PayloadCardTrade, PayloadDiscardEvent, PayloadRevealSecretForce, PayloadSatterthwaiteWild
 from App.players.enums import PlayerRole, TurnAction
 from App.players.models import Player
 from App.players.schemas import AllyInfo, CardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPrivateInfo, PlayerPublicInfo
@@ -196,5 +196,9 @@ def turn_action_enum_2_str(turn_action: TurnAction) -> str:
         return "selectOwnCard"
     elif turn_action == TurnAction.DEAD_CARD_FOLLY:
         return "selectOwnCard"
+    elif turn_action == TurnAction.CARD_TRADE_SELECTION:
+        return "selectAnyPlayer"
+    elif turn_action == TurnAction.DEAD_CARD_FOLLY_DIRECTION:
+        return "selectDirection"
     else:
         return turn_action.value
