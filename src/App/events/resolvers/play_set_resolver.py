@@ -14,7 +14,7 @@ class PlaySetResolver(BaseEventResolver):
         if turn_action == TurnAction.NO_EFFECT:
             player.turn_action = TurnAction.NO_ACTION
             player.turn_status = TurnStatus.DISCARDING_OPT
-        else :
+        else:
             player.turn_action = turn_action
             player.turn_status = TurnStatus.TAKING_ACTION
 
