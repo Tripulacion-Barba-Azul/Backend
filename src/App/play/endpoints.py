@@ -29,6 +29,7 @@ from App.play.schemas import (
     LookIntoTheAshesInfo, 
     NotifierAndThenThereWasOneMore,
     NotifierCardTrade,
+    NotifierCardTradePublic,
     NotifierDeadCardFolly, 
     NotifierDelayTheMurder, 
     NotifierHideSecret, 
@@ -37,7 +38,8 @@ from App.play.schemas import (
     NotifierSatterthwaiteWild, 
     NotifierStealSet, 
     PayloadAndThenThereWasOneMore,
-    PayloadCardTrade, 
+    PayloadCardTrade,
+    PayloadCardTradePublic, 
     PayloadDelayTheMurder, 
     PayloadHideSecret, 
     PayloadLookIntoTheAshes, 
@@ -969,12 +971,11 @@ async def get_select_own_card(
     player_id = select_own_card_info.playerId
     card_id = select_own_card_info.cardId
     try:
-        resolved, event_type, card = PlayService(db).select_own_card(
+        resolved, event_type, main_player_card, selected_player_card, main_player, selected_player = PlayService(db).select_own_card(
             game=game,
             player_id=player_id,
             card_id=card_id
         )
-        print(resolved, event_type, card)
 
         if resolved:
             gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
@@ -989,13 +990,22 @@ async def get_select_own_card(
                     message=playerPrivateInfo.model_dump()
                 )
             if event_type == EventType.CARD_TRADE:
-                notifierCardTrade = NotifierCardTrade(
-                    payload=PayloadCardTrade(
-                        playerId=player_id,
-                        cardName=card.name
+                for player in [main_player, selected_player]:
+                    notifierCardTrade = NotifierCardTrade(
+                        payload=PayloadCardTrade(
+                            playerId=player.id,
+                            cardName=main_player_card.name if player.id == main_player.id else selected_player_card.name
+                        )
                     )
-                )
-                await manager.broadcast(game.id, notifierCardTrade.model_dump())
+                    await manager.broadcast(game.id, notifierCardTrade.model_dump())
+                for player in [p for p in game.players if p not in [main_player, selected_player]]:
+                    notifierCardTradePublic = NotifierCardTradePublic(
+                        payload=PayloadCardTradePublic(
+                            mainPlayerId=main_player.id,
+                            selectedPlayerId=selected_player.id
+                        )
+                    )
+                    await manager.broadcast(game.id, notifierCardTradePublic.model_dump())
             elif event_type == EventType.DEAD_CARD_FOLLY:
                 notifierDeadCardFolly = NotifierDeadCardFolly()
                 await manager.broadcast(game.id, notifierDeadCardFolly.model_dump())

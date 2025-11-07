@@ -151,6 +151,14 @@ class NotifierCardTrade(BaseModel):
 class NotifierDeadCardFolly(BaseModel):
     event: str = "notifierDeadCardFolly"
 
+class PayloadCardTradePublic(BaseModel):
+    mainPlayerId: int
+    selectedPlayerId: int
+
+class NotifierCardTradePublic(BaseModel):
+    event: str = "notifierCardTradePublic"
+    payload: PayloadCardTradePublic
+
 class SelectOwnCardInfo(BaseModel):
     playerId: int
     cardId: int

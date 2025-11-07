@@ -630,10 +630,23 @@ def test_card_trade(session: Session, seed_started_game):
         played_card=selected_player_card
     )
 
-    PlayService(session).resolver_card_trade([first_event, second_event])
+    player.turn_action = TurnAction.CARD_TRADE
+    player.turn_status = TurnStatus.TAKING_ACTION
+    selected_player.turn_action = TurnAction.CARD_TRADE
+    selected_player.turn_status = TurnStatus.WAITING
+    session.flush()
+    session.commit()
+
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade([first_event, second_event])
 
     assert player_card in selected_player.cards
     assert selected_player_card in player.cards
+    assert main_player.id == player.id
+    assert selec_player.id == selected_player.id
+    assert main_player_card.id == player_card.id
+    assert selec_player_card.id == selected_player_card.id
+    assert main_player_card in selected_player.cards
+    assert selec_player_card in player.cards
 
 def test_dead_card_folly(session: Session, seed_started_game):
     event_manager = EventManager(session)

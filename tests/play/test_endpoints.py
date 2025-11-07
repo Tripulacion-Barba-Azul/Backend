@@ -794,7 +794,7 @@ def test_select_own_card_endpoint_with_card_trade(client:TestClient, session:Ses
                 receivedPrivateUpdate = True
             elif result.get("event") == "notifierCardTrade":
                 assert payload["playerId"] in [main_player.id, selected_player.id]
-                assert payload["cardName"] == main_player.cards[0].name
+                assert payload["cardName"] in [main_player.cards[0].name, selected_player.cards[0].name]
                 receivedNotifier = True
 
 
