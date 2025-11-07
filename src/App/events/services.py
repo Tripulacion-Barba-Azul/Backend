@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from App.players.models import Player
 from App.games.models import Game
-from App.events.enums import EventType
+from App.events.enums import EventType, Direction
 from App.events.models import Event
 from App.events.resolvers.factory import get_resolver
 from App.card.models import Card
@@ -29,7 +29,8 @@ class EventManager:
             played_card: Card | None = None,
             dset: DetectiveSet | None = None,
             cancelable: bool = True,
-            resolved: bool = False
+            resolved: bool = False,
+            direction: Direction | None = None
     ) -> Event:
         new_event = Event(
             type=type,
@@ -39,7 +40,8 @@ class EventManager:
             played_card=played_card,
             dset=dset,
             cancelable=cancelable,
-            resolved=resolved
+            resolved=resolved,
+            direction=direction
         )
         self._db.add(new_event)
         self._db.flush()
@@ -54,6 +56,17 @@ class EventManager:
             .filter(Event.resolved == False)
             .all()
         )
+
+    def get_unresolved_events_by_event_type(self, game_id: int, event_type: EventType) -> list[Event]:
+        return (
+            self._db.query(Event)
+            .filter(Event.game_id == game_id)
+            .filter(Event.type == event_type)
+            .filter(Event.resolved == False)
+            .all()
+        )
+
+    
     
     def resolve(self, game_id: int) -> Event | None:
         """

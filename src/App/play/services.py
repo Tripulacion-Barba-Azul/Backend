@@ -4,6 +4,8 @@ from App.card.services import CardService
 from App.decks.discard_deck_service import DiscardDeckService
 from App.card.services import CardService
 from App.decks.draft_deck_service import DraftDeckService
+from App.events.enums import Direction, EventType
+from App.events.models import Event as GameEvent
 from App.exceptions import (
     GameIsBlocked,
     GameNotFoundError,
@@ -22,6 +24,7 @@ from App.exceptions import (
 from App.games.models import Game
 from App.games.services import GameService
 from App.games.enums import ActionStatus, GameStatus, Winners
+from App.players.utils import sort_players
 from App.secret.enums import SecretType
 from App.secret.services import relate_secret_player, reveal_secret, unrelate_secret_player
 from App.players.models import Player
@@ -747,7 +750,7 @@ class PlayService:
             
             
             sorted_cards = sorted(discard_deck.cards, key=lambda c: c.order, reverse=True)
-
+            
             if player.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
                 top_five_cards = sorted_cards[:6]
                 top_five_cards.pop(0)
@@ -755,3 +758,113 @@ class PlayService:
                 top_five_cards = sorted_cards[:5]
             
             return top_five_cards
+
+    def select_own_card(self, game: Game, player_id: int, card_id: int) -> tuple[bool, EventType, Card | None, Card | None, Player | None, Player | None]:
+        from App.events.services import EventManager
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        if player.turn_action != TurnAction.CARD_TRADE and player.turn_action != TurnAction.DEAD_CARD_FOLLY:
+            raise NotPlayersTurnError(f"Player {player_id} cannot select own card now")
+        
+        card = next((card for card in player.cards if card.id == card_id))
+        if not card:
+            raise NotCardInHand(f"Card {card_id} not found in player's hand")
+        
+        actionResolved = False
+        main_player = None
+        selected_player = None
+        main_player_card = None
+        selected_player_card = None
+
+        if player.turn_action == TurnAction.DEAD_CARD_FOLLY:
+            event_type = EventType.DEAD_CARD_FOLLY
+        else:
+            event_type = EventType.CARD_TRADE
+
+        event = EventManager(self._db).create(
+            type=event_type,
+            game=game,
+            main_player=player,
+            played_card=card,
+            resolved=False,
+        )
+
+        self._db.flush()
+        self._db.commit()
+        
+        related_events = EventManager(self._db).get_unresolved_events_by_event_type(game.id, event_type)
+
+        if event_type == EventType.CARD_TRADE and len(related_events) == 2:
+            main_player, selected_player, main_player_card, selected_player_card = self.resolver_card_trade(related_events)
+            actionResolved = True
+        elif event_type == EventType.DEAD_CARD_FOLLY and len(related_events) == len(game.players):
+            self.resolver_dead_card_folly(game, related_events)
+            actionResolved = True
+
+        return actionResolved, event_type, main_player_card, selected_player_card, main_player, selected_player
+    
+    def resolver_card_trade(self, event: list[GameEvent]):
+        players = [e.main_player for e in event]
+        main_player = next(p for p in players if p.turn_status == TurnStatus.TAKING_ACTION)
+        selected_player = next(p for p in players if p.turn_status != TurnStatus.TAKING_ACTION)
+
+        player1 = event[0].main_player
+        card1 = event[0].played_card
+        player2 = event[1].main_player
+        card2 = event[1].played_card
+            
+        main_player_card = next(card for card in main_player.cards if (card.id == card1.id) or (card.id == card2.id))
+        selected_player_card = next(card for card in selected_player.cards if (card.id == card1.id) or (card.id == card2.id))
+
+        self._card_service.unrelate_card_player(card1.id, player1.id)
+        self._card_service.unrelate_card_player(card2.id, player2.id)
+        self._card_service.relate_card_player(player1.id, card2.id)
+        self._card_service.relate_card_player(player2.id, card1.id)
+        event[0].resolved = True
+        event[1].resolved = True
+
+        main_player.turn_status = TurnStatus.DISCARDING_OPT
+        main_player.turn_action = TurnAction.NO_ACTION
+        selected_player.turn_action = TurnAction.NO_ACTION
+        
+        self._db.flush()
+        self._db.commit()
+
+        return main_player, selected_player, main_player_card, selected_player_card
+
+    def resolver_dead_card_folly(self, game: Game, events: list[GameEvent]):
+
+        eventDirection = next (e for e in game.events if e.type == EventType.DEAD_CARD_FOLLY_DIRECTION and not e.resolved)
+
+        direction = eventDirection.direction
+        players = sort_players(game.players)
+
+        if direction == Direction.CLOCKWISE:
+            for i in range (len(players)):
+                current_player = players[i]
+                next_player = players[(i + 1) % len(players)]
+                card = next (e for e in events if e.main_player.id == current_player.id).played_card
+                self._card_service.unrelate_card_player(card.id, current_player.id)
+                self._card_service.relate_card_player(next_player.id, card.id)
+                current_player.turn_action = TurnAction.NO_ACTION
+                if current_player.turn_status == TurnStatus.TAKING_ACTION:
+                    players[i].turn_status = TurnStatus.DISCARDING_OPT
+
+        elif direction == Direction.COUNTERCLOCKWISE:
+            for i in range (len(players)):
+                current_player = players[i]
+                previous_player = players[(i - 1) % len(players)]
+                card = next (e for e in events if e.main_player.id == current_player.id).played_card
+                self._card_service.unrelate_card_player(card.id, current_player.id)
+                self._card_service.relate_card_player(previous_player.id, card.id)
+                current_player.turn_action = TurnAction.NO_ACTION
+                if current_player.turn_status == TurnStatus.TAKING_ACTION:
+                    players[i].turn_status = TurnStatus.DISCARDING_OPT
+
+        eventDirection.resolved = True
+        for event in events:
+            event.resolved = True
+
+        self._db.flush()
+        self._db.commit()
