@@ -2,6 +2,8 @@ from itertools import count
 from sqlalchemy.orm import Session
 
 from App.decks.discard_deck_service import DiscardDeckService
+from App.events.enums import Direction, EventType
+from App.events.services import EventManager
 from App.games.enums import GameStatus, Winners
 from App.games.models import Game
 from App.games.services import GameService
@@ -9,6 +11,7 @@ from App.play.services import PlayService
 from App.players.enums import PlayerRole, TurnStatus
 from App.card.services import CardService
 from App.players.enums import TurnAction
+from App.players.utils import sort_players
 from App.sets.enums import DetectiveSetType
 from App.sets.models import DetectiveSet
 
@@ -555,3 +558,117 @@ def test_early_train_to_paddington(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.DISCARDING_OPT
     assert player.turn_action == TurnAction.NO_ACTION
     assert len(game.discard_deck.cards) == 7
+
+def test_select_own_card_card_trade(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    select_player = game.players[1]
+    player = game.players[2]
+    
+    player_card = player.cards[0]
+    player.turn_action = TurnAction.CARD_TRADE
+    player.turn_status = TurnStatus.TAKING_ACTION
+    select_player_card = select_player.cards[0]
+    select_player.turn_action = TurnAction.CARD_TRADE
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).select_own_card(game, player.id, player_card.id)
+    PlayService(session).select_own_card(game, select_player.id, select_player_card.id)
+
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert select_player.turn_action == TurnAction.NO_ACTION
+    assert player_card in select_player.cards
+    assert player_card not in player.cards
+
+def test_select_own_card_dead_card_folly(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    main_player = game.players[0]
+    
+    direction_event = event_manager.create(
+        type=EventType.DEAD_CARD_FOLLY_DIRECTION,
+        game=game,
+        main_player=main_player,
+        direction=Direction.COUNTERCLOCKWISE
+    )
+    main_player.turn_status = TurnStatus.TAKING_ACTION
+
+    session.flush()
+    session.commit()
+
+    for player in game.players:
+        card = player.cards[0]
+        player.turn_action = TurnAction.DEAD_CARD_FOLLY
+        PlayService(session).select_own_card(game, player.id, card.id)
+
+    assert main_player.turn_status == TurnStatus.DISCARDING_OPT
+    for player in game.players:
+        assert player.turn_action == TurnAction.NO_ACTION
+
+def test_card_trade(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    player = game.players[0]
+    player_card = player.cards[0]
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[0]
+
+
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
+
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+    PlayService(session).resolver_card_trade([first_event, second_event])
+
+    assert player_card in selected_player.cards
+    assert selected_player_card in player.cards
+
+def test_dead_card_folly(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    players = game.players
+
+    dead_card_events = {}
+    debug_cards = {}
+
+    for player in players:
+        card = player.cards[0]
+        player.turn_action = TurnAction.DEAD_CARD_FOLLY
+        dead_card_events[player.id] = event_manager.create(
+            type=EventType.DEAD_CARD_FOLLY,
+            game=game,
+            main_player=player,
+            played_card=card
+        )
+        debug_cards[player.id] = card
+
+    direction_event = event_manager.create(
+        type=EventType.DEAD_CARD_FOLLY_DIRECTION,
+        game=game,
+        main_player=players[0],
+        direction=Direction.COUNTERCLOCKWISE
+    )
+    players[0].turn_status = TurnStatus.TAKING_ACTION
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).resolver_dead_card_folly(game, list(dead_card_events.values()))
+    
+    assert direction_event.resolved
+    for event in dead_card_events.values():
+        assert event.resolved
+    for player in players:
+        assert debug_cards[player.id] not in player.cards
