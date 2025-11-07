@@ -753,3 +753,52 @@ def test_select_own_card_endpoint_with_dead_card_folly(client:TestClient, sessio
     assert receivedPublicUpdate
     assert receivedPrivateUpdate
     
+def test_select_own_card_endpoint_with_card_trade(client:TestClient, session:Session, seed_started_game):
+    game = seed_started_game(3)
+    main_player = game.players[1]
+    selected_player = game.players[2]
+
+    main_player.turn_status = TurnStatus.TAKING_ACTION
+    main_player.turn_action = TurnAction.CARD_TRADE
+    selected_player.turn_action = TurnAction.CARD_TRADE
+
+    players = [main_player, selected_player]
+
+    session.flush()
+    session.commit()
+
+    counter_post = 0
+    receivedNotifier = False
+    receivedPublicUpdate = False
+    receivedPrivateUpdate = False
+
+    with client.websocket_connect(f"/ws/{game.id}/{main_player.id}") as websocket:
+        for player in players:
+            response = client.post(
+                f"/play/{game.id}/actions/select-own-card",
+                json = {
+                    "playerId": player.id,
+                    "cardId" : player.cards[0].id,
+                }
+            )
+            data = response.json()
+            counter_post += 1
+            assert response.status_code == 200
+
+        for _ in range(3):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                receivedPublicUpdate = True
+            elif result.get("event") == "privateUpdate":
+                receivedPrivateUpdate = True
+            elif result.get("event") == "notifierCardTrade":
+                assert payload["playerId"] in [main_player.id, selected_player.id]
+                assert payload["cardName"] == main_player.cards[0].name
+                receivedNotifier = True
+
+
+    assert counter_post == len(players)
+    assert receivedNotifier
+    assert receivedPublicUpdate
+    assert receivedPrivateUpdate
