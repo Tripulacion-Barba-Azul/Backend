@@ -752,7 +752,44 @@ class PlayService:
             
             sorted_cards = sorted(discard_deck.cards, key=lambda c: c.order, reverse=True)
 
-<<<<<<< HEAD
+            if player.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
+                top_five_cards = sorted_cards[:6]
+                top_five_cards.pop(0)
+            else:
+                top_five_cards = sorted_cards[:5]
+            
+            return top_five_cards
+
+    def early_train_to_paddington(self, game: Game, player: Player):
+            if player.turn_status != TurnStatus.TAKING_ACTION and player.turn_status != TurnStatus.DISCARDING_OPT and player.turn_status != TurnStatus.DISCARDING:
+                raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
+            if player.turn_status == TurnStatus.TAKING_ACTION:
+                if player.turn_action != TurnAction.EARLY_TRAIN_TO_PADDINGTON:
+                    raise NotPlayersTurnError(f"Player {player.id} cannot use Early Train to Paddington now")
+            
+            discard_deck = game.discard_deck
+            rep_deck = game.reposition_deck
+            
+            if rep_deck.number_of_cards >= 6:
+                for _ in range(6):
+                    card = max(rep_deck.cards, key=lambda c: c.order)
+                    CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
+                    self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
+                    
+            else:
+                while rep_deck.number_of_cards > 0:
+                    card = max(rep_deck.cards, key=lambda c: c.order)
+                    CardService(self._db).unrelate_card_reposition_deck(rep_deck.id, card.id)
+                    self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
+
+            self.end_game(game.id)
+
+            player.turn_status = TurnStatus.DISCARDING_OPT
+            player.turn_action = TurnAction.NO_ACTION
+
+            self._db.flush()
+            self._db.commit()
+
     def add_detective(self, game: Game, player_id: int, set_id: int, card_id: int):
 
         player = self._db.query(Player).filter(Player.id == player_id).first()
@@ -786,8 +823,10 @@ class PlayService:
         
         dset.cards.append(card)
 
+        if dset.type == DetectiveSetType.SIBLINGS_BERESFORD:
+            dset.type = set_type
         event = EventManager(self._db).create(EventType.PLAY_DETECTIVE,
-                                            game, 
+                                            game,
                                             player,
                                             dset.player,
                                             card,
@@ -799,24 +838,3 @@ class PlayService:
         self._db.commit()
 
         return event
-
-    def return_control(self, game: Game, event: Event):
-
-        player = event.main_player
-        
-        player.turn_status = TurnStatus.DISCARDING_OPT
-        player.turn_action = TurnAction.NO_ACTION
-
-        self._db.flush()
-        self._db.commit()
-
-        return player
-=======
-            if player.turn_action == TurnAction.LOOK_INTO_THE_ASHES:
-                top_five_cards = sorted_cards[:6]
-                top_five_cards.pop(0)
-            else:
-                top_five_cards = sorted_cards[:5]
-            
-            return top_five_cards
->>>>>>> develop
