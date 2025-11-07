@@ -5,7 +5,7 @@ from sqlalchemy import (
     )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from App.models.db import Base
-from App.events.enums import EventType
+from App.events.enums import Direction, EventType
 from App.players.models import Player
 from App.card.models import Card
 from App.sets.models import DetectiveSet
@@ -30,6 +30,7 @@ class Event(Base):
     dset_id: Mapped[int] = mapped_column(Integer, ForeignKey("detective_sets.id"), nullable=True)
     cancelable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    direction: Mapped[Direction] = mapped_column(SqlEnum(Direction), nullable=True)
 
     game: Mapped["Game"] = relationship("Game", back_populates="events")
     main_player: Mapped[Player] = relationship('Player', foreign_keys=[main_player_id]) # quien inicia el evento
