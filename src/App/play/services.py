@@ -196,7 +196,6 @@ class PlayService:
 
         return event , card
     
-    
     def restart_nsf(self, game: Game):
         game.action_status = ActionStatus.UNBLOCKED
         for p in game.players:
@@ -389,10 +388,7 @@ class PlayService:
         if not player:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         
-        if player.turn_status != TurnStatus.TAKING_ACTION:
-            raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
-        
-        if (player.turn_action != TurnAction.SELECT_ANY_PLAYER 
+        if (player.turn_action != TurnAction.SELECT_ANY_PLAYER
             and player.turn_action != TurnAction.CARDS_OFF_THE_TABLE
             and player.turn_action != TurnAction.SATTERWAITEWILD):
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
@@ -410,27 +406,36 @@ class PlayService:
             raise PlayerNotFoundError(f"Selected player {selected_player_id} not found in game {game_id}")
         
         event = player.turn_action
+        current_turn_player = None
+        
+        for p in game.players:
+            if p.turn_status == TurnStatus.TAKING_ACTION:
+                current_turn_player = p
 
+        if not current_turn_player:
+            raise PlayerNotFoundError(f"Current player not found")
+        
         countNotSoFast = None
         if event == TurnAction.CARDS_OFF_THE_TABLE:
             pass
             countNotSoFast = self.cards_off_the_tables(game, player, selected_player)
+
 
         elif event == TurnAction.SELECT_ANY_PLAYER:
             player.turn_action = TurnAction.NO_ACTION
 
             if selected_player.in_social_disgrace:
                 selected_player.turn_action = TurnAction.NO_ACTION
-                player.turn_status = TurnStatus.DISCARDING_OPT
+                current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
                 event = TurnAction.NO_ACTION
             else:
                 selected_player.turn_action = TurnAction.REVEAL_OWN_SECRET
 
         elif event == TurnAction.SATTERWAITEWILD:
-            player.turn_action = TurnAction.NO_ACTION
+            player.turn_action = TurnAction.WAITING_ACTION
             if selected_player.in_social_disgrace:
                 selected_player.turn_action = TurnAction.NO_ACTION
-                player.turn_status = TurnStatus.DISCARDING_OPT
+                current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
                 event = TurnAction.NO_ACTION
             else:
                 selected_player.turn_action = TurnAction.GIVE_SECRET_AWAY
@@ -501,19 +506,17 @@ class PlayService:
 
         return card
 
-    def reveal_secret_service(self, player_id: int, secret_id: int, revealed_player_id: int):
+    def reveal_secret_service(self, game, player_id: int, secret_id: int, revealed_player_id: int):
 
         player = self._db.query(Player).filter(Player.id == player_id).first()
         revealed_player = self._db.query(Player).filter(Player.id == revealed_player_id).first()
+        players = game.players
 
         if not player:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         
         if not revealed_player:
             raise PlayerNotFoundError(f"Player {revealed_player_id} not found")
-
-        if player.turn_status != TurnStatus.TAKING_ACTION:
-            raise NotPlayersTurnError(f"It's not the turn of player {player_id}")
 
         if player.turn_action != TurnAction.REVEAL_SECRET:
             raise NotPlayersTurnError(f"Player {player_id} cannot reveal secret now")
@@ -533,17 +536,28 @@ class PlayService:
         # TODO: ACA HAY CASO DESGRACIA SOCIAL
         reveal_secret(secret, self._db)
         self._player_service.set_social_disgrace(revealed_player)
-        player.turn_status = TurnStatus.DISCARDING_OPT
+        current_turn_player = None
+
+        for p in players:
+            if p.turn_status == TurnStatus.TAKING_ACTION:
+                current_turn_player = p
+        
+        if not current_turn_player:
+            raise PlayerNotFoundError(f"Player not found")
+        
+        print(current_turn_player.id)
+        current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
         player.turn_action = TurnAction.NO_ACTION
 
         self._db.commit()
         self._db.refresh(player)
         self._db.refresh(secret)
         self._db.refresh(revealed_player)
+        self._db.refresh(current_turn_player)
 
         return secret
 
-    def hide_secret(self, player_id, secret_id, affected_player_id):
+    def hide_secret(self, game, player_id, secret_id, affected_player_id):
 
         player = self._db.query(Player).filter(Player.id == player_id).first()
         if not player:
@@ -569,14 +583,24 @@ class PlayService:
         self._db.flush()
         self._db.commit()
         self._player_service.set_social_disgrace(affected_player)
-        player.turn_status = TurnStatus.DISCARDING_OPT
+
+        players = game.players
+        current_turn_player = None
+
+        for p in players:
+            if p.turn_status == TurnStatus.TAKING_ACTION:
+                current_turn_player = p
+
+        if not current_turn_player:
+            raise PlayerNotFoundError(f"Player not found")
+
+        current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
         player.turn_action = TurnAction.NO_ACTION
 
         self._db.flush()
         self._db.commit()
         
         return secret
-
 
     def and_then_there_was_one_more_effect(self, 
                                            player_id,
@@ -623,7 +647,6 @@ class PlayService:
         
         return secret
     
-
     def look_into_the_ashes_effect(self, game, player_id, card_id):
         player = self._db.query(Player).filter(Player.id == player_id).first()
 
@@ -660,7 +683,6 @@ class PlayService:
 
         return card
     
-    
     def delay_the_murder_effect(self, game, player_id, cards):
 
         player = self._db.query(Player).filter(Player.id == player_id).first()
@@ -696,6 +718,7 @@ class PlayService:
         return cards
 
     def select_own_secret(self, game: Game, player_id: int, secret_id: int):
+
         player = self._db.query(Player).filter(Player.id == player_id).first()
         if not player:
             raise PlayerNotFoundError(f"Player {player_id} not found")
@@ -712,20 +735,30 @@ class PlayService:
             raise SecretAlreadyRevealedError(f"Secret {secret_id} already revealed")
         
         current_turn_player = None
+        waiting_action_player = None
+
         for p in game.players:
                 if p.turn_status == TurnStatus.TAKING_ACTION:
                     current_turn_player = p
+                elif p.turn_action == TurnAction.WAITING_ACTION:
+                    waiting_action_player = p
         if not current_turn_player:
                 raise PlayerNotFoundError(f"Player not found")
+        
 
         secret.revealed = True
         self._db.flush()
         self._db.commit()
 
         event = player.turn_action
+
         if event is TurnAction.GIVE_SECRET_AWAY:
             unrelate_secret_player(player, secret, self._db)
-            relate_secret_player(current_turn_player, secret, self._db)
+            if not waiting_action_player:
+                relate_secret_player(current_turn_player, secret, self._db)
+            else:
+                relate_secret_player(waiting_action_player, secret, self._db)
+                waiting_action_player.turn_action = TurnAction.NO_ACTION
             secret.revealed = False
 
         # TODO: ACA HAY CASO DESGRACIA SOCIAL
@@ -738,7 +771,6 @@ class PlayService:
 
         return event, current_turn_player, secret, player
 
-    
     def get_top_five_discarded_cards(self, player, game_id):
             game = self._db.query(Game).filter_by(id=game_id).first()
             
@@ -792,11 +824,12 @@ class PlayService:
 
     def add_detective(self, game: Game, player_id: int, set_id: int, card_id: int):
 
-        player = self._db.query(Player).filter(Player.id == player_id).first()
+        player = self._db.query(Player).filter_by(id=player_id).first()
+
         if not player:
             raise PlayerNotFoundError(f"Player {player_id} not found")
 
-        if player.turn_action != TurnStatus.PLAYING:
+        if player.turn_status != TurnStatus.PLAYING:
             raise NotPlayersTurnError(f"Player {player_id} cannot add detective now")
         
         dset = self._db.query(DetectiveSet).filter(DetectiveSet.id == set_id).first()
@@ -815,25 +848,45 @@ class PlayService:
 
         if card.name == "Ariadne Oliver":
             set_type = DetectiveSetType.ARIADNE_OLIVER
-
-        set_type = self._detective_set_service.validate_play_set(new_set)
+        else:
+            for c in new_set:
+                if c.name == "Ariadne Oliver":
+                    new_set.remove(c)
+            set_type = self._detective_set_service.validate_play_set(new_set)
         
         if not set_type:
             raise InvalididDetectiveSet("Not a valid detective set. Learn the rules little cheater.")
         
         dset.cards.append(card)
 
-        if dset.type == DetectiveSetType.SIBLINGS_BERESFORD:
-            dset.type = set_type
-        event = EventManager(self._db).create(EventType.PLAY_DETECTIVE,
-                                            game,
-                                            player,
-                                            dset.player,
-                                            card,
-                                            dset,
-                                            False,
-                                            False)
+        CardService(self._db).unrelate_card_player(card.id, player.id)
+
+        if set_type == DetectiveSetType.SIBLINGS_BERESFORD:
+            dset.type = DetectiveSetType.SIBLINGS_BERESFORD
         
+        cancelable = True
+        
+        if dset.type == DetectiveSetType.SIBLINGS_BERESFORD:
+            cancelable = False
+
+        event = self._event_managaer.create(
+
+            type=EventType.PLAY_DETECTIVE,
+            game=game,
+            main_player=player,
+            selected_player=dset.player,
+            played_card=card,
+            dset=dset,
+            cancelable=cancelable
+        )
+
+        if cancelable:
+            game.action_status = ActionStatus.UNBLOCKED
+
+            for p in game.players:
+                p.turn_action = TurnAction.PLAY_NSF
+
+
         self._db.flush()
         self._db.commit()
 

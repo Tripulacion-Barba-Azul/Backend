@@ -30,4 +30,5 @@ class TurnAction(Enum):
     EARLY_TRAIN_TO_PADDINGTON = "earlyTrainToPaddington"
     NO_EFFECT = "notifierNoEffect" # Dont use as state in player
     PLAY_NSF = "playNSF"
+    WAITING_ACTION = "waitingAction"
 

@@ -227,6 +227,28 @@ async def resolve_event(game_id:int, db):
                 player_id=player.id,
                 message={"event": turn_action_enum_2_str(eventType)}
             )
+    if event is not None and event.type == EventType.PLAY_DETECTIVE:
+        game = event.game
+        player = event.selected_player
+        dset = event.dset
+
+        
+        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+        
+        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+        await manager.send_to_player(
+            game_id=game.id,
+            player_id=player.id,
+            message=playerPrivateInfo.model_dump()
+        )
+
+        turn_action = player.turn_action
+        await manager.send_to_player(
+            game_id=game.id,
+            player_id=player.id,
+            message={"event": turn_action_enum_2_str(turn_action)}
+        )
  
 @play_router.post(path="/{game_id}/actions/play-card", status_code=200)
 async def play_card(
@@ -272,26 +294,6 @@ async def play_card(
                 message=playedCards.model_dump()
             )
 
-
-            return {"setId": played_set.id}
-        
-        elif len(cards_id) == 1:
-            card_id = cards_id[0]
-            card, event = PlayService(db).play_card(game, player_id, card_id)
-
-
-
-
-
-
-
-
-
-
-
-            gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-            await manager.broadcast(game.id,gamePublictInfo.model_dump())
-            
             playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
             await manager.send_to_player(
                 game_id=game.id,
@@ -814,7 +816,7 @@ async def endpoint_reveal_secret(
         )
 
     try:
-        PlayService(db).reveal_secret_service(player_id, secret_id, revealed_player_id)
+        PlayService(db).reveal_secret_service(game, player_id, secret_id, revealed_player_id)
 
         gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublicInfo.model_dump())
@@ -953,7 +955,7 @@ async def hide_secret(
     secret_id = turn_info.secretId
     try:
         
-        secret = PlayService(db).hide_secret(player_id, secret_id, affected_player_id)
+        secret = PlayService(db).hide_secret(game, player_id, secret_id, affected_player_id)
 
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
@@ -1212,7 +1214,60 @@ async def reveal_own_secret(
             detail=str(e),
         )
 
-@play_router.post(path="/{game_id}/actions/play-add-detective", status_code=200)
+@play_router.post(path="/{game_id}/actions/delay-the-murderers-escape", status_code=200)
+async def delay_the_murderers_escape(
+    game_id: int,
+    turn_info: DelayTheMurderInfo,
+    db=Depends(get_db)
+):
+    game = GameService(db).get_by_id(game_id)
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+  
+    player_id = turn_info.playerId
+    try:
+        PlayService(db).delay_the_murder_effect(
+            game=game,
+            player_id=player_id,
+            cards=turn_info.cards,
+        )
+
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id, gamePublictInfo.model_dump())
+
+        for player in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(player))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+
+        notifierDelayTheMurder = NotifierDelayTheMurder(
+            payload=PayloadDelayTheMurder(
+                playerId=player_id
+            )
+        )
+
+        await manager.broadcast(game.id, notifierDelayTheMurder.model_dump())
+  
+        return {"Delay the Murderers Escape success"}
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"It's not the turn of player {player_id}",
+        )
+
+@play_router.post(path="/{game_id}/actions/add-detective-to-set", status_code=200)
 async def add_detective(
     game_id: int,
     turn_info: AddDetectiveInfo,
@@ -1228,6 +1283,7 @@ async def add_detective(
     player_id = turn_info.playerId
     set_id = turn_info.setId
     card_id = turn_info.cardId
+    print({"set_id": set_id, "card_id": card_id, "player_id": player_id})
     try:
         event = PlayService(db).add_detective(game, player_id, set_id, card_id)
         
@@ -1244,36 +1300,32 @@ async def add_detective(
                 player_id=player.id,
                 message=playerPrivateInfo.model_dump()
             )
-        #Call resolve
-
-
-        #-------
-        #COMUNICACION DE LA RESOLUCION
-
-
-        PlayService(db).return_control(game, event)
-
-        #ACTUALIZACION FINAL
-        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
-        await manager.broadcast(game.id, gamePublictInfo.model_dump())
-
-        for player in game.players:
-            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(player))
-
+        
+        if game.action_status is ActionStatus.UNBLOCKED:
+                reset_timer(game_id, db)
+        else:
+        # RESOLVE NOT CANCELABLE EVENTS  
+            EventManager(db).resolve(game.id)
+            notifyEvent = DetectiveSetService(db).play_detective_select_event(game, card_id, event.dset)
             await manager.send_to_player(
                 game_id=game.id,
-                player_id=player.id,
-                message=playerPrivateInfo.model_dump()
-            )
+                player_id=event.selected_player_id,
+                message={"event": turn_action_enum_2_str(notifyEvent)}
+            )       
+
+            
     except PlayerNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=f"player {player_id} not found",
         )
     except NotPlayersTurnError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"It's not the turn of player {player_id}",
         )
-    
-
+    except InvalididDetectiveSet as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Not a valid detective set. Learn the rules little cheater.",
+    )  

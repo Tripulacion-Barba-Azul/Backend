@@ -13,20 +13,22 @@ class PlayDetectiveResolver(BaseEventResolver):
         card = self.event.played_card
 
         if card.name == "Ariadne Oliver":
-            player.turn_action = TurnAction.REVEAL_OWN_SECRET
-        
+            turn_action = TurnAction.REVEAL_OWN_SECRET
+            player.turn_action = turn_action
+            return_player.turn_status = TurnStatus.TAKING_ACTION
         else:
             turn_action = DetectiveSetService(self._db).select_event_type(game, dset.type)
             
             if turn_action == TurnAction.NO_EFFECT:
                 player.turn_action = TurnAction.NO_ACTION
-                
-            else :
+                return_player.turn_status = TurnStatus.DISCARDING_OPT
+            else:
                 player.turn_action = turn_action
+                return_player.turn_status = TurnStatus.TAKING_ACTION
                 
-
-        return_player.turn_action = TurnAction.NO_ACTION
-        return_player.turn_status = TurnStatus.TAKING_ACTION
+        if return_player.id != player.id:
+            return_player.turn_action = TurnAction.NO_ACTION
+        
         
 
         self._db.flush()

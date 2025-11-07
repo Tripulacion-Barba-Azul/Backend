@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from App.card.models import Card, Detective
+from App.card.services import CardService
 from App.players.services import PlayerService
 from App.sets.enums import DetectiveSetType
 from App.exceptions import NotCardInHand, PlayerNotFoundError
@@ -112,6 +113,23 @@ class DetectiveSetService:
         if set_type == DetectiveSetType.SIBLINGS_BERESFORD:
             return TurnAction.SELECT_ANY_PLAYER
         
+    def play_detective_select_event(self, game: Game, card_id: int, new_set: DetectiveSet) -> TurnAction:
+
+        card = CardService(self._db).get_card(card_id)
+        player = new_set.player
+        if not card:
+            return TurnAction.NO_EFFECT
+
+        if card.name == "Ariadne Oliver":
+
+            if player.in_social_disgrace:
+                return TurnAction.NO_EFFECT
+            else:
+                return TurnAction.REVEAL_OWN_SECRET
+            
+        else:
+            event= DetectiveSetService(self._db).select_event_type(game, new_set.type)
+            return event
 
 def no_ariadne_oliver(cards: list[Card]) -> bool:
 
@@ -224,3 +242,4 @@ def validate_siblings_beresford(cards: list[Card]) -> bool:
         return False
 
     return True
+

@@ -141,9 +141,9 @@ class DiscardEventInfo(BaseModel):
     payload: PayloadDiscardEvent
 
 class AddDetectiveInfo(BaseModel):
+    cardId: int
     playerId: int
     setId: int
-    cardId: int
 
 class PlayNSF(BaseModel):
     playerId: int
