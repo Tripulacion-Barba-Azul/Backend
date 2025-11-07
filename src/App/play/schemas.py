@@ -162,3 +162,11 @@ class NotifierCardTradePublic(BaseModel):
 class SelectOwnCardInfo(BaseModel):
     playerId: int
     cardId: int
+
+class PlayNSF(BaseModel):
+    playerId: int
+    cardId: int | None
+
+class TimeInfo(BaseModel):
+    event: str = "timer"
+    payload: dict[str, int]

@@ -6,7 +6,6 @@ from App.games.schemas import GameStartInfo
 from App.players.schemas import PlayerGameInfo
 from App.secret.schemas import SecretGameInfo
 from sqlalchemy.orm import Session
-
 from App import players
 from App.games.dtos import GameDTO
 from App.games.models import Game, Player

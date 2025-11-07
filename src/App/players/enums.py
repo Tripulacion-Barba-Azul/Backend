@@ -32,4 +32,5 @@ class TurnAction(Enum):
     DEAD_CARD_FOLLY = "DEAD_CARD_FOLLY" # este repite SOC
     CARD_TRADE = "CARD_TRADE" # este repite SOC
     NO_EFFECT = "notifierNoEffect" # Dont use as state in player
+    PLAY_NSF = "playNSF"
 
