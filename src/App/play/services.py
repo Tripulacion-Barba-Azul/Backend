@@ -841,7 +841,7 @@ class PlayService:
         direction = eventDirection.direction
         players = sort_players(game.players)
 
-        if direction == Direction.CLOCKWISE:
+        if direction == Direction.COUNTERCLOCKWISE:
             for i in range (len(players)):
                 current_player = players[i]
                 next_player = players[(i + 1) % len(players)]
@@ -852,7 +852,7 @@ class PlayService:
                 if current_player.turn_status == TurnStatus.TAKING_ACTION:
                     players[i].turn_status = TurnStatus.DISCARDING_OPT
 
-        elif direction == Direction.COUNTERCLOCKWISE:
+        elif direction == Direction.CLOCKWISE:
             for i in range (len(players)):
                 current_player = players[i]
                 previous_player = players[(i - 1) % len(players)]
