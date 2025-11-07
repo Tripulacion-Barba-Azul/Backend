@@ -4,6 +4,8 @@ from App.card.services import CardService
 from App.decks.discard_deck_service import DiscardDeckService
 from App.card.services import CardService
 from App.decks.draft_deck_service import DraftDeckService
+from App.events.enums import EventType
+from App.events.services import EventManager
 from App.exceptions import (
     GameNotFoundError,
     InSocialDisgraceException,
@@ -26,6 +28,7 @@ from App.secret.services import relate_secret_player, reveal_secret, unrelate_se
 from App.players.models import Player
 from App.players.enums import PlayerRole, TurnAction, TurnStatus
 from App.players.services import PlayerService
+from App.sets.enums import DetectiveSetType
 from App.sets.models import DetectiveSet
 from App.sets.services import DetectiveSetService
 from App.card.models import Card, Event
@@ -722,18 +725,37 @@ class PlayService:
         new_set.append(card)
 
         if card.name == "Ariadne Oliver":
-            card = self._player_service.discard_card(player_id, card)
-            self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+            set_type = DetectiveSetType.ARIADNE_OLIVER
 
         set_type = self._detective_set_service.validate_play_set(new_set)
+        
         if not set_type:
             raise InvalididDetectiveSet("Not a valid detective set. Learn the rules little cheater.")
         
-        
+        dset.cards.append(card)
 
+        event = EventManager(self._db).create(EventType.PLAY_DETECTIVE,
+                                            game, 
+                                            player,
+                                            dset.player,
+                                            card,
+                                            dset,
+                                            False,
+                                            False)
+        
+        self._db.flush()
+        self._db.commit()
+
+        return event
+
+    def return_control(self, game: Game, event: Event):
+
+        player = event.main_player
+        
         player.turn_status = TurnStatus.DISCARDING_OPT
         player.turn_action = TurnAction.NO_ACTION
 
         self._db.flush()
         self._db.commit()
 
+        return player
