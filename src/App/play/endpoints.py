@@ -40,7 +40,8 @@ from App.play.schemas import (
     NotifierHideSecret, 
     NotifierLookIntoTheAshes, 
     NotifierRevealSecretForce, 
-    NotifierSatterthwaiteWild, 
+    NotifierSatterthwaiteWild,
+    NotifierSelectDirection, 
     NotifierStealSet, 
     PayloadAndThenThereWasOneMore,
     PayloadCardTrade,
@@ -53,6 +54,7 @@ from App.play.schemas import (
     RevealOwnSecretInfo, 
     RevealSecretInfo, 
     SelectAnyPlayerInfo,
+    SelectDirectionInfo,
     SelectOwnCardInfo,
     StealSetInfo, 
     PayloadHideSecret, 
@@ -154,14 +156,12 @@ async def resolve_event(game_id:int, db):
 
     # Broadcast final con el resultado
     game = GameService(db).get_by_id(game_id)
-    print(f"game status DESPUES DE RESOLVE: {game.action_status}")
     if game is None:
         return
     if event is None:
 
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
-        print(f"public1 {gamePublictInfo.model_dump()} ")
         for p in game.players:
                 playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
                 await manager.send_to_player(
@@ -176,7 +176,6 @@ async def resolve_event(game_id:int, db):
         dset = event.dset
 
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-        print(f"public2 {gamePublictInfo.model_dump()} ")
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         turn_action = DetectiveSetService(db).select_event_type(game, dset.type)
@@ -191,7 +190,6 @@ async def resolve_event(game_id:int, db):
         card = event.played_card
 
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-        print(f"public3 {gamePublictInfo.model_dump()} ")
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
@@ -219,7 +217,6 @@ async def resolve_event(game_id:int, db):
                 )
         elif card.name == "Early Train to Paddington":
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-            print(f"public4 {gamePublictInfo.model_dump()} ")
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
             playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
             await manager.send_to_player(
@@ -246,7 +243,6 @@ async def resolve_event(game_id:int, db):
 
         
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-        print(f"public5 {gamePublictInfo.model_dump()} ")
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         # playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
@@ -461,7 +457,6 @@ async def play_nsf(
         if is_played:
             card = is_played[1]
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-            print(f"public6 {gamePublictInfo.model_dump()} ")
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
 
             playedCards = db_player_2_played_card_info(player, card, ActionType.EVENT)
@@ -501,7 +496,6 @@ async def play_nsf(
         while not finished:
             # Broadcast
             gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
-            print(f"public7 {gamePublictInfo.model_dump()} ")
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
             
             for p in game.players:
@@ -518,7 +512,6 @@ async def play_nsf(
             # Unblock de game and restart timer
             print("UNBLOCK GAME")
             gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
-            print(f"public8 {gamePublictInfo.model_dump()} ")
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         for p in game.players:
@@ -533,7 +526,6 @@ async def play_nsf(
             reset_timer(game_id, db)
             PlayService(db).restart_nsf(game)
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-            print(f"public9{gamePublictInfo.model_dump()} ")
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
 
     except GameIsBlocked as e:
@@ -1356,6 +1348,7 @@ async def get_select_own_card(
         )
 
     return {"message": "Get Select Own Card success"}
+  
 @play_router.post(path="/{game_id}/actions/add-detective-to-set", status_code=200)
 async def add_detective(
     game_id: int,
@@ -1425,3 +1418,52 @@ async def add_detective(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Not a valid detective set. Learn the rules little cheater.",
     )
+        
+@play_router.post(path="/{game_id}/actions/select-direction", status_code=200)
+async def select_direction(
+    game_id: int,
+    select_direction_info: SelectDirectionInfo,
+    db=Depends(get_db)
+):
+    game = GameService(db).get_by_id(game_id)
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+
+    player_id = select_direction_info.playerId
+    direction_value = select_direction_info.direction.value
+    try:
+        PlayService(db).select_direction(
+            game=game,
+            player_id=player_id,
+            direction_value=direction_value
+        )
+
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id, gamePublictInfo.model_dump())
+        
+        for player in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(player))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+        
+        for player in game.players:
+            notifierSelectDirection = NotifierSelectDirection()
+            await manager.broadcast(game.id, notifierSelectDirection.model_dump())
+
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"It's not the turn of player {player_id}",
+        )

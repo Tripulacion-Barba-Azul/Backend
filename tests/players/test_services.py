@@ -69,7 +69,4 @@ def test_set_social_disgrace_accomplice(session: Session, seed_started_game):
     accomplice_secret.revealed = False
     assert accomplice.in_social_disgrace
     PlayerService(session).set_social_disgrace(accomplice)
-    assert not accomplice.in_social_disgrace
-
-   
-    
+    assert not accomplice.in_social_disgrace    

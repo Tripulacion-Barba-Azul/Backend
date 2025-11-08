@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 
 from App.card.schemas import CardGameInfo, CardPublicInfo
+from App.events.enums import Direction
 from App.players.schemas import CardsPlayedInfo, PlayerGameInfo
 from App.card.schemas import CardGameInfo
     
@@ -174,3 +175,10 @@ class PlayNSF(BaseModel):
 class TimeInfo(BaseModel):
     event: str = "timer"
     payload: dict[str, int]
+
+class SelectDirectionInfo(BaseModel):
+    direction: Direction
+    playerId: int
+
+class NotifierSelectDirection(BaseModel):
+    event: str = "selectOwnCard"

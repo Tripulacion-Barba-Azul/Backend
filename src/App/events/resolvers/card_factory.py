@@ -1,7 +1,8 @@
 from App.events.resolvers.card_resolvers import (
     AndThereWasOneMoreResolver,
     AnotherVictimResolver,
-    CardsOffTheTableResolver, 
+    CardsOffTheTableResolver,
+    DeadCardFollyResolver, 
     DelayTheMurderersEscapeResolver, 
     EarlyTrainToPaddingtonResolver,
     LookIntoTheAshesResolver
@@ -11,7 +12,7 @@ from App.events.resolvers.card_resolvers import (
 CARD_RESOLVER_MAP = {
     "Cards off the table": CardsOffTheTableResolver,
     "Another Victim": AnotherVictimResolver,
-    #"Dead Card Folly"
+    "Dead Card Folly": DeadCardFollyResolver,
     "Look in to the Ashes": LookIntoTheAshesResolver,
     #"Card Trade"
     "And There was One More...": AndThereWasOneMoreResolver,

@@ -11,6 +11,7 @@ from App.exceptions import (
     GameIsBlocked,
     GameNotFoundError,
     InSocialDisgraceException,
+    IncorrectDirectionError,
     InvalididDetectiveSet,
     NotCardInHand,
     NotPlayableCard,
@@ -975,7 +976,7 @@ class PlayService:
         direction = eventDirection.direction
         players = sort_players(game.players)
 
-        if direction == Direction.CLOCKWISE:
+        if direction == Direction.COUNTERCLOCKWISE:
             for i in range (len(players)):
                 current_player = players[i]
                 next_player = players[(i + 1) % len(players)]
@@ -986,7 +987,7 @@ class PlayService:
                 if current_player.turn_status == TurnStatus.TAKING_ACTION:
                     players[i].turn_status = TurnStatus.DISCARDING_OPT
 
-        elif direction == Direction.COUNTERCLOCKWISE:
+        elif direction == Direction.CLOCKWISE:
             for i in range (len(players)):
                 current_player = players[i]
                 previous_player = players[(i - 1) % len(players)]
@@ -1000,6 +1001,35 @@ class PlayService:
         eventDirection.resolved = True
         for event in events:
             event.resolved = True
+
+        self._db.flush()
+        self._db.commit()
+
+    def select_direction(self, game: Game, player_id: int, direction_value: str):
+        player = self._db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise PlayerNotFoundError(f"Player {player_id} not found")
+        if player.turn_action != TurnAction.DEAD_CARD_FOLLY_DIRECTION:
+            raise NotPlayersTurnError(f"Player {player_id} cannot select direction now")
+
+        if direction_value == "left":
+            direction = Direction.CLOCKWISE
+        elif direction_value == "right":
+            direction = Direction.COUNTERCLOCKWISE
+        else:
+            raise IncorrectDirectionError(f"Invalid direction: {direction_value}")
+
+        event = EventManager(self._db).create(
+            type=EventType.DEAD_CARD_FOLLY_DIRECTION,
+            game=game,
+            main_player=player,
+            direction=direction
+        )
+
+        players = game.players
+        for player in players:
+            player.turn_action = TurnAction.DEAD_CARD_FOLLY
+
 
         self._db.flush()
         self._db.commit()
