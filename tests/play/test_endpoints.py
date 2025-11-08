@@ -15,6 +15,7 @@ from App.sets.enums import DetectiveSetType
 from App.sets.models import DetectiveSet
 from App.players.enums import TurnAction
 from App.play.services import PlayService
+from App.sets.services import DetectiveSetService
 
 
 
@@ -690,3 +691,88 @@ def test_delay_the_murderers_escape_endpoint(client:TestClient, session:Session,
         assert private_update_received 
 
     assert response.status_code == 200
+
+def test_add_detective_endpoint(client: TestClient, session: Session, seed_started_game):
+    """
+    Prueba del endpoint /play/{game_id}/actions/add-detective-to-set
+    - Prepara un juego con 3 jugadores.
+    - Crea un detective set para selected_player.
+    - Añade una carta detective al jugador principal y llama al endpoint.
+    - Valida que se reciban mensajes websocket (publicUpdate/privateUpdate y notifiers opcionales).
+    """
+    game = seed_started_game(3)
+    player = game.players[1]            # quien añade el detective
+    selected_player = game.players[2]   # dueño del set
+
+     
+    # Crear set válido para selected_player
+    cards_for_set = [
+        CardService(session).create_detective_card("Hercule Poirot", "", 3)
+        for _ in range(3)
+    ]
+    for c in cards_for_set:
+        CardService(session).relate_card_player(selected_player.id, c.id)
+
+    card_ids = [c.id for c in cards_for_set]
+
+    dset = DetectiveSetService(session).create_detective_set(
+        selected_player.id,
+        card_ids,
+        DetectiveSetType.HERCULE_POIROT
+    )
+
+    # Crear la carta detective que player va a añadir
+    add_card = CardService(session).create_detective_card("Hercule Poirot", "", 3)
+    player.cards[0] = add_card
+    CardService(session).relate_card_player(player.id, add_card.id)
+
+    session.flush()
+    session.commit()
+
+    private_update_received = False
+    public_update_received = False
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+        response = client.post(
+            f"/play/{game.id}/actions/add-detective-to-set",
+            json={
+                "playerId": player.id,
+                "setId": dset.id,
+                "cardId": add_card.id
+            }
+        )
+        assert response.status_code == 200
+
+        # leer hasta 2 mensajes del websocket enviados por el endpoint/resolve
+        for _ in range(2):
+            result = websocket.receive_json()
+            evt = result.get("event")
+            payload = result.get("payload", {})
+
+            if evt == "privateUpdate":
+
+                assert isinstance(payload.get("cards", []), list)
+                assert len(payload.get("cards", [])) == 5
+                assert add_card not in payload.get("cards", [])
+                private_update_received = True
+            elif evt == "publicUpdate":
+                # payload debe contener el estado público del juego
+                assert "players" in payload
+                cards = []
+                owner = None
+                for p in payload.get("players", []):
+                    for s in p.get("sets", []):
+                        if s.get("setId") == dset.id:
+                            owner = p
+                            cards = s.get("cards", [])
+                    if owner:
+                        break
+                assert len(cards) == 4  # 3 originales + 1 añadida
+                set_card_ids = [c.get("id") for c in cards]
+                assert add_card.id in set_card_ids
+                public_update_received = True
+            
+
+    assert private_update_received, "No se recibió privateUpdate tras add-detective"
+    assert public_update_received, "No se recibió publicUpdate tras add-detective"
+    

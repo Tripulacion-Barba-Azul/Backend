@@ -1292,7 +1292,7 @@ async def add_detective(
         gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublictInfo.model_dump())
 
-        playedCard = db_player_2_played_detective_info(event.main_player, event.played_card, ActionType.DETECTIVE, event.selected_player)
+        playedCard = db_player_2_played_detective_info(event.main_player, event.played_card, ActionType.DETECTIVE, event.dset.player)
         await manager.broadcast_except(
             game_id=game.id, 
             exclude_player_id=event.main_player.id,
