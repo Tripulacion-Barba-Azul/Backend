@@ -35,4 +35,5 @@ class TurnAction(Enum):
     DEAD_CARD_FOLLY_DIRECTION = "DEAD_CARD_FOLLY_DIRECTION"
     NO_EFFECT = "notifierNoEffect" # Dont use as state in player
     PLAY_NSF = "playNSF"
+    WAITING_ACTION = "waitingAction"
 

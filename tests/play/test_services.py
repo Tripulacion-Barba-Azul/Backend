@@ -1,10 +1,14 @@
 from itertools import count
+import pytest
 from sqlalchemy.orm import Session
 
 from App.decks.discard_deck_service import DiscardDeckService
 from App.events.enums import Direction, EventType
 from App.events.models import Event
 from App.events.services import EventManager
+from App.events.resolvers.factory import get_resolver
+from App.events.resolvers.play_detective_resolver import PlayDetectiveResolver
+from App.exceptions import InvalididDetectiveSet
 from App.games.enums import GameStatus, Winners
 from App.games.models import Game
 from App.games.services import GameService
@@ -15,6 +19,7 @@ from App.players.enums import TurnAction
 from App.players.utils import sort_players
 from App.sets.enums import DetectiveSetType
 from App.sets.models import DetectiveSet
+from App.sets.services import DetectiveSetService
 
 
 def test_discard_card_service(session: Session, seed_game_player2_discard):
@@ -706,3 +711,290 @@ def test_select_direction_service(session: Session, seed_started_game):
     for event in events:
         assert event.direction == Direction.CLOCKWISE
         assert not event.resolved
+        
+def test_play_detective_resolver_ariadne_oliver(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    selected_player.cards = [CardService(session).create_detective_card("Hercule Poirot", "", 3) for _ in range(6)]
+    cardIds = []
+    for i in range(3):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.HERCULE_POIROT)
+
+    card = CardService(session).create_detective_card("Ariadne Oliver", "", 0)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+    resolver = get_resolver(event, session)
+    assert isinstance(resolver, PlayDetectiveResolver)
+
+    turn_action = resolver.resolve()
+
+    assert turn_action == TurnAction.REVEAL_OWN_SECRET
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert selected_player.turn_status == TurnStatus.WAITING
+    assert selected_player.turn_action == TurnAction.REVEAL_OWN_SECRET
+
+def test_play_detective_resolver_ariadne_oliver_disgrace(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    selected_player.cards = [CardService(session).create_detective_card("Hercule Poirot", "", 3) for _ in range(6)]
+    selected_player.in_social_disgrace = True
+    cardIds = []
+    for i in range(3):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.HERCULE_POIROT)
+
+    card = CardService(session).create_detective_card("Ariadne Oliver", "", 0)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+    resolver = get_resolver(event, session)
+    assert isinstance(resolver, PlayDetectiveResolver)
+
+    turn_action = resolver.resolve()
+
+    assert turn_action == TurnAction.NO_ACTION
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert selected_player.turn_status == TurnStatus.WAITING
+    assert selected_player.turn_action == TurnAction.NO_ACTION
+    
+def test_play_detective_resolver_poirot(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    selected_player.cards = [CardService(session).create_detective_card("Hercule Poirot", "", 3) for _ in range(6)]
+    selected_player.in_social_disgrace = True
+    cardIds = []
+    for i in range(3):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.HERCULE_POIROT)
+
+    card = CardService(session).create_detective_card("Hercule Poirot", "", 3)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+    resolver = get_resolver(event, session)
+    assert isinstance(resolver, PlayDetectiveResolver)
+
+    turn_action = resolver.resolve()
+
+    assert turn_action == TurnAction.REVEAL_SECRET
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert selected_player.turn_status == TurnStatus.WAITING
+    assert selected_player.turn_action == TurnAction.REVEAL_SECRET
+
+def test_play_detective_resolver_brent(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    selected_player.cards = [CardService(session).create_detective_card("Lady Eileen Brent", "", 2) for _ in range(6)]
+    
+    cardIds = []
+    for i in range(2):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.LADY_EILEEN_BRENT)
+
+    card = CardService(session).create_detective_card("Lady Eileen Brent", "", 2)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+    resolver = get_resolver(event, session)
+    assert isinstance(resolver, PlayDetectiveResolver)
+
+    turn_action = resolver.resolve()
+
+    assert turn_action == TurnAction.SELECT_ANY_PLAYER
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert selected_player.turn_status == TurnStatus.WAITING
+    assert selected_player.turn_action == TurnAction.SELECT_ANY_PLAYER
+
+def test_play_detective_resolver_satterquin(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    selected_player.cards = [CardService(session).create_detective_card("Mr Satterthwaite", "", 2) for _ in range(5)]
+    cards = [CardService(session).create_detective_card("Harley Quin", "", 0), CardService(session).create_detective_card("Mr Satterthwaite", "", 2)]
+    selected_player.cards = cards
+    
+    cardIds = [card.id for card in selected_player.cards]
+    
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.SATTERTHQUIN)
+
+    card = CardService(session).create_detective_card("Mr Satterthwaite", "", 2)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+    resolver = get_resolver(event, session)
+    assert isinstance(resolver, PlayDetectiveResolver)
+
+    turn_action = resolver.resolve()
+
+    assert turn_action == TurnAction.SATTERWAITEWILD
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert selected_player.turn_status == TurnStatus.WAITING
+    assert selected_player.turn_action == TurnAction.SATTERWAITEWILD
+
+def test_play_detective_resolver_pyne(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    player.secrets[0].revealed = True
+
+    selected_player.cards = [CardService(session).create_detective_card("Parker Pyne", "", 2) for _ in range(6)]
+    
+    cardIds = []
+    for i in range(2):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.PARKER_PYNE)
+
+    card = CardService(session).create_detective_card("Parker Pyne", "", 2)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+    resolver = get_resolver(event, session)
+    assert isinstance(resolver, PlayDetectiveResolver)
+
+    turn_action = resolver.resolve()
+
+    assert turn_action == TurnAction.HIDE_SECRET
+    assert player.turn_status == TurnStatus.TAKING_ACTION
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert selected_player.turn_status == TurnStatus.WAITING
+    assert selected_player.turn_action == TurnAction.HIDE_SECRET
+
+def test_play_detective_resolver_pyne_no_secret(session: Session, seed_started_game):
+
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    
+    selected_player.cards = [CardService(session).create_detective_card("Parker Pyne", "", 2) for _ in range(6)]
+    
+    cardIds = []
+    for i in range(2):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.PARKER_PYNE)
+
+    card = CardService(session).create_detective_card("Parker Pyne", "", 2)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+    resolver = get_resolver(event, session)
+    assert isinstance(resolver, PlayDetectiveResolver)
+
+    turn_action = resolver.resolve()
+
+    assert turn_action == TurnAction.NO_EFFECT
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert selected_player.turn_status == TurnStatus.WAITING
+    assert selected_player.turn_action == TurnAction.NO_ACTION
+
+def test_play_detective_own_set(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[1]
+
+    selected_player.cards = [CardService(session).create_detectivecard("Lady Eileen Brent", "", 2) for  in range(6)]
+
+    cardIds = []
+    for i in range(2):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.LADY_EILEEN_BRENT)
+
+    card = CardService(session).create_detective_card("Lady Eileen Brent", "", 2)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+    resolver = get_resolver(event, session)
+    assert isinstance(resolver, PlayDetectiveResolver)
+
+    turn_action = resolver.resolve()
+
+    assert turn_action == TurnAction.SELECT_ANY_PLAYER
+    assert player.turn_status == selected_player.turn_status 
+    assert player.turn_action == selected_player.turn_action

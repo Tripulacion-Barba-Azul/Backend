@@ -11,3 +11,4 @@ class DetectiveSetType(Enum):
     TOMMY_BERESFORD = "Tommy Beresford"
     TUPPENCE_BERESFORD = "Tuppence Beresford"
     SIBLINGS_BERESFORD = "Siblings Beresford"
+    ARIADNE_OLIVER = "Ariadne Oliver"

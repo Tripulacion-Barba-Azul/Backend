@@ -141,6 +141,10 @@ class DiscardEventInfo(BaseModel):
     event: str = "discardEvent"
     payload: PayloadDiscardEvent
 
+class AddDetectiveInfo(BaseModel):
+    cardId: int
+    playerId: int
+    setId: int
 class PayloadCardTrade(BaseModel):
     playerId: int
     cardName: str
