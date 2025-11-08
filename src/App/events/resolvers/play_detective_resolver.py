@@ -1,12 +1,44 @@
 from App.events.resolvers.base_resolver import BaseEventResolver
-from App.events.resolvers.detective_factory import get_detective_resolver
+from App.players.enums import TurnAction, TurnStatus
+from App.sets.services import DetectiveSetService
 
 
 class PlayDetectiveResolver(BaseEventResolver):
 
     def resolve(self):
-        resolver = get_detective_resolver(self.event, self._db)
-        if resolver is None:
-            raise ValueError(f"No resolver found for detective type {self.event.played_card.name}")
+        game = self.event.game
+        player = self.event.selected_player
+        return_player = self.event.main_player
+        dset = self.event.dset
+        card = self.event.played_card
 
-        return resolver.resolve()
+        if card.name == "Ariadne Oliver":
+            
+            if player.in_social_disgrace == True:
+                turn_action = TurnAction.NO_ACTION
+                return_player.turn_status = TurnStatus.DISCARDING_OPT
+            else:
+                turn_action = TurnAction.REVEAL_OWN_SECRET
+                return_player.turn_status = TurnStatus.TAKING_ACTION
+
+            player.turn_action = turn_action
+
+        else:
+            turn_action = DetectiveSetService(self._db).select_event_type(game, dset.type)
+            
+            if turn_action == TurnAction.NO_EFFECT:
+                player.turn_action = TurnAction.NO_ACTION
+                return_player.turn_status = TurnStatus.DISCARDING_OPT
+            else:
+                player.turn_action = turn_action
+                return_player.turn_status = TurnStatus.TAKING_ACTION
+                
+        if return_player.id != player.id:
+            return_player.turn_action = TurnAction.NO_ACTION
+        
+        
+
+        self._db.flush()
+        self._db.commit()
+
+        return turn_action

@@ -33,4 +33,5 @@ class TurnAction(Enum):
     CARD_TRADE = "CARD_TRADE" # este repite SOC
     NO_EFFECT = "notifierNoEffect" # Dont use as state in player
     PLAY_NSF = "playNSF"
+    WAITING_ACTION = "waitingAction"
 
