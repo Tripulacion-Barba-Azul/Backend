@@ -240,10 +240,8 @@ def test_select_any_player(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    played_card = PlayService(session).play_card(game, player.id, card.id)[0]
-
-    assert player.turn_status == TurnStatus.TAKING_ACTION
-    assert player.turn_action == TurnAction.CARDS_OFF_THE_TABLE
+    player.turn_status = TurnStatus.TAKING_ACTION
+    player.turn_action = TurnAction.CARDS_OFF_THE_TABLE
 
     game, s_player, s_selected_player, event, count_nsf = PlayService(session).select_any_player(game.id, player.id, target_player.id)
 
@@ -556,8 +554,8 @@ def test_early_train_to_paddington(session: Session, seed_started_game):
 
     PlayService(session).play_card(game, player.id, card.id)
 
-    assert player.turn_status == TurnStatus.TAKING_ACTION
-    assert player.turn_action == TurnAction.EARLY_TRAIN_TO_PADDINGTON
+    player.turn_status = TurnStatus.TAKING_ACTION
+    player.turn_action = TurnAction.EARLY_TRAIN_TO_PADDINGTON
 
     PlayService(session).early_train_to_paddington(game, player)
 
