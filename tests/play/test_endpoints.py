@@ -802,3 +802,43 @@ def test_select_own_card_endpoint_with_card_trade(client:TestClient, session:Ses
     assert receivedNotifier
     assert receivedPublicUpdate
     assert receivedPrivateUpdate
+
+def test_select_direction_endpoint(client:TestClient, session:Session, seed_started_game):
+    game = seed_started_game(3)
+    main_player = game.players[1]
+
+    main_player.turn_action = TurnAction.DEAD_CARD_FOLLY_DIRECTION
+    session.flush()
+    session.commit()
+
+    direction_value = "left"
+
+    receivedPublicUpdate = False
+    receivedPrivateUpdate = False
+    receivedNotifier = False
+
+    with client.websocket_connect(f"/ws/{game.id}/{main_player.id}") as websocket:
+        response = client.post(
+            f"/play/{game.id}/actions/select-direction",
+            json = {
+                "playerId": main_player.id,
+                "direction" : direction_value,
+            }
+        )
+
+        data = response.json()
+        assert response.status_code == 200
+
+        for _ in range(3):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                receivedPublicUpdate = True
+            elif result.get("event") == "privateUpdate":
+                receivedPrivateUpdate = True
+            elif result.get("event") == "selectOwnCard":
+                receivedNotifier = True
+
+    assert receivedNotifier
+    assert receivedPublicUpdate
+    assert receivedPrivateUpdate
