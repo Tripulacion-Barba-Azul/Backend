@@ -154,12 +154,14 @@ async def resolve_event(game_id:int, db):
 
     # Broadcast final con el resultado
     game = GameService(db).get_by_id(game_id)
+    print(f"game status DESPUES DE RESOLVE: {game.action_status}")
     if game is None:
         return
     if event is None:
 
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
+        print(f"public1 {gamePublictInfo.model_dump()} ")
         for p in game.players:
                 playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
                 await manager.send_to_player(
@@ -174,6 +176,7 @@ async def resolve_event(game_id:int, db):
         dset = event.dset
 
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        print(f"public2 {gamePublictInfo.model_dump()} ")
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         turn_action = DetectiveSetService(db).select_event_type(game, dset.type)
@@ -188,6 +191,7 @@ async def resolve_event(game_id:int, db):
         card = event.played_card
 
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        print(f"public3 {gamePublictInfo.model_dump()} ")
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
@@ -215,6 +219,7 @@ async def resolve_event(game_id:int, db):
                 )
         elif card.name == "Early Train to Paddington":
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            print(f"public4 {gamePublictInfo.model_dump()} ")
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
             playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
             await manager.send_to_player(
@@ -241,14 +246,15 @@ async def resolve_event(game_id:int, db):
 
         
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        print(f"public5 {gamePublictInfo.model_dump()} ")
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
-        playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
-        await manager.send_to_player(
-            game_id=game.id,
-            player_id=player.id,
-            message=playerPrivateInfo.model_dump()
-        )
+        # playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+        # await manager.send_to_player(
+        #     game_id=game.id,
+        #     player_id=player.id,
+        #     message=playerPrivateInfo.model_dump()
+        # )
 
         turn_action = player.turn_action
         await manager.send_to_player(
@@ -455,6 +461,7 @@ async def play_nsf(
         if is_played:
             card = is_played[1]
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            print(f"public6 {gamePublictInfo.model_dump()} ")
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
 
             playedCards = db_player_2_played_card_info(player, card, ActionType.EVENT)
@@ -483,29 +490,36 @@ async def play_nsf(
                 "timeLeft": TIMER_DURATION
             })
             await manager.broadcast(game_id, time_info.model_dump())
+            game.action_status = ActionStatus.BLOCKED
+            
+            db.flush()
+            db.commit()
             task = asyncio.create_task(resolve_event(game_id, db))
-            return
-        
-        
-        # Broadcast
-        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
-        await manager.broadcast(game.id,gamePublictInfo.model_dump())
-        
-        for p in game.players:
-            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+            finished = True
+            return None
 
-            await manager.send_to_player(
-                game_id=game.id,
-                player_id=p.id,
-                message=playerPrivateInfo.model_dump()
-            )
+        while not finished:
+            # Broadcast
+            gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+            print(f"public7 {gamePublictInfo.model_dump()} ")
+            await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            
+            for p in game.players:
+                playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
 
-        print("AWAIT")
-        await asyncio.sleep(1)
-        # Unblock de game and restart timer
-        print("UNBLOCK GAME")
-        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
-        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=p.id,
+                    message=playerPrivateInfo.model_dump()
+                )
+
+            print("AWAIT")
+            await asyncio.sleep(1)
+            # Unblock de game and restart timer
+            print("UNBLOCK GAME")
+            gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+            print(f"public8 {gamePublictInfo.model_dump()} ")
+            await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         for p in game.players:
             playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
@@ -519,6 +533,7 @@ async def play_nsf(
             reset_timer(game_id, db)
             PlayService(db).restart_nsf(game)
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            print(f"public9{gamePublictInfo.model_dump()} ")
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
 
     except GameIsBlocked as e:

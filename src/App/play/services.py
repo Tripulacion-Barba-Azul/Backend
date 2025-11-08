@@ -868,7 +868,7 @@ class PlayService:
         
         cancelable = True
         
-        if dset.type == DetectiveSetType.SIBLINGS_BERESFORD:
+        if dset.type == DetectiveSetType.SIBLINGS_BERESFORD and card.name != "Ariadne Oliver":
             cancelable = False
 
         event = self._event_managaer.create(
