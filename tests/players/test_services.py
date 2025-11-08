@@ -58,7 +58,6 @@ def test_set_social_disgrace_player(session: Session, seed_started_game):
 
 def test_set_social_disgrace_accomplice(session: Session, seed_started_game):
     game = seed_started_game(5)
-    game = session.get(Game, game.id)
     accomplice = next(player for player in game.players if player.role == PlayerRole.ACCOMPLICE)
     accomplice_secret =  next(secret for secret in accomplice.secrets if secret.type == SecretType.ACCOMPLICE)
     accomplice_secret.revealed = True

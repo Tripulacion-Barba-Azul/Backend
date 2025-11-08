@@ -190,6 +190,14 @@ def db_player_2_reveal_secret_force(player: Player,
         secretId=secret.id,
         selectedPlayerId=selected_player.id
     )
+
+def db_player_2_card_trade_info(player: Player,
+                           card: Card
+) -> PayloadCardTrade:
+    return PayloadCardTrade(
+        playerId=player.id,
+        cardName=card.name
+    )
     
 
 def turn_action_enum_2_str(turn_action: TurnAction) -> str:
@@ -199,5 +207,9 @@ def turn_action_enum_2_str(turn_action: TurnAction) -> str:
         return "selectAnyPlayer"
     elif turn_action == TurnAction.GIVE_SECRET_AWAY:
         return "revealOwnSecret"
+    elif turn_action == TurnAction.CARD_TRADE:
+        return "selectOwnCard"
+    elif turn_action == TurnAction.DEAD_CARD_FOLLY:
+        return "selectOwnCard"
     else:
         return turn_action.value
