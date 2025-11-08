@@ -971,7 +971,7 @@ def test_play_detective_own_set(session: Session, seed_started_game):
     player = game.players[1]
     selected_player = game.players[1]
 
-    selected_player.cards = [CardService(session).create_detectivecard("Lady Eileen Brent", "", 2) for  in range(6)]
+    selected_player.cards = [CardService(session).create_detective_card("Lady Eileen Brent", "", 2) for _ in range(6)]
 
     cardIds = []
     for i in range(2):
