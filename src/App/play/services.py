@@ -854,7 +854,7 @@ class PlayService:
                     new_set.remove(c)
             set_type = self._detective_set_service.validate_play_set(new_set)
         
-        if not set_type:
+        if not set_type or card.name == "Harley Quin":
             raise InvalididDetectiveSet("Not a valid detective set. Learn the rules little cheater.")
         
         dset.cards.append(card)

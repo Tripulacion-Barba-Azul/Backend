@@ -1,7 +1,10 @@
 from itertools import count
+import pytest
 from sqlalchemy.orm import Session
 
 from App.decks.discard_deck_service import DiscardDeckService
+from App.events.enums import EventType
+from App.exceptions import InvalididDetectiveSet
 from App.games.enums import GameStatus, Winners
 from App.games.models import Game
 from App.games.services import GameService
@@ -11,6 +14,7 @@ from App.card.services import CardService
 from App.players.enums import TurnAction
 from App.sets.enums import DetectiveSetType
 from App.sets.models import DetectiveSet
+from App.sets.services import DetectiveSetService
 
 
 def test_discard_card_service(session: Session, seed_game_player2_discard):
@@ -555,3 +559,96 @@ def test_early_train_to_paddington(session: Session, seed_started_game):
     assert player.turn_status == TurnStatus.DISCARDING_OPT
     assert player.turn_action == TurnAction.NO_ACTION
     assert len(game.discard_deck.cards) == 7
+
+def test_add_detective_service(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    assert player.turn_status == TurnStatus.PLAYING
+    assert selected_player.turn_status == TurnStatus.WAITING
+
+    selected_player.cards = [CardService(session).create_detective_card("Hercule Poirot", "", 3) for _ in range(6)]
+    cardIds = []
+    for i in range(3):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.HERCULE_POIROT)
+
+    card = CardService(session).create_detective_card("Ariadne Oliver", "", 0)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+
+    assert event.type == EventType.PLAY_DETECTIVE
+    assert event.main_player == player
+    assert event.selected_player == selected_player
+    assert event.played_card == card
+    assert event.dset == dset
+    assert event.cancelable == True
+    assert card not in player.cards
+    assert card in dset.cards
+
+def test_invalid_add_detective_service(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    assert player.turn_status == TurnStatus.PLAYING
+    assert selected_player.turn_status == TurnStatus.WAITING
+
+    selected_player.cards = [CardService(session).create_detective_card("Hercule Poirot", "", 3) for _ in range(6)]
+    cardIds = []
+    for i in range(3):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.HERCULE_POIROT)
+
+    card = CardService(session).create_detective_card("Harley Quin", "", 0)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    with pytest.raises(InvalididDetectiveSet):
+        PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+def test_change_setType_add_detective(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    player = game.players[1]
+    selected_player = game.players[2]
+
+    assert player.turn_status == TurnStatus.PLAYING
+    assert selected_player.turn_status == TurnStatus.WAITING
+
+    selected_player.cards = [CardService(session).create_detective_card("Tommy Beresford", "", 2) for _ in range(6)]
+    cardIds = []
+    for i in range(2):
+        cardIds.append(selected_player.cards[i].id)
+    print(cardIds)
+
+    dset = DetectiveSetService(session).create_detective_set(selected_player.id,
+                                                             cardIds,
+                                                             DetectiveSetType.TOMMY_BERESFORD)
+
+    card = CardService(session).create_detective_card("Tuppence Beresford", "", 2)
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
+    event = PlayService(session).add_detective(game, player.id, dset.id, card.id)
+
+
+    assert dset.type == DetectiveSetType.SIBLINGS_BERESFORD
+    assert event.cancelable == False

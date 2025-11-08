@@ -61,7 +61,7 @@ from App.play.services import PlayService
 from App.players.enums import TurnAction
 from App.players.models import Player
 
-from App.players.utils import db_player_2_discarded_cards_info, db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
+from App.players.utils import db_player_2_discarded_cards_info, db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_played_detective_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
 
 
 from App.websockets import manager
@@ -1283,7 +1283,7 @@ async def add_detective(
     player_id = turn_info.playerId
     set_id = turn_info.setId
     card_id = turn_info.cardId
-    print({"set_id": set_id, "card_id": card_id, "player_id": player_id})
+    
     try:
         event = PlayService(db).add_detective(game, player_id, set_id, card_id)
         
@@ -1291,6 +1291,13 @@ async def add_detective(
 
         gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublictInfo.model_dump())
+
+        playedCard = db_player_2_played_detective_info(event.main_player, event.played_card, ActionType.DETECTIVE, event.selected_player)
+        await manager.broadcast_except(
+            game_id=game.id, 
+            exclude_player_id=event.main_player.id,
+            message=playedCard.model_dump()
+        )
 
         for player in game.players:
             playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(player))

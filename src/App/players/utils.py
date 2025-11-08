@@ -9,7 +9,7 @@ from App.models import db
 from App.play.schemas import CardsOffTheTableInfo, DiscardEventInfo, NotifierCardsOffTheTable, PayloadDiscardEvent, PayloadRevealSecretForce, PayloadSatterthwaiteWild
 from App.players.enums import PlayerRole, TurnAction
 from App.players.models import Player
-from App.players.schemas import AllyInfo, CardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPrivateInfo, PlayerPublicInfo
+from App.players.schemas import AllyInfo, CardsPlayedInfo, DetectiveCardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPlayedDetectiveInfo, PlayerPrivateInfo, PlayerPublicInfo
 from App.secret.utils import db_secret_2_secret_private_info, db_secret_2_secret_public_info
 from App.sets.utils import db_dset_2_set_public_info
 from App.card.schemas import CardPublicInfo
@@ -140,6 +140,21 @@ def db_player_2_played_card_info(
             actionType=action_type.value
         )
     return CardsPlayedInfo(payload=payload)
+
+def db_player_2_played_detective_info(
+        db_player: Player,
+        card_played: Card,
+        action_type: ActionType,
+        set_owner: Player
+    ) -> DetectiveCardsPlayedInfo:
+    
+    payload = PlayerPlayedDetectiveInfo(
+            playerId = db_player.id,
+            cards = [db_card_2_card_info(card_played)],
+            actionType=action_type.value,
+            setOwnerId=set_owner.id
+        )
+    return DetectiveCardsPlayedInfo(payload=payload)
 
 def db_player_2_discarded_cards_info(
         player_id: int,
