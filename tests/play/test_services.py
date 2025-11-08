@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from App.decks.discard_deck_service import DiscardDeckService
 from App.events.enums import Direction, EventType
+from App.events.models import Event
 from App.events.services import EventManager
 from App.games.enums import GameStatus, Winners
 from App.games.models import Game
@@ -685,3 +686,23 @@ def test_dead_card_folly(session: Session, seed_started_game):
         assert event.resolved
     for player in players:
         assert debug_cards[player.id] not in player.cards
+
+def test_select_direction_service(session: Session, seed_started_game):
+    game = seed_started_game(3)
+    main_player = game.players[1]
+    direction_value = "left"
+
+    main_player.turn_action = TurnAction.DEAD_CARD_FOLLY_DIRECTION
+
+    PlayService(session).select_direction(game, main_player.id, direction_value)
+
+    events : list[Event] = session.query(Event).filter_by(
+        game_id=game.id,
+        type=EventType.DEAD_CARD_FOLLY_DIRECTION,
+    ).all()
+
+    for player in game.players:
+        assert player.turn_action == TurnAction.DEAD_CARD_FOLLY
+    for event in events:
+        assert event.direction == Direction.CLOCKWISE
+        assert not event.resolved

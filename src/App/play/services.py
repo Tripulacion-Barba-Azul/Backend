@@ -878,9 +878,9 @@ class PlayService:
             raise NotPlayersTurnError(f"Player {player_id} cannot select direction now")
 
         if direction_value == "left":
-            direction = Direction.COUNTERCLOCKWISE
-        elif direction_value == "right":
             direction = Direction.CLOCKWISE
+        elif direction_value == "right":
+            direction = Direction.COUNTERCLOCKWISE
         else:
             raise IncorrectDirectionError(f"Invalid direction: {direction_value}")
 
