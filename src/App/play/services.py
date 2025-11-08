@@ -393,7 +393,8 @@ class PlayService:
         
         if (player.turn_action != TurnAction.SELECT_ANY_PLAYER
             and player.turn_action != TurnAction.CARDS_OFF_THE_TABLE
-            and player.turn_action != TurnAction.SATTERWAITEWILD):
+            and player.turn_action != TurnAction.SATTERWAITEWILD
+            and player.turn_action != TurnAction.CARD_TRADE_SELECTION):
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
         
         player_in_game = GameService(self._db).player_in_game(game_id, selected_player_id)
@@ -443,7 +444,15 @@ class PlayService:
             else:
                 selected_player.turn_action = TurnAction.GIVE_SECRET_AWAY
 
-            
+        elif event == TurnAction.CARD_TRADE_SELECTION:
+            player.turn_action = TurnAction.CARD_TRADE
+            if selected_player.in_social_disgrace:
+                selected_player.turn_action = TurnAction.NO_ACTION
+                current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
+                event = TurnAction.NO_ACTION
+            else:
+                selected_player.turn_action = TurnAction.CARD_TRADE
+                event = TurnAction.CARD_TRADE
 
         self._db.flush()
         self._db.commit()
@@ -931,7 +940,7 @@ class PlayService:
         
         related_events = EventManager(self._db).get_unresolved_events_by_event_type(game.id, event_type)
 
-        if event_type == EventType.CARD_TRADE and len(related_events) == 2:
+        if event_type == EventType.CARD_TRADE and len(related_events) == 2 or (len(game.players) == 2 and event_type == EventType.DEAD_CARD_FOLLY):
             main_player, selected_player, main_player_card, selected_player_card = self.resolver_card_trade(related_events)
             actionResolved = True
         elif event_type == EventType.DEAD_CARD_FOLLY and len(related_events) == len(game.players):
