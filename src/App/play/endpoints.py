@@ -449,6 +449,7 @@ async def play_nsf(
         )
 
     player = db.query(Player).filter(Player.id == player_id).first()
+    finished = False
 
     try:
         # Add NSF Event and Block the game
@@ -485,15 +486,12 @@ async def play_nsf(
                 "timeLeft": TIMER_DURATION
             })
             await manager.broadcast(game_id, time_info.model_dump())
-            game.action_status = ActionStatus.BLOCKED
-            
-            db.flush()
-            db.commit()
+
             task = asyncio.create_task(resolve_event(game_id, db))
             finished = True
             return None
 
-        while not finished:
+        if not finished:
             # Broadcast
             gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
