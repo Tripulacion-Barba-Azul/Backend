@@ -974,7 +974,17 @@ class PlayService:
         eventDirection = next (e for e in game.events if e.type == EventType.DEAD_CARD_FOLLY_DIRECTION and not e.resolved)
 
         direction = eventDirection.direction
-        players = sort_players(game.players)
+        players = []
+        j= 1
+        for _ in range(len(game.players)):
+            for p in game.players:
+                if p.turn_order == j:
+                    players.append(p)
+                    j = j + 1
+                    break
+        print(players)
+        next_player = None
+        previous_player = None
 
         if direction == Direction.COUNTERCLOCKWISE:
             for i in range (len(players)):
