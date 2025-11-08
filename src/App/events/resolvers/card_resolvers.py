@@ -245,7 +245,39 @@ class DeadCardFollyResolver(BaseEventResolver):
         player = self.event.main_player
         card = self.event.played_card
 
-        turn_action = CardService(self._db).select_event_type(game, player, card)
+        if len(game.players) != 2:
+            turn_action = CardService(self._db).select_event_type(game, player, card)
+        else:
+            turn_action = TurnAction.DEAD_CARD_FOLLY
+            for p in game.players:
+                if p != player:
+                    p.turn_action = turn_action
+                
+        if turn_action in [TurnAction.NO_ACTION, TurnAction.NO_EFFECT]:
+            player.turn_status = TurnStatus.DISCARDING_OPT
+        else:
+            player.turn_status = TurnStatus.TAKING_ACTION
+            player.turn_action = turn_action
+
+        self._db.flush()
+        self._db.commit()
+
+        return turn_action
+    
+class CardTradeResolver(BaseEventResolver):
+
+    def resolve(self):
+        game = self.event.game
+        player = self.event.main_player
+        card = self.event.played_card
+
+        if len(game.players) != 2:
+            turn_action = CardService(self._db).select_event_type(game, player, card)
+        else:
+            turn_action = TurnAction.CARD_TRADE
+            for p in game.players:
+                if p != player:
+                    p.turn_action = turn_action
         if turn_action in [TurnAction.NO_ACTION, TurnAction.NO_EFFECT]:
             player.turn_status = TurnStatus.DISCARDING_OPT
         else:

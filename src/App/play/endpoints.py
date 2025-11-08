@@ -229,6 +229,52 @@ async def resolve_event(game_id:int, db):
                 gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
                 await manager.broadcast(game.id, gameEndInfo.model_dump())
                 return {"message": "The game has ended"}
+            
+        elif card.name == "Dead Card Folly":
+            gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+                )
+            await manager.send_to_player(
+                        game_id=game.id,
+                        player_id=player.id,
+                        message={"event": turn_action_enum_2_str(TurnAction.DEAD_CARD_FOLLY_DIRECTION)}
+                    )
+            
+            if len(game.players) == 2:
+                for p in game.players:
+                    await manager.send_to_player(
+                        game_id=game.id,
+                        player_id=p.id,
+                        message={"event": turn_action_enum_2_str(TurnAction.DEAD_CARD_FOLLY)}
+                    )
+
+        elif card.name == "Card Trade":
+            gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+            await manager.broadcast(game.id,gamePublictInfo.model_dump())
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+                )
+            await manager.send_to_player(
+                        game_id=game.id,
+                        player_id=player.id,
+                        message={"event": turn_action_enum_2_str(TurnAction.CARD_TRADE_SELECTION)}
+                    )
+            if len(game.players) == 2:
+                for p in game.players:
+                    await manager.send_to_player(
+                        game_id=game.id,
+                        player_id=p.id,
+                        message={"event": turn_action_enum_2_str(TurnAction.CARD_TRADE)}
+                    )
+
         else:
             eventType = CardService(db).select_event_type(game, player, card)
             await manager.send_to_player(
@@ -918,6 +964,14 @@ async def select_any_player(
                 player_id=selected_player.id,
                 message={"event": turn_action_enum_2_str(selected_player.turn_action)}
             )
+
+        elif event == TurnAction.CARD_TRADE:
+            for player in [player, selected_player]:
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=player.id,
+                    message={"event": turn_action_enum_2_str(player.turn_action)}
+                )
             
         elif event == TurnAction.NO_ACTION:
 

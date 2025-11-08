@@ -212,7 +212,7 @@ def turn_action_enum_2_str(turn_action: TurnAction) -> str:
     elif turn_action == TurnAction.DEAD_CARD_FOLLY:
         return "selectOwnCard"
     elif turn_action == TurnAction.CARD_TRADE_SELECTION:
-        return "selectAnyPlayer"
+        return "cardTradeSelection"
     elif turn_action == TurnAction.DEAD_CARD_FOLLY_DIRECTION:
         return "selectDirection"
     else:
