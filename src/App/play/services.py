@@ -1,3 +1,4 @@
+import random
 from sqlalchemy.orm import Session
 
 from App.card.services import CardService
@@ -102,6 +103,14 @@ class PlayService:
 
         event = self._event_managaer.create(
             type=EventType.PLAY_CARD,
+            game=game,
+            main_player=player,
+            played_card=card
+        )
+
+        if card.name == "Point Your Suspicions":
+            pointYourSuspicionsEvent = self._event_managaer.create(
+            type=EventType.POINT_YOUR_SUSPICIONS_MAIN,
             game=game,
             main_player=player,
             played_card=card
@@ -394,7 +403,8 @@ class PlayService:
         if (player.turn_action != TurnAction.SELECT_ANY_PLAYER
             and player.turn_action != TurnAction.CARDS_OFF_THE_TABLE
             and player.turn_action != TurnAction.SATTERWAITEWILD
-            and player.turn_action != TurnAction.CARD_TRADE_SELECTION):
+            and player.turn_action != TurnAction.CARD_TRADE_SELECTION
+            and player.turn_action != TurnAction.POINT_YOUR_SUSPICIONS):
             raise NotPlayersTurnError(f"Player {player_id} cannot select any player now")
         
         player_in_game = GameService(self._db).player_in_game(game_id, selected_player_id)
@@ -411,6 +421,7 @@ class PlayService:
         
         event = player.turn_action
         current_turn_player = None
+        pysResult = None
         
         for p in game.players:
             if p.turn_status == TurnStatus.TAKING_ACTION:
@@ -454,10 +465,79 @@ class PlayService:
                 selected_player.turn_action = TurnAction.CARD_TRADE
                 event = TurnAction.CARD_TRADE
 
+        elif event == TurnAction.POINT_YOUR_SUSPICIONS:
+            pysEvent = self._event_managaer.create(
+                type=EventType.POINT_YOUR_SUSPICIONS,
+                game=game,
+                main_player=player,
+                selected_player=selected_player
+            )
+            pysEvents = self._event_managaer.get_unresolved_events_by_event_type(game.id, EventType.POINT_YOUR_SUSPICIONS)
+            if len(pysEvents) == len(game.players):
+                most_suspected_player = self.resolver_point_your_suspicions(game, pysEvents)
+                pysResult = most_suspected_player
+
         self._db.flush()
         self._db.commit()
 
-        return game, player, selected_player, event, countNotSoFast
+        return game, player, selected_player, event, countNotSoFast, pysResult
+    
+    def resolver_point_your_suspicions(self, game, events: list[GameEvent]) -> Player:
+        for player in game.players:
+            player.turn_action = TurnAction.NO_ACTION
+        main_event = self._event_managaer.get_unresolved_events_by_event_type(game.id, EventType.POINT_YOUR_SUSPICIONS_MAIN)
+        main_player = main_event[0].main_player
+        selected_main_player = None
+        most_suspected_player = None
+
+        suspicion_counts = {}
+        for event in events:
+            if event.main_player == main_player:
+                selected_main_player = event.selected_player
+            selected_player = event.selected_player
+            if selected_player in suspicion_counts:
+                suspicion_counts[selected_player] += 1
+            else:
+                suspicion_counts[selected_player] = 1
+
+        max_count = max(suspicion_counts.values())
+        most_suspected_players = [
+            player_id for player_id, count in suspicion_counts.items()
+            if count == max_count
+        ]
+
+        if len(most_suspected_players) > 1:
+            for player in most_suspected_players:
+                if player == selected_main_player:
+                    most_suspected_player = player
+                    break
+            if not most_suspected_player:
+                most_suspected_player = random.choice(most_suspected_players)
+                
+        else:
+            most_suspected_player = most_suspected_players[0] 
+            
+        for player in game.players:
+            if player == most_suspected_player:
+                player.turn_action = TurnAction.POINT_YOUR_SUSPICIONS_REVEAL
+            else:
+                player.turn_action = TurnAction.NO_ACTION
+
+        main_event[0].resolved = True
+
+        self._db.flush()
+        self._db.commit()
+
+        return most_suspected_player
+
+    def pys_players_selections(self, game: Game) -> list[tuple[int,int]]:
+        selections = []
+        pysEvents = self._event_managaer.get_unresolved_events_by_event_type(game.id, EventType.POINT_YOUR_SUSPICIONS)
+        for event in pysEvents:
+            selections.append((event.main_player.id, event.selected_player.id))
+            event.resolved = True
+
+        return selections
 
     def cards_off_the_tables(self, game: Game, player: Player, selected_player: Player) -> int:
         countNotSoFast = 0
@@ -735,7 +815,7 @@ class PlayService:
         if not player:
             raise PlayerNotFoundError(f"Player {player_id} not found")
         
-        if player.turn_action not in [TurnAction.REVEAL_OWN_SECRET, TurnAction.GIVE_SECRET_AWAY]:
+        if player.turn_action not in [TurnAction.REVEAL_OWN_SECRET, TurnAction.GIVE_SECRET_AWAY, TurnAction.POINT_YOUR_SUSPICIONS_REVEAL]:
             raise NotPlayersTurnError(f"Player {player_id} cannot reveal secret.")
         
         secret = next((secret for secret in player.secrets if secret.id == secret_id))
