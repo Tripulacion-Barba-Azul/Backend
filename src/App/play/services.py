@@ -35,7 +35,7 @@ from App.players.services import PlayerService
 from App.sets.enums import DetectiveSetType
 from App.sets.models import DetectiveSet
 from App.sets.services import DetectiveSetService
-from App.card.models import Card, Instant, Event as EventCard
+from App.card.models import Card, Devious, Instant, Event as EventCard
 from App.events.services import EventManager
 from App.events.enums import EventType
 from App.sets.enums import DetectiveSetType
@@ -775,13 +775,55 @@ class PlayService:
 
         # TODO: ACA HAY CASO DESGRACIA SOCIAL
         self._player_service.set_social_disgrace(player)
-        current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
         player.turn_action = TurnAction.NO_ACTION
+
+        if all(game.players[i].turn_action == TurnAction.NO_ACTION for i in range(len(game.players))):
+            current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
 
         self._db.flush()
         self._db.commit()
 
         return event, current_turn_player, secret, player
+    
+    def select_hidden_secret(self, game: Game, player_owner: Player, secret_id: int):
+
+        if player_owner.turn_action != TurnAction.SELECT_HIDDEN_SECRET:
+            raise NotPlayersTurnError(f"Player {player_owner.id} cannot select hidden secret.")
+
+        secret = next((secret for secret in player_owner.secrets if secret.id == secret_id))
+        if not secret:
+            raise SecretNotFoundError(f"Secret {secret_id} not found")
+        if secret not in player_owner.secrets:
+            raise SecretNotFoundError(f"Secret {secret_id} not found for player {player_owner.id}")
+
+        current_turn_player = None
+
+        for p in game.players:
+                if p.turn_status == TurnStatus.TAKING_ACTION:
+                    current_turn_player = p
+
+        if not current_turn_player:
+                raise PlayerNotFoundError(f"Player not found")
+        
+        event = next((event for event in game.events if 
+                      (not event.resolved and event.type == EventType.RECEIVE_DEVIOUS and event.selected_player == player_owner)),
+                      None)
+        
+        player_to_show = event.main_player
+        player_owner.turn_action = TurnAction.NO_ACTION
+
+        if all(game.players[i].turn_action == TurnAction.NO_ACTION for i in range(len(game.players))):
+            current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
+
+        event.resolved = True
+
+        self._db.flush()
+        self._db.commit()
+
+        return player_to_show
+
+
+
 
     def get_top_five_discarded_cards(self, player, game_id):
             game = self._db.query(Game).filter_by(id=game_id).first()
@@ -941,7 +983,7 @@ class PlayService:
         related_events = EventManager(self._db).get_unresolved_events_by_event_type(game.id, event_type)
 
         if event_type == EventType.CARD_TRADE and len(related_events) == 2 or (len(game.players) == 2 and event_type == EventType.DEAD_CARD_FOLLY):
-            main_player, selected_player, main_player_card, selected_player_card = self.resolver_card_trade(related_events)
+            main_player, selected_player, main_player_card, selected_player_card = self.resolver_card_trade(game, related_events)
             actionResolved = True
         elif event_type == EventType.DEAD_CARD_FOLLY and len(related_events) == len(game.players):
             self.resolver_dead_card_folly(game, related_events)
@@ -949,7 +991,7 @@ class PlayService:
 
         return actionResolved, event_type, main_player_card, selected_player_card, main_player, selected_player
     
-    def resolver_card_trade(self, event: list[GameEvent]):
+    def resolver_card_trade(self, game: Game, event: list[GameEvent]):
         players = [e.main_player for e in event]
         main_player = next(p for p in players if p.turn_status == TurnStatus.TAKING_ACTION)
         selected_player = next(p for p in players if p.turn_status != TurnStatus.TAKING_ACTION)
@@ -969,9 +1011,17 @@ class PlayService:
         event[0].resolved = True
         event[1].resolved = True
 
-        main_player.turn_status = TurnStatus.DISCARDING_OPT
-        main_player.turn_action = TurnAction.NO_ACTION
-        selected_player.turn_action = TurnAction.NO_ACTION
+        if isinstance(card1, Devious):
+            self.devious_received(game, player1, player2, card1)
+            
+
+        elif isinstance(card2, Devious):
+            self.devious_received(game, player2, player1, card2)
+
+        else:
+            main_player.turn_status = TurnStatus.DISCARDING_OPT
+            main_player.turn_action = TurnAction.NO_ACTION
+            selected_player.turn_action = TurnAction.NO_ACTION
         
         self._db.flush()
         self._db.commit()
@@ -994,7 +1044,7 @@ class PlayService:
         print(players)
         next_player = None
         previous_player = None
-
+        cards_and_players= []
         if direction == Direction.COUNTERCLOCKWISE:
             for i in range (len(players)):
                 current_player = players[i]
@@ -1003,8 +1053,9 @@ class PlayService:
                 self._card_service.unrelate_card_player(card.id, current_player.id)
                 self._card_service.relate_card_player(next_player.id, card.id)
                 current_player.turn_action = TurnAction.NO_ACTION
-                if current_player.turn_status == TurnStatus.TAKING_ACTION:
-                    players[i].turn_status = TurnStatus.DISCARDING_OPT
+                if isinstance(card, Devious):
+                    cards_and_players.append((card, current_player, next_player))
+
 
         elif direction == Direction.CLOCKWISE:
             for i in range (len(players)):
@@ -1014,12 +1065,23 @@ class PlayService:
                 self._card_service.unrelate_card_player(card.id, current_player.id)
                 self._card_service.relate_card_player(previous_player.id, card.id)
                 current_player.turn_action = TurnAction.NO_ACTION
-                if current_player.turn_status == TurnStatus.TAKING_ACTION:
-                    players[i].turn_status = TurnStatus.DISCARDING_OPT
+                if isinstance(card, Devious):
+                    cards_and_players.append((card, current_player, next_player))
+
 
         eventDirection.resolved = True
         for event in events:
             event.resolved = True
+
+        if cards_and_players:
+            for card, sender, receiver in cards_and_players:
+                self.devious_received(game, sender, receiver, card)
+
+        elif not cards_and_players or all(receiver.in_social_disgrace for _, _, receiver in cards_and_players):
+            for p in game.players:
+                if p.turn_status == TurnStatus.TAKING_ACTION:
+                    p.turn_status = TurnStatus.DISCARDING_OPT
+
 
         self._db.flush()
         self._db.commit()
@@ -1052,3 +1114,32 @@ class PlayService:
 
         self._db.flush()
         self._db.commit()
+
+    def devious_received(self, game: Game, sender: Player, receiver: Player, card: Card):
+
+        cancelable = True
+
+        if not receiver.in_social_disgrace:
+           
+            if card.name == "Social Faux Pas":
+                receiver.turn_action = TurnAction.REVEAL_OWN_SECRET
+                if sender.turn_action not in (TurnAction.REVEAL_OWN_SECRET, TurnAction.SELECT_HIDDEN_SECRET):
+                    sender.turn_action = TurnAction.NO_ACTION
+                
+            elif card.name == "Blackmailed!":
+                receiver.turn_action = TurnAction.SELECT_HIDDEN_SECRET
+                if sender.turn_action not in (TurnAction.REVEAL_OWN_SECRET, TurnAction.SELECT_HIDDEN_SECRET):
+                    sender.turn_action = TurnAction.NO_ACTION
+                cancelable = False
+        
+            deviousEvent = self._event_managaer.create(
+                type=EventType.RECEIVE_DEVIOUS,
+                game=game,
+                main_player=sender,
+                selected_player=receiver,
+                played_card=card,
+                cancelable=cancelable
+            )
+
+            self._db.flush()
+            self._db.commit()

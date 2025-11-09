@@ -36,4 +36,5 @@ class TurnAction(Enum):
     NO_EFFECT = "notifierNoEffect" # Dont use as state in player
     PLAY_NSF = "playNSF"
     WAITING_ACTION = "waitingAction"
+    SELECT_HIDDEN_SECRET = "selectHiddenSecret"
 

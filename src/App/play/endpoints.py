@@ -1,6 +1,7 @@
 import asyncio
 from anyio import NoEventLoopError
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import Secret
 
 from App.card.utils import db_card_2_card_info
 from App.events.enums import EventType
@@ -1518,4 +1519,65 @@ async def select_direction(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"It's not the turn of player {player_id}",
+        )
+
+@play_router.post(path="/{game_id}/actions/select-hidden-secret", status_code=200)
+async def select_hidden_secret_endpoint(
+    game_id: int,
+    hidden_secret_info: RevealOwnSecretInfo,
+    db=Depends(get_db)
+):
+    game = GameService(db).get_by_id(game_id)
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No game found {game_id}",
+        )
+
+    player_id = hidden_secret_info.playerId
+    secret_id = hidden_secret_info.secretId
+    secret = next((s for s in db.query(Secret).filter(Secret.id == secret_id)), None)
+    try:
+        player_to_show = PlayService(db).select_hidden_secret(game, player_id, secret_id)
+        # NOTIFICACION DE CARTA AÑADIDA AL SET
+
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id, gamePublictInfo.model_dump())
+
+        for player in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(player))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=player.id,
+                message=playerPrivateInfo.model_dump()
+            )
+        
+        await manager.send_to_player(
+            game_id=game.id,
+            player_id=player_to_show.id,
+            message={"event": "notifierBlackmailed", "payload": {"playerId": player_id, "secret_name": secret.name}}
+            )
+        
+        await manager.broadcast_except(
+                game_id=game.id, 
+                exclude_player_id=player_to_show.id,
+                message={"event": "notifierBlackmailed", "payload": {"playerId": player_to_show.id, "selectedPlayerId": player_id}}
+            )
+
+
+    except PlayerNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"player {player_id} not found",
+        )
+    except NotPlayersTurnError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"It's not the turn of player {player_id}",
+        )
+    except InvalididDetectiveSet as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Not a valid detective set. Learn the rules little cheater.",
         )
