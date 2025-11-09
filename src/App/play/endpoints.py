@@ -38,7 +38,8 @@ from App.play.schemas import (
     NotifierDeadCardFolly, 
     NotifierDelayTheMurder, 
     NotifierHideSecret, 
-    NotifierLookIntoTheAshes, 
+    NotifierLookIntoTheAshes,
+    NotifierPointYourSuspicious, 
     NotifierRevealSecretForce, 
     NotifierSatterthwaiteWild,
     NotifierSelectDirection, 
@@ -48,7 +49,8 @@ from App.play.schemas import (
     PayloadCardTradePublic, 
     PayloadDelayTheMurder, 
     PayloadHideSecret, 
-    PayloadLookIntoTheAshes, 
+    PayloadLookIntoTheAshes,
+    PayloadPointYourSuspicious, 
     PlayCard,
     PlayNSF, 
     RevealOwnSecretInfo, 
@@ -231,14 +233,6 @@ async def resolve_event(game_id:int, db):
                 return {"message": "The game has ended"}
             
         elif card.name == "Dead Card Folly":
-            gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-            await manager.broadcast(game.id,gamePublictInfo.model_dump())
-            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
-            await manager.send_to_player(
-                game_id=game.id,
-                player_id=player.id,
-                message=playerPrivateInfo.model_dump()
-                )
             await manager.send_to_player(
                         game_id=game.id,
                         player_id=player.id,
@@ -252,16 +246,7 @@ async def resolve_event(game_id:int, db):
                         player_id=p.id,
                         message={"event": turn_action_enum_2_str(TurnAction.DEAD_CARD_FOLLY)}
                     )
-
         elif card.name == "Card Trade":
-            gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
-            await manager.broadcast(game.id,gamePublictInfo.model_dump())
-            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(player))
-            await manager.send_to_player(
-                game_id=game.id,
-                player_id=player.id,
-                message=playerPrivateInfo.model_dump()
-                )
             await manager.send_to_player(
                         game_id=game.id,
                         player_id=player.id,
@@ -273,6 +258,13 @@ async def resolve_event(game_id:int, db):
                         game_id=game.id,
                         player_id=p.id,
                         message={"event": turn_action_enum_2_str(TurnAction.CARD_TRADE)}
+                    )
+        elif card.name == "Point Your Suspicions":
+            for player in game.players:
+                await manager.send_to_player(
+                        game_id=game.id,
+                        player_id=player.id,
+                        message={"event": turn_action_enum_2_str(TurnAction.POINT_YOUR_SUSPICIONS)}
                     )
 
         else:
@@ -934,7 +926,7 @@ async def select_any_player(
     player_id = select_player_info.playerId
     selected_player_id = select_player_info.selectedPlayerId
     try:
-        game, player, selected_player, event, countNotSoFast = PlayService(db).select_any_player(
+        game, player, selected_player, event, countNotSoFast, pysResult = PlayService(db).select_any_player(
             game_id,
             player_id,
             selected_player_id
@@ -972,7 +964,14 @@ async def select_any_player(
                     player_id=player.id,
                     message={"event": turn_action_enum_2_str(player.turn_action)}
                 )
-            
+
+        elif event == TurnAction.POINT_YOUR_SUSPICIONS and pysResult is not None:
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=pysResult.id,
+                message={"event": turn_action_enum_2_str(pysResult.turn_action)}
+            )
+
         elif event == TurnAction.NO_ACTION:
 
             gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
@@ -986,8 +985,7 @@ async def select_any_player(
                     player_id=p.id,
                     message=playerPrivateInfo.model_dump()
                 )
-            
-              
+
     except (GameNotFoundError, PlayerNotFoundError) as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1253,6 +1251,16 @@ async def reveal_own_secret(
                 payload=db_player_2_satterthquin_info(player,secret,selected_player)
             )
             await manager.broadcast(game.id, eventInfo.model_dump())
+        elif event == TurnAction.POINT_YOUR_SUSPICIONS_REVEAL:
+            playersSelections = PlayService(db).pys_players_selections(game)
+            eventInfo = NotifierPointYourSuspicious(
+                payload=PayloadPointYourSuspicious(
+                    playersSelections=playersSelections,
+                    selectedPlayerId=selected_player.id
+                )
+            )
+            await manager.broadcast(game.id, eventInfo.model_dump())
+            
         game = PlayService(db).end_game(game_id)
         if game.status == GameStatus.FINISHED:
             gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))

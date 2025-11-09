@@ -77,6 +77,10 @@ class EventManager:
         - Si el último evento no es PLAY_NSF, se resuelve normalmente.
         """
         unresolved = self.get_unresolved_events_by_game(game_id)
+        unresolved = [
+                e for e in unresolved 
+                if e.type != EventType.POINT_YOUR_SUSPICIONS_MAIN
+            ]
         print(f"este es el tamaño de los eventos sin resolver: {len(unresolved)}")
 
         if not unresolved:
