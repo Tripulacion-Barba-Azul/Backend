@@ -2,6 +2,9 @@ import asyncio
 import json
 from typing import Annotated
 from venv import create
+from App.events.enums import EventType
+from App.events.services import EventManager
+from App.play.schemas import PayloadSelectHiddenSecret, NotifierSelectHiddenSecret
 from fastapi import APIRouter,Cookie, Depends, HTTPException, Response, status
 
 from App.card.utils import db_card_2_card_info
@@ -75,6 +78,9 @@ async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
         for p in game.players:
+            e = next((event for event in game.events if 
+                    (event.resolved and event.type == EventType.RECEIVE_DEVIOUS and event.main_player == p)),
+                    None)
             playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
 
             await manager.send_to_player(
@@ -97,7 +103,15 @@ async def get_game(game_id: int, db=Depends(get_db)) -> GameWaitingInfo:
                     game_id=game.id,
                     player_id=p.id,
                     message=topFiveCardsInfo.model_dump()
-                    )
+                    ) 
+            elif p.turn_action == TurnAction.SELECT_HIDDEN_SECRET:
+                notifierSelectHiddenSecret = NotifierSelectHiddenSecret(
+                payload=PayloadSelectHiddenSecret(secretOwnerId=e.selected_player.id))
+                await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=e.main_player.id,
+                    message=notifierSelectHiddenSecret.model_dump()
+                )
             elif p.turn_action != TurnAction.NO_ACTION:
                 await manager.send_to_player(
                 game_id=game.id,
