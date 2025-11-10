@@ -182,3 +182,11 @@ class SelectDirectionInfo(BaseModel):
 
 class NotifierSelectDirection(BaseModel):
     event: str = "selectOwnCard"
+
+class PayloadPointYourSuspicious(BaseModel):
+    playersSelections: list[tuple[int,int]]
+    selectedPlayerId: int
+
+class NotifierPointYourSuspicious(BaseModel):
+    event: str = "notifierPointYourSuspicious"
+    payload: PayloadPointYourSuspicious

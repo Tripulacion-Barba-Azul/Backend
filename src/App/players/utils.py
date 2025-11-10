@@ -215,5 +215,9 @@ def turn_action_enum_2_str(turn_action: TurnAction) -> str:
         return "cardTradeSelection"
     elif turn_action == TurnAction.DEAD_CARD_FOLLY_DIRECTION:
         return "selectDirection"
+    elif turn_action == TurnAction.POINT_YOUR_SUSPICIONS:
+        return "selectAnyPlayer"
+    elif turn_action == TurnAction.POINT_YOUR_SUSPICIONS_REVEAL:
+        return "revealOwnSecret"
     else:
         return turn_action.value
