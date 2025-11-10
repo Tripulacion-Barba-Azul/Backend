@@ -622,7 +622,9 @@ async def discard_cards(
         )
 
     try:
-        discarded_cards = PlayService(db).discard(game, turn_info.playerId, turn_info.cards)
+        discarded_cards, discard_event = PlayService(db).discard(game, turn_info.playerId, turn_info.cards)
+        print("DISCARDED CARDS:", discarded_cards)
+
         gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
@@ -646,6 +648,15 @@ async def discard_cards(
             gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
             await manager.broadcast(game.id, gameEndInfo.model_dump())
             return {"message": "The game has ended"}
+        
+        if discard_event:
+            # TIME TO PLAY NSF
+            if game.action_status is ActionStatus.UNBLOCKED:
+                    reset_timer(game_id, db)
+            else:
+            # RESOLVE NOT CANCELABLE EVENTS  
+                EventManager(db).resolve(game.id)
+            
     except PlayerNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

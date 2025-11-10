@@ -54,7 +54,7 @@ def test_discard_card_service_with_early_train_to_paddington(session: Session, s
     session.flush()
     session.commit()
 
-    PlayService(session).discard(game, player.id, cards_id)  
+    PlayService(session).discard(game, player.id, cards_id)
 
     assert len(player.cards) == 0
     assert player.turn_status == TurnStatus.DRAWING

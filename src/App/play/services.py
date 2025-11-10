@@ -271,27 +271,37 @@ class PlayService:
             return []
 
         discarded_cards = []
+        event_ettp = None
 
         for card_id in cards_id:
             card = self._card_service.get_card(card_id)
             discarded_cards.append(card)
             card = self._player_service.discard_card(player_id, card)
-            if card.name != "Early Train to Paddington" and card not in player.cards:
-                self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
+            if card.name == "Early Train to Paddington":
+                event_ettp = self._event_managaer.create(
+                    type=EventType.DISCARD_ETTP,
+                    game=game,
+                    main_player=player,
+                    played_card=card
+                )
+                print("Created ETTP event")
+                game.action_status = ActionStatus.UNBLOCKED
+                for player in game.players:
+                    player.turn_action = TurnAction.PLAY_NSF
+                print(game.action_status)
             else:
-                pass
-                #self.early_train_to_paddington(game, player)
+                self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
         
-    
-        player.turn_status = TurnStatus.DRAWING
+        if not event_ettp:
+            player.turn_status = TurnStatus.DRAWING
+            
         if len(player.cards) == 6:
             self.end_turn(game.id,player.id)
-
             
         self._db.add(player)
         self._db.flush()
         self._db.commit()
-        return discarded_cards
+        return discarded_cards, event_ettp
 
     def draw_card_from_deck(self, game_id, player_id):
 
@@ -881,9 +891,6 @@ class PlayService:
                     self._discard_deck_service.relate_card_to_discard_deck(discard_deck.id, card)
 
             self.end_game(game.id)
-
-            player.turn_status = TurnStatus.DISCARDING_OPT
-            player.turn_action = TurnAction.NO_ACTION
 
             self._db.flush()
             self._db.commit()

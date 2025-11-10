@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from App.card.services import CardService
 from App.players.models import Player
 from App.games.models import Game
 from App.events.enums import EventType, Direction
@@ -131,6 +132,13 @@ class EventManager:
                     self._db.flush()
                     self._db.commit()
 
+                if (prev_event.type is EventType.DISCARD_ETTP):
+                    game = prev_event.game
+                    card = prev_event.played_card
+                    DiscardDeckService(self._db).relate_card_to_discard_deck(game.discard_deck.id, card)
+                    prev_event.main_player.turn_status = TurnStatus.DRAWING
+                    self._db.flush()
+
                 self._db.commit()
                 canceled.append(prev_event.id)
                 resolved.append(last_event.id)
@@ -165,7 +173,10 @@ class EventManager:
                 resolved.append(base_event.id)
             return base_event
         else:
-            main_event.main_player.turn_status = TurnStatus.DISCARDING_OPT
+            if main_event.type == EventType.DISCARD_ETTP:
+                main_event.main_player.turn_status = TurnStatus.DRAWING
+            else:
+                main_event.main_player.turn_status = TurnStatus.DISCARDING_OPT
             self._db.flush()
             self._db.commit()
             return None
