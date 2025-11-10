@@ -276,7 +276,7 @@ class PlayService:
         for card_id in cards_id:
             card = self._card_service.get_card(card_id)
             discarded_cards.append(card)
-            card = self._player_service.discard_card(player_id, card)
+            self._player_service.discard_card(player_id, card)
             if card.name == "Early Train to Paddington":
                 event_ettp = self._event_managaer.create(
                     type=EventType.DISCARD_ETTP,
@@ -286,12 +286,13 @@ class PlayService:
                 )
                 print("Created ETTP event")
                 game.action_status = ActionStatus.UNBLOCKED
-                for player in game.players:
-                    player.turn_action = TurnAction.PLAY_NSF
+                for p in game.players:
+                    p.turn_action = TurnAction.PLAY_NSF
                 print(game.action_status)
             else:
                 self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, card)
         
+        print("Sale del for de descartar")
         if not event_ettp:
             player.turn_status = TurnStatus.DRAWING
             

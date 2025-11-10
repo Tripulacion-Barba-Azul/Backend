@@ -648,12 +648,15 @@ async def discard_cards(
             gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
             await manager.broadcast(game.id, gameEndInfo.model_dump())
             return {"message": "The game has ended"}
-        
+        print("Manda todos los mensajes")
         if discard_event:
+            print("HAY EVENTO DE DESCARTE")
             # TIME TO PLAY NSF
             if game.action_status is ActionStatus.UNBLOCKED:
+                    print("REINICIA TIMER")
                     reset_timer(game_id, db)
             else:
+                print("RESUELVE EVENTO NO CANCELABLE")
             # RESOLVE NOT CANCELABLE EVENTS  
                 EventManager(db).resolve(game.id)
             
