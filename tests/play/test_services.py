@@ -641,7 +641,7 @@ def test_card_trade(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade([first_event, second_event])
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade(game, [first_event, second_event])
 
     assert player_card in selected_player.cards
     assert selected_player_card in player.cards
@@ -996,3 +996,72 @@ def test_play_detective_own_set(session: Session, seed_started_game):
     assert turn_action == TurnAction.SELECT_ANY_PLAYER
     assert player.turn_status == selected_player.turn_status 
     assert player.turn_action == selected_player.turn_action
+
+
+def test_recieve_devious_social(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    player = game.players[0]
+    player_card = CardService(session).create_devious_card("Social Faux Pas", "")
+    player.cards[0] = player_card
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[5]
+
+    session.flush()
+    session.commit()
+
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
+
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade(game, [first_event, second_event])
+
+    devious_event = event_manager.get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)[0]
+    PlayService(session).resolve_devious_event(game, devious_event)
+
+    assert selected_player.turn_action == TurnAction.REVEAL_OWN_SECRET
+
+def test_recieve_devious_blackmailed(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    player = game.players[0]
+    player_card = CardService(session).create_devious_card("Blackmailed!", "")
+    player.cards[0] = player_card
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[5]
+
+    session.flush()
+    session.commit()
+
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
+
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade(game, [first_event, second_event])
+
+    devious_event = event_manager.get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)[0]
+    PlayService(session).resolve_devious_event(game, devious_event)
+
+    assert player.turn_action == TurnAction.SELECT_HIDDEN_SECRET

@@ -926,3 +926,54 @@ def test_add_detective_endpoint(client: TestClient, session: Session, seed_start
 
     assert private_update_received, "No se recibió privateUpdate tras add-detective"
     assert public_update_received, "No se recibió publicUpdate tras add-detective"
+
+
+def test_select_hidden_secret(client:TestClient, session:Session, seed_started_game):
+
+    game = seed_started_game(3)
+    main_player = game.players[1]
+    selected_player = game.players[2]
+
+    secret = selected_player.secrets[0]
+    secret.revealed = False
+
+    main_player.turn_status = TurnStatus.TAKING_ACTION
+    main_player.turn_action = TurnAction.SELECT_HIDDEN_SECRET
+
+    session.flush()
+    session.commit()
+
+    receivedNotifier = False
+    receivedPublicUpdate = False
+    receivedPrivateUpdate = False
+
+    with client.websocket_connect(f"/ws/{game.id}/{main_player.id}") as websocket:
+        response = client.post(
+            f"/play/{game.id}/actions/select-hidden-secret",
+            json = {
+                "playerId": main_player.id,
+                "selectedPlayerId" : selected_player.id,
+                "secretId": secret.id
+            }
+        )
+        data = response.json()
+        assert response.status_code == 200
+
+        for _ in range(3):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                receivedPublicUpdate = True
+            elif result.get("event") == "privateUpdate":
+                receivedPrivateUpdate = True
+            elif result.get("event") == "notifierSelectHiddenSecret":
+                assert payload["playerId"] == main_player.id
+                assert payload["selectedPlayerId"] == selected_player.id
+                assert payload["secretId"] == secret.id
+                receivedNotifier = True
+
+    assert receivedNotifier
+    assert receivedPublicUpdate
+    assert receivedPrivateUpdate
+
+    
