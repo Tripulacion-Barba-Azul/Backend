@@ -1676,8 +1676,8 @@ async def select_hidden_secret_endpoint(
             player_id=player_to_show.id,
             message={"event": "notifierBlackmailedCard",
                     "payload": {"playerId": player_id,
-                                "secret_name": secret.name, 
-                                "secret_id": secret.id}}
+                                "secretName": secret.name, 
+                                "secretId": secret.id}}
             )
 
         events = EventManager(db).get_unresolved_events_by_event_type(game_id, EventType.RECEIVE_DEVIOUS)
