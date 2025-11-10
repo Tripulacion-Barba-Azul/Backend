@@ -567,7 +567,7 @@ class PlayService:
         self._db.refresh(revealed_player)
         self._db.refresh(current_turn_player)
 
-        return secret
+        return secret.name
 
     def hide_secret(self, game, player_id, secret_id, affected_player_id):
 
@@ -814,6 +814,10 @@ class PlayService:
 
         if all(game.players[i].turn_action == TurnAction.NO_ACTION for i in range(len(game.players))):
             current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
+
+        card_id = event.played_card.id
+        self._card_service.unrelate_card_player(player_owner.id, card_id, self._db)
+        self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, event.played_card)
 
         event.resolved = True
 
@@ -1143,3 +1147,15 @@ class PlayService:
 
             self._db.flush()
             self._db.commit()
+
+    def resolve_devious_event(self, game, player_id):
+        
+        deviousEvents = EventManager(self._db).get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)
+        event = next((event for event in deviousEvents if event.selected_player.id == player_id), None)
+        event.resolved = True
+
+        CardService(self._db).unrelate_card_player(event.played_card.id, event.selected_player.id)
+        DiscardDeckService(self._db).relate_card_to_discard_deck(game.discard_deck.id, event.played_card)
+
+        self._db.flush()
+        self._db.commit() 

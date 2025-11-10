@@ -1,5 +1,5 @@
 import asyncio
-from anyio import NoEventLoopError
+from anyio import NoEventLoopError, sleep
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import Secret
 
@@ -34,13 +34,15 @@ from App.play.schemas import (
     HideSecretInfo, 
     LookIntoTheAshesInfo, 
     NotifierAndThenThereWasOneMore,
+    NotifierBlackmailed,
     NotifierCardTrade,
     NotifierCardTradePublic,
     NotifierDeadCardFolly, 
     NotifierDelayTheMurder, 
     NotifierHideSecret, 
     NotifierLookIntoTheAshes, 
-    NotifierRevealSecretForce, 
+    NotifierRevealSecretForce,
+    NotifierSFP, 
     NotifierSatterthwaiteWild,
     NotifierSelectDirection, 
     NotifierStealSet, 
@@ -122,6 +124,7 @@ async def start_timer(game_id: int, db):
         
         # Se acabó el tiempo: resolver evento
         print(f"[TIMER] Resolving game {game_id} after timeout.")
+        
         await resolve_event(game_id, db)
         
     except asyncio.CancelledError:
@@ -496,8 +499,7 @@ async def play_nsf(
         )
 
     player = db.query(Player).filter(Player.id == player_id).first()
-    finished = False
-
+    
     try:
         # Add NSF Event and Block the game
         is_played = PlayService(db).play_nsf(game, player, card_id)
@@ -507,7 +509,7 @@ async def play_nsf(
             gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
             await manager.broadcast(game.id,gamePublictInfo.model_dump())
 
-            playedCards = db_player_2_played_card_info(player, card, ActionType.EVENT)
+            playedCards = db_player_2_played_card_info(player, card, ActionType.INSTANT)
             await manager.broadcast_except(
                 game_id=game.id,
                 exclude_player_id=player.id,
@@ -523,6 +525,7 @@ async def play_nsf(
             # Stop timer
             task = active_timers.get(game_id)
             if task and not task.done():
+                print("Termino el timer")
                 task.cancel()
         elif all(player.turn_action == TurnAction.NO_ACTION for player in game.players):
             task = active_timers.get(game_id)
@@ -533,32 +536,32 @@ async def play_nsf(
                 "timeLeft": TIMER_DURATION
             })
             await manager.broadcast(game_id, time_info.model_dump())
+            print(time_info.model_dump)
 
             task = asyncio.create_task(resolve_event(game_id, db))
-            finished = True
             return None
 
-        if not finished:
-            # Broadcast
-            gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
-            await manager.broadcast(game.id,gamePublictInfo.model_dump())
-            
-            for p in game.players:
-                playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
-
-                await manager.send_to_player(
-                    game_id=game.id,
-                    player_id=p.id,
-                    message=playerPrivateInfo.model_dump()
-                )
-
-            print("AWAIT")
-            await asyncio.sleep(1)
-            # Unblock de game and restart timer
-            print("UNBLOCK GAME")
-            gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
-            await manager.broadcast(game.id,gamePublictInfo.model_dump())
         
+        # Broadcast
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+        
+        for p in game.players:
+            playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
+
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message=playerPrivateInfo.model_dump()
+            )
+
+        print("AWAIT")
+        await asyncio.sleep(1)
+        # Unblock de game and restart timer
+        print("UNBLOCK GAME")
+        gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+    
         for p in game.players:
             playerPrivateInfo = PrivateUpdate(payload=db_player_2_player_private_info(p))
 
@@ -875,7 +878,7 @@ async def endpoint_reveal_secret(
         )
 
     try:
-        PlayService(db).reveal_secret_service(game, player_id, secret_id, revealed_player_id)
+        secret_name =PlayService(db).reveal_secret_service(game, player_id, secret_id, revealed_player_id)
 
         gamePublicInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublicInfo.model_dump())
@@ -892,7 +895,8 @@ async def endpoint_reveal_secret(
             payload=SecretRevealedInfo(
                 playerId=player_id,
                 secretId=secret_id,
-                selectedPlayerId=revealed_player_id
+                selectedPlayerId=revealed_player_id,
+                secretName=secret_name
             )
         )
         await manager.broadcast(game.id, notifierRevealSecret.model_dump())
@@ -1040,7 +1044,8 @@ async def hide_secret(
             payload=PayloadHideSecret(
                 playerId=player_id,
                 secretId= secret.id,
-                selectedPlayerId=affected_player_id
+                selectedPlayerId=affected_player_id,
+                secretName=secret.name
             )
         )
         
@@ -1243,7 +1248,7 @@ async def reveal_own_secret(
                 player_id=p.id,
                 message=playerPrivateInfo.model_dump()
             )
-        
+
         if event == TurnAction.REVEAL_OWN_SECRET:
             eventInfo = NotifierRevealSecretForce(
                 payload=db_player_2_reveal_secret_force(player,secret,selected_player)
@@ -1259,6 +1264,44 @@ async def reveal_own_secret(
             gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
             await manager.broadcast(game.id, gameEndInfo.model_dump())
             return {"message": "The game has ended"}
+
+        events = EventManager(db).get_unresolved_events_by_event_type(game_id, EventType.RECEIVE_DEVIOUS)
+        print(f"DEVIOUS EVENTS:", {len(events)})
+        if events:
+            e = events[0]
+            db.refresh(game)
+            if e.played_card.name == "Blackmailed!":
+                
+                notifierBlackmailed = NotifierBlackmailed(payload = {"playerId": e.main_player.id,
+                                                                    "selectedPlayerId": e.selected_player.id})
+                
+                await manager.broadcast(game.id, notifierBlackmailed.model_dump())
+                db.refresh(e.selected_player)
+                turn_action = e.selected_player.turn_action
+                
+                await manager.send_to_player(
+                game_id=game.id,
+                player_id=e.selected_player.id,
+                message={"event": turn_action_enum_2_str(turn_action),
+                        "payload":{"secretOwnerId": e.selected_player.id}}
+                )
+
+            if e.played_card.name == "Social Faux Pas":
+                
+                notifierSFP = NotifierSFP(payload = {"playerId": e.main_player.id,
+                                                    "selectedPlayerId": e.selected_player.id})
+                
+                await manager.broadcast(game.id, notifierSFP.model_dump())
+                db.refresh(e.selected_player)
+                turn_action = e.selected_player.turn_action
+                
+                await manager.send_to_player(
+                game_id=game.id,
+                player_id=e.selected_player.id,
+                message={"event": turn_action_enum_2_str(turn_action)}
+                )
+
+            PlayService(db).resolve_devious_event(game, e.selected_player.id)
 
     except PlayerNotFoundError as e:
         raise HTTPException(
@@ -1388,6 +1431,52 @@ async def get_select_own_card(
             elif event_type == EventType.DEAD_CARD_FOLLY:
                 notifierDeadCardFolly = NotifierDeadCardFolly()
                 await manager.broadcast(game.id, notifierDeadCardFolly.model_dump())
+            
+            
+            #Devious case
+            events = EventManager(db).get_unresolved_events_by_event_type(game_id, EventType.RECEIVE_DEVIOUS)
+            print(f"DEVIOUS EVENTS:", {len(events)})
+            if events:
+                e = events[0]
+                db.refresh(game)
+                if e.played_card.name == "Blackmailed!":
+                    
+                    notifierBlackmailed = NotifierBlackmailed(payload = {"playerId": e.main_player.id,
+                                                                        "selectedPlayerId": e.selected_player.id})
+                    
+                    await manager.broadcast(game.id, notifierBlackmailed.model_dump())
+                    db.refresh(e.selected_player)
+                    turn_action = e.selected_player.turn_action
+                    
+                    await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=e.selected_player.id,
+                    message={"event": turn_action_enum_2_str(turn_action),
+                             "payload":{"secretOwnerId": e.selected_player.id}}
+                    )
+                    
+
+                if e.played_card.name == "Social Faux Pas":
+                    
+                    notifierSFP = NotifierSFP(payload = {"playerId": e.main_player.id,
+                                                        "selectedPlayerId": e.selected_player.id})
+                    
+                    await manager.broadcast(game.id, notifierSFP.model_dump())
+                    db.refresh(e.selected_player)
+                    turn_action = e.selected_player.turn_action
+                    
+                    await manager.send_to_player(
+                    game_id=game.id,
+                    player_id=e.selected_player.id,
+                    message={"event": turn_action_enum_2_str(turn_action)}
+                    )
+
+                PlayService(db).resolve_devious_event(game, e.selected_player.id)
+                
+            
+
+        
+
 
     except (PlayerNotFoundError, NotCardInHand) as e:
         raise HTTPException(
@@ -1539,7 +1628,6 @@ async def select_hidden_secret_endpoint(
     secret = next((s for s in db.query(Secret).filter(Secret.id == secret_id)), None)
     try:
         player_to_show = PlayService(db).select_hidden_secret(game, player_id, secret_id)
-        # NOTIFICACION DE CARTA AÑADIDA AL SET
 
         gamePublictInfo = PublicUpdate(payload=db_game_2_game_public_info(game))
         await manager.broadcast(game.id, gamePublictInfo.model_dump())
@@ -1556,15 +1644,51 @@ async def select_hidden_secret_endpoint(
         await manager.send_to_player(
             game_id=game.id,
             player_id=player_to_show.id,
-            message={"event": "notifierBlackmailed", "payload": {"playerId": player_id, "secret_name": secret.name}}
-            )
-        
-        await manager.broadcast_except(
-                game_id=game.id, 
-                exclude_player_id=player_to_show.id,
-                message={"event": "notifierBlackmailed", "payload": {"playerId": player_to_show.id, "selectedPlayerId": player_id}}
+            message={"event": "notifierBlackmailedCard",
+                    "payload": {"playerId": player_id,
+                                "secret_name": secret.name, 
+                                "secret_id": secret.id}}
             )
 
+        events = EventManager(db).get_unresolved_events_by_event_type(game_id, EventType.RECEIVE_DEVIOUS)
+        print(f"DEVIOUS EVENTS:", {len(events)})
+        if events:
+            e = events[0]
+            db.refresh(game)
+            if e.played_card.name == "Blackmailed!":
+                
+                notifierBlackmailed = NotifierBlackmailed(payload = {"playerId": e.main_player.id,
+                                                                    "selectedPlayerId": e.selected_player.id})
+                
+                await manager.broadcast(game.id, notifierBlackmailed.model_dump())
+                db.refresh(e.selected_player)
+                turn_action = e.selected_player.turn_action
+                
+                await manager.send_to_player(
+                game_id=game.id,
+                player_id=e.selected_player.id,
+                message={"event": turn_action_enum_2_str(turn_action),
+                        "payload":{"secretOwnerId": e.selected_player.id}}
+                )
+                
+
+            if e.played_card.name == "Social Faux Pas":
+                
+                notifierSFP = NotifierSFP(payload = {"playerId": e.main_player.id,
+                                                    "selectedPlayerId": e.selected_player.id})
+                
+                await manager.broadcast(game.id, notifierSFP.model_dump())
+                db.refresh(e.selected_player)
+                turn_action = e.selected_player.turn_action
+                
+                await manager.send_to_player(
+                game_id=game.id,
+                player_id=e.selected_player.id,
+                message={"event": turn_action_enum_2_str(turn_action),
+                         "payload":{"secretOwnerId": e.selected_player.id}}
+                )
+
+                PlayService(db).resolve_devious_event(game, e.selected_player.id)
 
     except PlayerNotFoundError as e:
         raise HTTPException(
