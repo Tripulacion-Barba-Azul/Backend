@@ -28,7 +28,7 @@ from App.games.services import GameService
 from App.games.enums import ActionStatus, GameStatus, Winners
 from App.players.utils import sort_players
 from App.secret.enums import SecretType
-from App.secret.services import relate_secret_player, reveal_secret, unrelate_secret_player
+from App.secret.services import get_secret, relate_secret_player, reveal_secret, unrelate_secret_player
 from App.players.models import Player
 from App.players.enums import PlayerRole, TurnAction, TurnStatus
 from App.players.services import PlayerService
@@ -777,7 +777,8 @@ class PlayService:
         self._player_service.set_social_disgrace(player)
         player.turn_action = TurnAction.NO_ACTION
 
-        if all(game.players[i].turn_action == TurnAction.NO_ACTION for i in range(len(game.players))):
+        events = EventManager(self._db).get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)
+        if not events:
             current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
 
         self._db.flush()
@@ -785,12 +786,18 @@ class PlayService:
 
         return event, current_turn_player, secret, player
     
-    def select_hidden_secret(self, game: Game, player_owner: Player, secret_id: int):
+    def select_hidden_secret(self, game: Game, player_owner_id: int, secret_id: int):
+
+        player_owner = self._db.query(Player).filter(Player.id == player_owner_id).first()
 
         if player_owner.turn_action != TurnAction.SELECT_HIDDEN_SECRET:
             raise NotPlayersTurnError(f"Player {player_owner.id} cannot select hidden secret.")
+        
+        self._db.refresh(game)
+        self._db.refresh(player_owner)
 
-        secret = next((secret for secret in player_owner.secrets if secret.id == secret_id))
+        secret = get_secret(secret_id, self._db)
+
         if not secret:
             raise SecretNotFoundError(f"Secret {secret_id} not found")
         if secret not in player_owner.secrets:
@@ -812,7 +819,8 @@ class PlayService:
         player_to_show = event.main_player
         player_owner.turn_action = TurnAction.NO_ACTION
 
-        if all(game.players[i].turn_action == TurnAction.NO_ACTION for i in range(len(game.players))):
+        events = EventManager(self._db).get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)
+        if not events:
             current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
 
         card_id = event.played_card.id
@@ -824,7 +832,7 @@ class PlayService:
         self._db.flush()
         self._db.commit()
 
-        return player_to_show
+        return player_to_show, secret
 
 
 
@@ -1122,20 +1130,11 @@ class PlayService:
     def devious_received(self, game: Game, sender: Player, receiver: Player, card: Card):
 
         cancelable = True
+        if card.name == "Blackmailed!":
+            cancelable = False
 
         if not receiver.in_social_disgrace:
            
-            if card.name == "Social Faux Pas":
-                receiver.turn_action = TurnAction.REVEAL_OWN_SECRET
-                if sender.turn_action not in (TurnAction.REVEAL_OWN_SECRET, TurnAction.SELECT_HIDDEN_SECRET):
-                    sender.turn_action = TurnAction.NO_ACTION
-                
-            elif card.name == "Blackmailed!":
-                receiver.turn_action = TurnAction.SELECT_HIDDEN_SECRET
-                if sender.turn_action not in (TurnAction.REVEAL_OWN_SECRET, TurnAction.SELECT_HIDDEN_SECRET):
-                    sender.turn_action = TurnAction.NO_ACTION
-                cancelable = False
-        
             deviousEvent = self._event_managaer.create(
                 type=EventType.RECEIVE_DEVIOUS,
                 game=game,
@@ -1148,14 +1147,23 @@ class PlayService:
             self._db.flush()
             self._db.commit()
 
-    def resolve_devious_event(self, game, player_id):
+    def resolve_devious_event(self, game, event):
+
+        if event.played_card.name == "Social Faux Pas":
+                event.selected_player.turn_action = TurnAction.REVEAL_OWN_SECRET
+                if event.main_player.turn_action not in (TurnAction.REVEAL_OWN_SECRET, TurnAction.SELECT_HIDDEN_SECRET):
+                    event.main_player.turn_action = TurnAction.NO_ACTION
+                
+        elif event.played_card.name == "Blackmailed!":
+            event.main_player.turn_action = TurnAction.SELECT_HIDDEN_SECRET
+            if event.selected_player.turn_action not in (TurnAction.REVEAL_OWN_SECRET, TurnAction.SELECT_HIDDEN_SECRET):
+                event.selected_player.turn_action = TurnAction.NO_ACTION
         
-        deviousEvents = EventManager(self._db).get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)
-        event = next((event for event in deviousEvents if event.selected_player.id == player_id), None)
-        event.resolved = True
+                
 
         CardService(self._db).unrelate_card_player(event.played_card.id, event.selected_player.id)
         DiscardDeckService(self._db).relate_card_to_discard_deck(game.discard_deck.id, event.played_card)
 
+        event.resolved = True
         self._db.flush()
         self._db.commit() 

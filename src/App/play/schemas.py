@@ -147,6 +147,7 @@ class AddDetectiveInfo(BaseModel):
     cardId: int
     playerId: int
     setId: int
+
 class PayloadCardTrade(BaseModel):
     playerId: int
     cardName: str
@@ -192,3 +193,10 @@ class NotifierBlackmailed(BaseModel):
 class NotifierSFP(BaseModel):
     event: str = "notifierFauxPass"
     payload: dict
+
+class PayloadSelectHiddenSecret(BaseModel):
+    secretOwnerId: int
+
+class NotifierSelectHiddenSecret(BaseModel):
+    event: str = "selectHiddenSecret"
+    payload: PayloadSelectHiddenSecret
