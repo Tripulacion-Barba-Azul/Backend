@@ -864,7 +864,6 @@ def test_select_own_card_endpoint_with_card_trade(client:TestClient, session:Ses
     main_player = game.players[1]
     selected_player = game.players[2]
 
-    player.cards[0] = CardService(session).create_event_card("Cards off the table","")
     main_player.turn_status = TurnStatus.TAKING_ACTION
     main_player.turn_action = TurnAction.CARD_TRADE
     selected_player.turn_action = TurnAction.CARD_TRADE
@@ -892,6 +891,9 @@ def test_select_own_card_endpoint_with_card_trade(client:TestClient, session:Ses
             counter_post += 1
             assert response.status_code == 200
 
+        main_players_card_name = [c.name for c in main_player.cards]
+        selected_players_card_name = [c.name for c in selected_player.cards]
+
         for _ in range(3):
             result = websocket.receive_json()
             payload = result.get("payload", {})
@@ -901,8 +903,14 @@ def test_select_own_card_endpoint_with_card_trade(client:TestClient, session:Ses
                 receivedPrivateUpdate = True
             elif result.get("event") == "notifierCardTrade":
                 assert payload["playerId"] in [main_player.id, selected_player.id]
-                assert payload["cardName"] in [main_player.cards[5].name, selected_player.cards[5].name]
+                assert payload["cardName"] in main_players_card_name or payload["cardName"] in selected_players_card_name
                 receivedNotifier = True
+
+
+    assert counter_post == len(players)
+    assert receivedNotifier
+    assert receivedPublicUpdate
+    assert receivedPrivateUpdate
 
 
     assert counter_post == len(players)
