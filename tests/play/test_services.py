@@ -32,11 +32,11 @@ def test_discard_card_service(session: Session, seed_game_player2_discard):
     PlayService(session).discard(game, player.id, cards_id)    
 
     assert len(player.cards) == 0
-    assert player.turn_status == TurnStatus.DRAWING
     if ettp_in_player:
         assert len(game.discard_deck.cards) in [12,17]
     else:
         assert len(game.discard_deck.cards) == 7
+        assert player.turn_status == TurnStatus.DRAWING
     
 def test_discard_card_service_with_early_train_to_paddington(session: Session, seed_game_player2_discard):
     game: Game = seed_game_player2_discard[0]
@@ -54,12 +54,10 @@ def test_discard_card_service_with_early_train_to_paddington(session: Session, s
     session.flush()
     session.commit()
 
-    PlayService(session).discard(game, player.id, cards_id)  
+    PlayService(session).discard(game, player.id, cards_id)
 
     assert len(player.cards) == 0
-    assert player.turn_status == TurnStatus.DRAWING
     assert count_ettp in [1,2]
-    assert len(game.discard_deck.cards) in [12,17]
 
 def test_draw_card_from_deck_success(session: Session, seed_game_player2_draw):
     game = seed_game_player2_draw[0]
@@ -563,14 +561,13 @@ def test_early_train_to_paddington(session: Session, seed_started_game):
 
     PlayService(session).early_train_to_paddington(game, player)
 
-    assert player.turn_status == TurnStatus.DISCARDING_OPT
-    assert player.turn_action == TurnAction.NO_ACTION
+    assert player.turn_status == TurnStatus.TAKING_ACTION
     assert len(game.discard_deck.cards) == 7
 
 def test_select_own_card_card_trade(session: Session, seed_started_game):
     game = seed_started_game(3)
-    select_player = game.players[1]
-    player = game.players[2]
+    select_player = game.players[2]
+    player = game.players[1]
     
     player_card = player.cards[0]
     player.turn_action = TurnAction.CARD_TRADE
@@ -593,7 +590,7 @@ def test_select_own_card_card_trade(session: Session, seed_started_game):
 def test_select_own_card_dead_card_folly(session: Session, seed_started_game):
     event_manager = EventManager(session)
     game = seed_started_game(3)
-    main_player = game.players[0]
+    main_player = game.players[1]
     
     direction_event = event_manager.create(
         type=EventType.DEAD_CARD_FOLLY_DIRECTION,
@@ -645,7 +642,7 @@ def test_card_trade(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade([first_event, second_event])
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade(game, [first_event, second_event])
 
     assert player_card in selected_player.cards
     assert selected_player_card in player.cards
@@ -1000,6 +997,120 @@ def test_play_detective_own_set(session: Session, seed_started_game):
     assert turn_action == TurnAction.SELECT_ANY_PLAYER
     assert player.turn_status == selected_player.turn_status 
     assert player.turn_action == selected_player.turn_action
+
+
+def test_recieve_devious_social(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    player = game.players[0]
+    player_card = CardService(session).create_devious_card("Social Faux Pas", "")
+    player.cards[0] = player_card
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[5]
+
+    session.flush()
+    session.commit()
+
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
+
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade(game, [first_event, second_event])
+
+    devious_event = event_manager.get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)[0]
+    PlayService(session).resolve_devious_event(game, devious_event)
+
+    assert selected_player.turn_action == TurnAction.REVEAL_OWN_SECRET
+
+def test_recieve_devious_blackmailed(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    player = game.players[0]
+    player_card = CardService(session).create_devious_card("Blackmailed!", "")
+    player.cards[0] = player_card
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[5]
+
+    session.flush()
+    session.commit()
+
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
+
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade(game, [first_event, second_event])
+
+    devious_event = event_manager.get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)[0]
+    PlayService(session).resolve_devious_event(game, devious_event)
+
+    assert player.turn_action == TurnAction.SELECT_HIDDEN_SECRET
+
+def test_select_hidden_secret(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    player = game.players[0]
+    player_card = CardService(session).create_devious_card("Blackmailed!", "")
+    player.cards[0] = player_card
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[5]
+
+    session.flush()
+    session.commit()
+
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
+
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade(game, [first_event, second_event])
+
+    devious_event = event_manager.get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)[0]
+    PlayService(session).resolve_devious_event(game, devious_event)
+    session.flush()
+    session.commit()
+
+    assert player.turn_action == TurnAction.SELECT_HIDDEN_SECRET
+    player.turn_status = TurnStatus.TAKING_ACTION
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).select_hidden_secret(game, selected_player.id, selected_player.secrets[0].id)
+
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
 
 
 def test_pys_players_selection(session: Session, seed_started_game):

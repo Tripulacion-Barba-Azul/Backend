@@ -67,7 +67,7 @@ class PlayerPlayedCardsInfo(BaseModel):
     actionType: str
 
 class CardsPlayedInfo(BaseModel):
-    event: str = "cardsPlayed"
+    event: str = "notifierCardsPlayed"
     payload: PlayerPlayedCardsInfo
 
 class PlayerPlayedDetectiveInfo(BaseModel):
@@ -77,5 +77,5 @@ class PlayerPlayedDetectiveInfo(BaseModel):
     setOwnerId: int
 
 class DetectiveCardsPlayedInfo(BaseModel):
-    event: str = "cardsPlayed"
+    event: str = "notifierCardsPlayed"
     payload: PlayerPlayedDetectiveInfo

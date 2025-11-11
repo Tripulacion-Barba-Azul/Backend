@@ -188,7 +188,8 @@ def db_player_2_reveal_secret_force(player: Player,
     return PayloadRevealSecretForce(
         playerId=player.id,
         secretId=secret.id,
-        selectedPlayerId=selected_player.id
+        selectedPlayerId=selected_player.id,
+        secretName=secret.name
     )
 
 def db_player_2_card_trade_info(player: Player,

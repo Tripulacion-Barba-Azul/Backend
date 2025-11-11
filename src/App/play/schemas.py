@@ -57,6 +57,7 @@ class PayloadHideSecret(BaseModel):
     playerId: int
     secretId: int
     selectedPlayerId: int
+    secretName: str
 
 class NotifierHideSecret(BaseModel):
     event: str = "notifierHideSecret"
@@ -127,6 +128,7 @@ class PayloadRevealSecretForce(BaseModel):
     playerId: int
     secretId: int
     selectedPlayerId: int
+    secretName: str
 
 class NotifierRevealSecretForce(BaseModel):
     event: str = "notifierRevealSecretForce"
@@ -138,13 +140,14 @@ class PayloadDiscardEvent(BaseModel):
     cards: list[CardPublicInfo]
 
 class DiscardEventInfo(BaseModel):
-    event: str = "discardEvent"
+    event: str = "notifierDiscardEvent"
     payload: PayloadDiscardEvent
 
 class AddDetectiveInfo(BaseModel):
     cardId: int
     playerId: int
     setId: int
+
 class PayloadCardTrade(BaseModel):
     playerId: int
     cardName: str
@@ -183,6 +186,20 @@ class SelectDirectionInfo(BaseModel):
 class NotifierSelectDirection(BaseModel):
     event: str = "selectOwnCard"
 
+class NotifierBlackmailed(BaseModel):
+    event: str = "notifierBlackmailed"
+    payload: dict
+
+class NotifierSFP(BaseModel):
+    event: str = "notifierFauxPass"
+    payload: dict
+
+class PayloadSelectHiddenSecret(BaseModel):
+    secretOwnerId: int
+
+class NotifierSelectHiddenSecret(BaseModel):
+    event: str = "selectHiddenSecret"
+    payload: PayloadSelectHiddenSecret
 class PayloadPointYourSuspicious(BaseModel):
     playersSelections: list[tuple[int,int]]
     selectedPlayerId: int

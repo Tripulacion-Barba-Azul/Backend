@@ -38,4 +38,5 @@ class TurnAction(Enum):
     POINT_YOUR_SUSPICIONS = "pointYourSuspicions"
     POINT_YOUR_SUSPICIONS_REVEAL = "pointYourSuspicionsReveal"
     WAITING_ACTION = "waitingAction"
+    SELECT_HIDDEN_SECRET = "selectHiddenSecret"
 

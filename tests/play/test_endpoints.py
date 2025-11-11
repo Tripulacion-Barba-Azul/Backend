@@ -926,3 +926,74 @@ def test_add_detective_endpoint(client: TestClient, session: Session, seed_start
 
     assert private_update_received, "No se recibió privateUpdate tras add-detective"
     assert public_update_received, "No se recibió publicUpdate tras add-detective"
+
+
+def test_select_hidden_secret_endpoint(client:TestClient, session:Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    player = game.players[0]
+    player_card = CardService(session).create_devious_card("Blackmailed!", "")
+    player.cards[0] = player_card
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[5]
+
+    session.flush()
+    session.commit()
+
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
+
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+
+    PlayService(session).resolver_card_trade(game, [first_event, second_event])
+
+    devious_event = event_manager.get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)[0]
+    PlayService(session).resolve_devious_event(game, devious_event)
+    session.flush()
+    session.commit()
+
+    assert player.turn_action == TurnAction.SELECT_HIDDEN_SECRET
+    player.turn_status = TurnStatus.TAKING_ACTION
+
+    session.flush()
+    session.commit()
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
+        response = client.post(
+            f"/play/{game.id}/actions/select-hidden-secret",
+            json = {
+                "playerId": selected_player.id,
+                "secretId": selected_player.secrets[0].id
+            }
+        )
+        data = response.json()
+        assert response.status_code == 200
+
+        for _ in range(3):
+            result = websocket.receive_json()
+            payload = result.get("payload", {})
+            if result.get("event") == "publicUpdate":
+                receivedPublicUpdate = True
+            elif result.get("event") == "privateUpdate":
+                receivedPrivateUpdate = True
+            elif result.get("event") == "notifierBlackmailedCard":
+                assert payload["playerId"] == selected_player.id
+                assert payload["secretName"] == selected_player.secrets[0].name
+                assert payload["secretId"] == selected_player.secrets[0].id
+                receivedNotifier = True
+
+    assert receivedNotifier
+    assert receivedPublicUpdate
+    assert receivedPrivateUpdate
+
+    
