@@ -1065,3 +1065,48 @@ def test_recieve_devious_blackmailed(session: Session, seed_started_game):
     PlayService(session).resolve_devious_event(game, devious_event)
 
     assert player.turn_action == TurnAction.SELECT_HIDDEN_SECRET
+
+def test_select_hidden_secret(session: Session, seed_started_game):
+    event_manager = EventManager(session)
+    game = seed_started_game(3)
+    player = game.players[0]
+    player_card = CardService(session).create_devious_card("Blackmailed!", "")
+    player.cards[0] = player_card
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[5]
+
+    session.flush()
+    session.commit()
+
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
+
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+
+    main_player, selec_player, main_player_card, selec_player_card = PlayService(session).resolver_card_trade(game, [first_event, second_event])
+
+    devious_event = event_manager.get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)[0]
+    PlayService(session).resolve_devious_event(game, devious_event)
+    session.flush()
+    session.commit()
+
+    assert player.turn_action == TurnAction.SELECT_HIDDEN_SECRET
+    player.turn_status = TurnStatus.TAKING_ACTION
+
+    session.flush()
+    session.commit()
+
+    PlayService(session).select_hidden_secret(game, selected_player.id, selected_player.secrets[0].id)
+
+    assert player.turn_action == TurnAction.NO_ACTION
+    assert player.turn_status == TurnStatus.DISCARDING_OPT
