@@ -880,7 +880,7 @@ class PlayService:
     def select_hidden_secret(self, game: Game, player_owner_id: int, secret_id: int):
 
         player_owner = self._db.query(Player).filter(Player.id == player_owner_id).first()
-        
+
         self._db.refresh(game)
         self._db.refresh(player_owner)
 
@@ -899,11 +899,11 @@ class PlayService:
 
         if not current_turn_player:
                 raise PlayerNotFoundError(f"Player not found")
-        
+
         event = next((event for event in game.events if 
                       (event.resolved and event.type == EventType.RECEIVE_DEVIOUS and event.selected_player == player_owner)),
                       None)
-        
+
         player_to_show = event.main_player
         player_owner.turn_action = TurnAction.NO_ACTION
         player_to_show.turn_action = TurnAction.NO_ACTION

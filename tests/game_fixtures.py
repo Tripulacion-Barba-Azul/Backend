@@ -1,6 +1,7 @@
 from datetime import date
 import pytest
 from sqlalchemy.orm import Session
+from fastapi.testclient import TestClient
 
 from App.card.services import CardService
 from App.games.dtos import GameDTO
@@ -83,7 +84,7 @@ def seed_game_player2_draw(session: Session, seed_game_player2_discard):
     return game, player
 
 @pytest.fixture(name="seed_game_player2_select_any_player_cards_off_the_table")
-def seed_game_player2_select_any_player(session: Session, seed_started_game):
+def seed_game_player2_select_any_player(client:TestClient, session: Session, seed_started_game):
     game = seed_started_game(4)
     player = game.players[1]
     selected_player = game.players[2]
@@ -94,12 +95,27 @@ def seed_game_player2_select_any_player(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    PlayService(session).play_card(game, player.id, card.id)
+    client.post(
+        f"/play/{game.id}/actions/play-card",
+        json={
+            "playerId": player.id,
+            "cards": [card.id]
+            }
+        )
+    
+    for p in game.players:
+        client.post(
+            f"/play/{game.id}/actions/play-nsf", 
+            json={
+                "playerId": p.id,
+                "cardId": None
+                }
+        )
     
     return game, player, selected_player
 
 @pytest.fixture(name="seed_game_player2_reveal")
-def seed_game_player2_reveal(session: Session, seed_started_game):
+def seed_game_player2_reveal(client:TestClient, session: Session, seed_started_game):
     game = seed_started_game(3)
     player = game.players[1]
     
@@ -116,7 +132,22 @@ def seed_game_player2_reveal(session: Session, seed_started_game):
         card_ids.append(card.id)
 
     session.refresh(player)
-    new_set = PlayService(session).play_set(game, player.id, card_ids)
+    client.post(
+    f"/play/{game.id}/actions/play-card",
+    json={
+        "playerId": player.id,
+        "cards": [card.id for card in player.cards if card.name == "Hercule Poirot"]
+        }
+    )
+    
+    for p in game.players:
+        client.post(
+            f"/play/{game.id}/actions/play-nsf", 
+            json={
+                "playerId": p.id,
+                "cardId": None
+                }
+        )
 
     return game, player
 
