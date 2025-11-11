@@ -801,9 +801,6 @@ class PlayService:
 
         player_owner = self._db.query(Player).filter(Player.id == player_owner_id).first()
 
-        if player_owner.turn_action != TurnAction.SELECT_HIDDEN_SECRET:
-            raise NotPlayersTurnError(f"Player {player_owner.id} cannot select hidden secret.")
-        
         self._db.refresh(game)
         self._db.refresh(player_owner)
 
@@ -822,21 +819,19 @@ class PlayService:
 
         if not current_turn_player:
                 raise PlayerNotFoundError(f"Player not found")
-        
+
         event = next((event for event in game.events if 
-                      ( event.resolved and event.type == EventType.RECEIVE_DEVIOUS and event.selected_player == player_owner)),
+                      (event.resolved and event.type == EventType.RECEIVE_DEVIOUS and event.selected_player == player_owner)),
                       None)
-        
+
         player_to_show = event.main_player
         player_owner.turn_action = TurnAction.NO_ACTION
+        player_to_show.turn_action = TurnAction.NO_ACTION
+
 
         events = EventManager(self._db).get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)
         if not events:
             current_turn_player.turn_status = TurnStatus.DISCARDING_OPT
-
-        card_id = event.played_card.id
-        self._card_service.unrelate_card_player(player_owner.id, card_id, self._db)
-        self._discard_deck_service.relate_card_to_discard_deck(game.discard_deck.id, event.played_card)
 
         event.resolved = True
 

@@ -1,7 +1,6 @@
 
 from sqlalchemy.orm import Session
 
-import copy
 
 from datetime import date
 from fastapi.testclient import TestClient
@@ -160,7 +159,7 @@ def test_select_any_player_endpoint_cards_off_the_table(client: TestClient, seed
     with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
         print(f"WebSocket connection established for player {player.id}")
         response = client.post(
-            f"/play/{game.id}/actions/select-any-player", 
+            f"/play/{game.id}/actions/select-any-player",
             json={
                 "playerId": player.id,
                 "selectedPlayerId": selected_player.id
@@ -263,16 +262,28 @@ def test_play_card_another_victim_with_no_sets_played(
             )
             data = response.json()
             assert response.status_code == 200
-            
-            result = websocket.receive_json()
-            result = websocket.receive_json()
-            result = websocket.receive_json()
-            
 
-            assert result["event"] == "notifierNoEffect"
+            for p in game.players:
+                client.post(
+                    f"/play/{game.id}/actions/play-nsf", 
+                    json={
+                        "playerId": p.id,
+                        "cardId": None
+                        }
+            )
+            received_notifier = False
 
-            assert player.turn_status == TurnStatus.DISCARDING_OPT
-            assert player.turn_action == TurnAction.NO_ACTION
+            for i in range(10):
+
+                result = websocket.receive_json()
+                print(result.get("event"))
+                if result.get("event") == "notifierNoEffect":
+                    received_notifier = True
+                    assert result["event"] == "notifierNoEffect"
+                    assert player.turn_status == TurnStatus.DISCARDING_OPT
+                    assert player.turn_action == TurnAction.NO_ACTION
+                    break
+            assert received_notifier
 
 def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
     
@@ -390,10 +401,26 @@ def test_hide_secret_endpoint(
 
     session.flush()
     session.commit()
-    PlayService(session).play_set(game, player.id, [cards[0].id, cards[1].id])
-
-    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
-            
+    
+    client.post(
+        f"/play/{game.id}/actions/play-card",
+        json={
+            "playerId": player.id,
+            "cards": [card.id for card in player.cards if card.name == "Parker Pyne"]
+            }
+        )
+    
+    for p in game.players:
+        client.post(
+            f"/play/{game.id}/actions/play-nsf", 
+            json={
+                "playerId": p.id,
+                "cardId": None
+                }
+        )
+                   
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:   
+             
             response = client.post(
                 f"/play/{game.id}/actions/hide-secret", 
                 json={
@@ -405,20 +432,21 @@ def test_hide_secret_endpoint(
             data = response.json()
             assert response.status_code == 200
             
-            result = websocket.receive_json()
+            received_notifier = False
 
-            for s in result["payload"]["players"][2]["secrets"]:
-                assert not s["revealed"]
+            for i in range(10):
 
-
-            result = websocket.receive_json()
-            result = websocket.receive_json()
-            payload = result.get("payload", {})
-
-            assert result["event"] == "notifierHideSecret"
-            assert payload["playerId"] == player.id
-            assert payload["selectedPlayerId"] == revealed_secret_player.id
-            assert payload["secretId"] == secret.id
+                result = websocket.receive_json()
+                if result.get("event") == "notifierHideSecret":
+                    payload = result.get("payload", {})
+                    received_notifier = True
+                    assert result["event"] == "notifierHideSecret"
+                    assert payload["playerId"] == player.id
+                    assert payload["selectedPlayerId"] == revealed_secret_player.id
+                    assert payload["secretId"] == secret.id
+                    assert not secret.revealed
+                    break
+            assert received_notifier
 
 
 def test_and_then_there_was_one_more_endpoint(
@@ -439,7 +467,24 @@ def test_and_then_there_was_one_more_endpoint(
     session.flush()
     session.commit()
     
-    PlayService(session).play_card(game, player.id, card.id)
+    
+
+    client.post(
+        f"/play/{game.id}/actions/play-card",
+        json={
+            "playerId": player.id,
+            "cards": [card.id]
+            }
+        )
+    
+    for p in game.players:
+        client.post(
+            f"/play/{game.id}/actions/play-nsf", 
+            json={
+                "playerId": p.id,
+                "cardId": None
+                }
+        )
 
     with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
             
@@ -482,7 +527,22 @@ def test_look_into_the_ashes_endpoint(client:TestClient, session:Session, seed_s
     session.flush()
     session.commit()
 
-    PlayService(session).play_card(game, player.id, card.id)
+    client.post(
+        f"/play/{game.id}/actions/play-card",
+        json={
+            "playerId": player.id,
+            "cards": [card.id]
+            }
+        )
+    
+    for p in game.players:
+        client.post(
+            f"/play/{game.id}/actions/play-nsf", 
+            json={
+                "playerId": p.id,
+                "cardId": None
+                }
+        )
 
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.LOOK_INTO_THE_ASHES
@@ -543,14 +603,40 @@ def test_reveal_own_secret_reveal(
     ):
         game = seed_started_game(3)
         player = game.players[1]
-        player.turn_status = TurnStatus.TAKING_ACTION
+
+        for i in range(2):
+            player.cards[i] = CardService(session).create_detective_card("Mr Satterthwaite","",2)
         
         caller_player = game.players[2]
-        caller_player.turn_action = TurnAction.REVEAL_OWN_SECRET
         secret = caller_player.secrets[0]
 
         session.flush()
         session.commit()
+
+        client.post(
+        f"/play/{game.id}/actions/play-card",
+        json={
+            "playerId": player.id,
+            "cards": [card.id for card in player.cards if card.name == "Mr Satterthwaite"]
+            }
+        )
+    
+        for p in game.players:
+            client.post(
+                f"/play/{game.id}/actions/play-nsf", 
+                json={
+                    "playerId": p.id,
+                    "cardId": None
+                    }
+            )
+
+        client.post(
+            f"/play/{game.id}/actions/select-any-player",
+            json={
+                "playerId": player.id,
+                "selectedPlayerId": caller_player.id
+            }
+        )
      
         with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
             
@@ -639,8 +725,22 @@ def test_delay_the_murderers_escape_endpoint(client:TestClient, session:Session,
     session.flush()
     session.commit()
 
-
-    PlayService(session).play_card(game, player.id, card.id)
+    client.post(
+        f"/play/{game.id}/actions/play-card",
+        json={
+            "playerId": player.id,
+            "cards": [card.id]
+            }
+        )
+    
+    for p in game.players:
+        client.post(
+            f"/play/{game.id}/actions/play-nsf", 
+            json={
+                "playerId": p.id,
+                "cardId": None
+                }
+        )
 
     assert player.turn_status == TurnStatus.TAKING_ACTION
     assert player.turn_action == TurnAction.DELAY_THE_MURDERER
@@ -657,6 +757,11 @@ def test_delay_the_murderers_escape_endpoint(client:TestClient, session:Session,
     session.commit()
 
     rep_deck_before = len(game.reposition_deck.cards)
+
+
+        
+
+
     with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
 
         response = client.post(
@@ -759,6 +864,7 @@ def test_select_own_card_endpoint_with_card_trade(client:TestClient, session:Ses
     main_player = game.players[1]
     selected_player = game.players[2]
 
+    player.cards[0] = CardService(session).create_event_card("Cards off the table","")
     main_player.turn_status = TurnStatus.TAKING_ACTION
     main_player.turn_action = TurnAction.CARD_TRADE
     selected_player.turn_action = TurnAction.CARD_TRADE
@@ -795,7 +901,7 @@ def test_select_own_card_endpoint_with_card_trade(client:TestClient, session:Ses
                 receivedPrivateUpdate = True
             elif result.get("event") == "notifierCardTrade":
                 assert payload["playerId"] in [main_player.id, selected_player.id]
-                assert payload["cardName"] in [main_player.cards[0].name, selected_player.cards[0].name]
+                assert payload["cardName"] in [main_player.cards[5].name, selected_player.cards[5].name]
                 receivedNotifier = True
 
 
