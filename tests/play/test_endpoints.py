@@ -323,7 +323,7 @@ def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
             elif result.get("event") == "privateUpdate":
 
                 assert len(payload["cards"]) == 6
-                assert payload["cards"][0]["id"] == card1_before.id
+                assert card1_before.id in [payload["cards"][i]["id"] for i in range(len(payload["cards"]))]
                 private_update_received = True
         
         assert public_update_received

@@ -142,16 +142,29 @@ def create_and_draw_secrets(game_id, db:Session):
 
 
     secret_list_copy = secret_list.copy()
+    for s in secret_list_copy:
+        if s.name == "You are the murderer":
+            asn_secret = s
+            secret_list_copy.remove(s)
+    
+    
+    murderer = random.choice(players)
+    relate_secret_player(murderer, asn_secret, db, commit=False)
+
+    while len(murderer.secrets) < 3:
+        secret = random.choice(secret_list_copy)
+        if secret.name != "You are the accomplice":
+            relate_secret_player(murderer, secret, db, commit=False)
+            secret_list_copy.remove(secret)
+
 
     random.shuffle(secret_list_copy)
     for i in range (3):
         for player in players:
-                secret = secret_list_copy[0]
-                if secret.name == "You are the accomplice" and asn_secret in player.secrets:
-                    secret = secret_list_copy[1]
-
-                relate_secret_player(player, secret, db, commit=False)
-                secret_list_copy.remove(secret)   
+                if player != murderer:
+                    secret = secret_list_copy[0]
+                    relate_secret_player(player, secret, db, commit=False)
+                    secret_list_copy.remove(secret)   
             
     db.commit()
     for secret in secret_list:
