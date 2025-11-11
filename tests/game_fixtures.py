@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from App.card.services import CardService
 from App.games.dtos import GameDTO
+from App.games.enums import ActionStatus
 from App.games.models import Game
 from App.games.services import GameService
 from App.play.services import PlayService
@@ -74,7 +75,12 @@ def seed_game_player2_discard(session: Session, seed_started_game):
 def seed_game_player2_draw(session: Session, seed_game_player2_discard):
     game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
-    cards_id = [card.id for card in player.cards]
+    card = CardService(session).create_event_card("Some Event Card","")
+    cards_id = [card.id]
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
 
     PlayService(session).discard(game, player.id, cards_id)
     player.turn_status = TurnStatus.DRAWING

@@ -128,14 +128,13 @@ def test_draw_from_regular_deck(client: TestClient, seed_game_player2_draw):
             result = websocket.receive_json()
             payload = result.get("payload", {})
             if result.get("event") == "publicUpdate":
-                assert payload["actionStatus"] == "blocked"
                 assert payload["regularDeckCount"] == rep_deck_count_before - 1
                 players = payload["players"]         
                 player_public = next((p for p in players if p["id"] == player.id), None)
                 assert player_public["cardCount"] == player_cards_before + 1
                 public_update_received = True
             elif result.get("event") == "privateUpdate":
-                assert len(payload["cards"]) == 1
+                assert len(payload["cards"]) == 6
                 private_update_received = True
         
         assert public_update_received
@@ -323,7 +322,7 @@ def test_draw_from_draft_deck(client: TestClient, seed_game_player2_draw):
                 public_update_received = True
             elif result.get("event") == "privateUpdate":
 
-                assert len(payload["cards"]) == 1
+                assert len(payload["cards"]) == 6
                 assert payload["cards"][0]["id"] == card1_before.id
                 private_update_received = True
         

@@ -66,7 +66,7 @@ def test_draw_card_from_deck_success(session: Session, seed_game_player2_draw):
 
     PlayService(session).draw_card_from_deck(game.id, player.id)    
 
-    assert len(player.cards) == 1
+    assert len(player.cards) == 6
     assert player.turn_status == TurnStatus.DRAWING
     assert rep_deck_len - 1 == len(game.reposition_deck.cards)
 
