@@ -881,9 +881,6 @@ class PlayService:
 
         player_owner = self._db.query(Player).filter(Player.id == player_owner_id).first()
 
-        if player_owner.turn_action != TurnAction.SELECT_HIDDEN_SECRET:
-            raise NotPlayersTurnError(f"Player {player_owner.id} cannot select hidden secret.")
-        
         self._db.refresh(game)
         self._db.refresh(player_owner)
 
