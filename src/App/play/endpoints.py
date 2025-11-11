@@ -126,8 +126,30 @@ async def start_timer(game_id: int, db):
         
         # Se acabó el tiempo: resolver evento
         print(f"[TIMER] Resolving game {game_id} after timeout.")
+
+        game = GameService(db).get_by_id(game_id)
+        
+        game.action_status = ActionStatus.BLOCKED
+
+        for p in game.players:
+            p.turn_action = TurnAction.NO_ACTION
+
+        db.flush()
+        db.commit()
+
+        gamePublictInfo = PublicUpdate(payload = db_game_2_game_public_info(game))
+        await manager.broadcast(game.id,gamePublictInfo.model_dump())
+
+        for p in game.players:
+            playerPrivateInfo = PrivateUpdate(payload = db_player_2_player_private_info(p))
+            await manager.send_to_player(
+                game_id=game.id,
+                player_id=p.id,
+                message=playerPrivateInfo.model_dump()
+        )
         
         await resolve_event(game_id, db)
+        
         
     except asyncio.CancelledError:
         # Si el timer fue reiniciado o cancelado
@@ -412,18 +434,6 @@ async def play_card(
                     player_id=player.id,
                     message={"event": turn_action_enum_2_str(event)}
                 )
-
-            # BROADCAST INFO
-            # if game.status == GameStatus.FINISHED:
-            #     gameEndInfo = GameEndInfo(payload= db_game_2_game_end_info(game))
-            #     await manager.broadcast(game.id, gameEndInfo.model_dump())
-            #     return {"message": "The game has ended"}
-            # else:
-            #     await manager.send_to_player(
-            #         game_id=game.id,
-            #         player_id=player.id,
-            #         message={"event": turn_action_enum_2_str(event)}
-            #     )
 
             playedCard = db_player_2_played_card_info(player, card, ActionType.EVENT)
             await manager.broadcast_except(
