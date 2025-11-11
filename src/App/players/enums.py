@@ -28,5 +28,15 @@ class TurnAction(Enum):
     LOOK_INTO_THE_ASHES = "lookIntoTheAshes"
     DELAY_THE_MURDERER = "delayTheMurderer"
     EARLY_TRAIN_TO_PADDINGTON = "earlyTrainToPaddington"
+    SELECT_OWN_CARD = "selectOwnCard" # este repite SOC
+    DEAD_CARD_FOLLY = "DEAD_CARD_FOLLY" # este repite SOC
+    CARD_TRADE = "CARD_TRADE" # este repite SOC
+    CARD_TRADE_SELECTION = "CARD_TRADE_SELECTION"
+    DEAD_CARD_FOLLY_DIRECTION = "DEAD_CARD_FOLLY_DIRECTION"
     NO_EFFECT = "notifierNoEffect" # Dont use as state in player
+    PLAY_NSF = "playNSF"
+    POINT_YOUR_SUSPICIONS = "pointYourSuspicions"
+    POINT_YOUR_SUSPICIONS_REVEAL = "pointYourSuspicionsReveal"
+    WAITING_ACTION = "waitingAction"
+    SELECT_HIDDEN_SECRET = "selectHiddenSecret"
 

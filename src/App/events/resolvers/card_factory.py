@@ -1,0 +1,31 @@
+from App.events.resolvers.card_resolvers import (
+    AndThereWasOneMoreResolver,
+    AnotherVictimResolver,
+    CardTradeResolver,
+    CardsOffTheTableResolver,
+    DeadCardFollyResolver, 
+    DelayTheMurderersEscapeResolver, 
+    EarlyTrainToPaddingtonResolver,
+    LookIntoTheAshesResolver,
+    PointYourSuspicionsResolver
+)
+
+
+CARD_RESOLVER_MAP = {
+    "Cards off the table": CardsOffTheTableResolver,
+    "Another Victim": AnotherVictimResolver,
+    "Dead Card Folly": DeadCardFollyResolver,
+    "Look in to the Ashes": LookIntoTheAshesResolver,
+    "Card Trade": CardTradeResolver,
+    "And There was One More...": AndThereWasOneMoreResolver,
+    "Delay the Muderer's Escape": DelayTheMurderersEscapeResolver,
+    "Early Train to Paddington": EarlyTrainToPaddingtonResolver,
+    "Point Your Suspicions": PointYourSuspicionsResolver
+}
+
+def get_card_resolver(event, db):
+    card_name = event.played_card.name
+    resolver_cls = CARD_RESOLVER_MAP.get(card_name)
+    if not resolver_cls:
+        return None
+    return resolver_cls(event, db)

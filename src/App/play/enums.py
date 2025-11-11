@@ -4,3 +4,4 @@ class ActionType(Enum):
     SET = "set"
     DETECTIVE = "detective"
     EVENT = "event"
+    INSTANT = "instant"

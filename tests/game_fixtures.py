@@ -1,15 +1,17 @@
 from datetime import date
 import pytest
 from sqlalchemy.orm import Session
+from fastapi.testclient import TestClient
 
 from App.card.services import CardService
 from App.games.dtos import GameDTO
+from App.games.enums import ActionStatus
 from App.games.models import Game
 from App.games.services import GameService
 from App.play.services import PlayService
 from App.players.dtos import PlayerDTO
 from App.players.models import Player
-from App.players.enums import PlayerRole
+from App.players.enums import PlayerRole, TurnStatus
 
 
 @pytest.fixture(name="sample_player")
@@ -73,13 +75,22 @@ def seed_game_player2_discard(session: Session, seed_started_game):
 def seed_game_player2_draw(session: Session, seed_game_player2_discard):
     game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
-    cards_id = [card.id for card in player.cards]
+    card = CardService(session).create_event_card("Some Event Card","")
+    cards_id = [card.id]
+    player.cards[0] = card
+
+    session.flush()
+    session.commit()
+
     PlayService(session).discard(game, player.id, cards_id)
-    
+    player.turn_status = TurnStatus.DRAWING
+    session.flush()
+    session.commit()
+
     return game, player
 
 @pytest.fixture(name="seed_game_player2_select_any_player_cards_off_the_table")
-def seed_game_player2_select_any_player(session: Session, seed_started_game):
+def seed_game_player2_select_any_player(client:TestClient, session: Session, seed_started_game):
     game = seed_started_game(4)
     player = game.players[1]
     selected_player = game.players[2]
@@ -90,12 +101,27 @@ def seed_game_player2_select_any_player(session: Session, seed_started_game):
     session.flush()
     session.commit()
 
-    PlayService(session).play_card(game, player.id, card.id)
+    client.post(
+        f"/play/{game.id}/actions/play-card",
+        json={
+            "playerId": player.id,
+            "cards": [card.id]
+            }
+        )
+    
+    for p in game.players:
+        client.post(
+            f"/play/{game.id}/actions/play-nsf", 
+            json={
+                "playerId": p.id,
+                "cardId": None
+                }
+        )
     
     return game, player, selected_player
 
 @pytest.fixture(name="seed_game_player2_reveal")
-def seed_game_player2_reveal(session: Session, seed_started_game):
+def seed_game_player2_reveal(client:TestClient, session: Session, seed_started_game):
     game = seed_started_game(3)
     player = game.players[1]
     
@@ -112,7 +138,22 @@ def seed_game_player2_reveal(session: Session, seed_started_game):
         card_ids.append(card.id)
 
     session.refresh(player)
-    new_set = PlayService(session).play_set(game, player.id, card_ids)
+    client.post(
+    f"/play/{game.id}/actions/play-card",
+    json={
+        "playerId": player.id,
+        "cards": [card.id for card in player.cards if card.name == "Hercule Poirot"]
+        }
+    )
+    
+    for p in game.players:
+        client.post(
+            f"/play/{game.id}/actions/play-nsf", 
+            json={
+                "playerId": p.id,
+                "cardId": None
+                }
+        )
 
     return game, player
 

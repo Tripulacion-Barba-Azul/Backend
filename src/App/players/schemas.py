@@ -67,6 +67,15 @@ class PlayerPlayedCardsInfo(BaseModel):
     actionType: str
 
 class CardsPlayedInfo(BaseModel):
-    event: str = "cardsPlayed"
+    event: str = "notifierCardsPlayed"
     payload: PlayerPlayedCardsInfo
 
+class PlayerPlayedDetectiveInfo(BaseModel):
+    playerId: int
+    cards: list[CardPublicInfo]
+    actionType: str
+    setOwnerId: int
+
+class DetectiveCardsPlayedInfo(BaseModel):
+    event: str = "notifierCardsPlayed"
+    payload: PlayerPlayedDetectiveInfo

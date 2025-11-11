@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 
 from App.card.schemas import CardGameInfo, CardPublicInfo
+from App.events.enums import Direction
 from App.players.schemas import CardsPlayedInfo, PlayerGameInfo
 from App.card.schemas import CardGameInfo
     
@@ -56,6 +57,7 @@ class PayloadHideSecret(BaseModel):
     playerId: int
     secretId: int
     selectedPlayerId: int
+    secretName: str
 
 class NotifierHideSecret(BaseModel):
     event: str = "notifierHideSecret"
@@ -126,6 +128,7 @@ class PayloadRevealSecretForce(BaseModel):
     playerId: int
     secretId: int
     selectedPlayerId: int
+    secretName: str
 
 class NotifierRevealSecretForce(BaseModel):
     event: str = "notifierRevealSecretForce"
@@ -137,5 +140,70 @@ class PayloadDiscardEvent(BaseModel):
     cards: list[CardPublicInfo]
 
 class DiscardEventInfo(BaseModel):
-    event: str = "discardEvent"
+    event: str = "notifierDiscardEvent"
     payload: PayloadDiscardEvent
+
+class AddDetectiveInfo(BaseModel):
+    cardId: int
+    playerId: int
+    setId: int
+
+class PayloadCardTrade(BaseModel):
+    playerId: int
+    cardName: str
+
+class NotifierCardTrade(BaseModel):
+    event: str = "notifierCardTrade"
+    payload: PayloadCardTrade
+
+class NotifierDeadCardFolly(BaseModel):
+    event: str = "notifierDeadCardFolly"
+
+class PayloadCardTradePublic(BaseModel):
+    mainPlayerId: int
+    selectedPlayerId: int
+
+class NotifierCardTradePublic(BaseModel):
+    event: str = "notifierCardTradePublic"
+    payload: PayloadCardTradePublic
+
+class SelectOwnCardInfo(BaseModel):
+    playerId: int
+    cardId: int
+
+class PlayNSF(BaseModel):
+    playerId: int
+    cardId: int | None
+
+class TimeInfo(BaseModel):
+    event: str = "timer"
+    payload: dict[str, int]
+
+class SelectDirectionInfo(BaseModel):
+    direction: Direction
+    playerId: int
+
+class NotifierSelectDirection(BaseModel):
+    event: str = "selectOwnCard"
+
+class NotifierBlackmailed(BaseModel):
+    event: str = "notifierBlackmailed"
+    payload: dict
+
+class NotifierSFP(BaseModel):
+    event: str = "notifierFauxPass"
+    payload: dict
+
+class PayloadSelectHiddenSecret(BaseModel):
+    secretOwnerId: int
+
+class NotifierSelectHiddenSecret(BaseModel):
+    event: str = "selectHiddenSecret"
+    payload: PayloadSelectHiddenSecret
+class PayloadPointYourSuspicious(BaseModel):
+    playersSelections: list[tuple[int,int]]
+    selectedPlayerId: int
+
+class NotifierPointYourSuspicious(BaseModel):
+    event: str = "notifierPointYourSuspicious"
+    payload: PayloadPointYourSuspicious

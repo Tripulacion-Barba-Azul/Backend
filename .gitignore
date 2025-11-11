@@ -164,3 +164,6 @@ response
 
 # Generic database files
 *.db
+
+# VSCode settings
+.vscode/

@@ -10,6 +10,7 @@ from App.models.db import Base
 from App.games.enums import ActionStatus, GameStatus, Winners
 from App.players.models import Player
 from App.decks.reposition_deck_model import RepositionDeck
+from App.events.models import Event
 
 
 game_players_association = Table(
@@ -51,6 +52,8 @@ class Game(Base):
         secondary="game_players_association",
         backref=None
     )
+    events: Mapped[list[Event]] = relationship(
+        Event, back_populates="game")
     winners: Mapped[Winners | None] = mapped_column(
         SqlEnum(Winners),
         default=None,

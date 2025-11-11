@@ -1,7 +1,9 @@
+import pytest
+import gc
+
 from datetime import date
 from App.games.models import Game
 from App.players.models import Player
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -28,21 +30,22 @@ def sample_player_fixture(session: Session):
 
 @pytest.fixture(name="session", scope="function")
 def session_fixture():
-    
     engine = create_engine(
-        "sqlite:///:memory:", 
-        connect_args={
-            "check_same_thread": False
-        },
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    Base.metadata.create_all(engine)
-    db = TestingSessionLocal()
+
+    Base.metadata.create_all(bind=engine)
+    session = TestingSessionLocal()
+
     try:
-        yield db
+        yield session
     finally:
-        db.close()
+        session.close()
+        Base.metadata.drop_all(bind=engine)
+        engine.dispose()
 
 @pytest.fixture(name="client")
 def client_fixture(session: Session):  
@@ -93,3 +96,8 @@ def sample_game(session, sample_player):
     session.commit()
     session.refresh(game)
     return game
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session, exitstatus):
+    """Hook global que se ejecuta una sola vez al terminar todos los tests."""
+    gc.collect()

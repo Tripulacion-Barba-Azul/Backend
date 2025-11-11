@@ -61,4 +61,8 @@ class InSocialDisgraceException(Exception):
 class  OwnerMustntLeave(Exception):
     """The owner of the game cannot leave the game"""
 
+class GameIsBlocked(Exception):
+    """It's not the time to play a Not So Fast"""
 
+class IncorrectDirectionError(Exception):
+    """The direction selected is not valid."""

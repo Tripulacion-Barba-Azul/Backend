@@ -82,6 +82,7 @@ class SecretRevealedInfo(BaseModel):
     playerId: int
     secretId: int
     selectedPlayerId: int
+    secretName: str
     
 class NotifierRevealSecret(BaseModel):
     event: str = "notifierRevealSecret"

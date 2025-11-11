@@ -7,6 +7,7 @@ from App.players.models import Player
 from App.players.services import PlayerService
 from App.players.enums import PlayerRole
 from App.secret.enums import SecretType
+from App.games.models import Game
 
 def test_create_player_service(session: Session):
 
@@ -57,7 +58,6 @@ def test_set_social_disgrace_player(session: Session, seed_started_game):
 
 def test_set_social_disgrace_accomplice(session: Session, seed_started_game):
     game = seed_started_game(5)
-
     accomplice = next(player for player in game.players if player.role == PlayerRole.ACCOMPLICE)
     accomplice_secret =  next(secret for secret in accomplice.secrets if secret.type == SecretType.ACCOMPLICE)
     accomplice_secret.revealed = True
@@ -69,7 +69,4 @@ def test_set_social_disgrace_accomplice(session: Session, seed_started_game):
     accomplice_secret.revealed = False
     assert accomplice.in_social_disgrace
     PlayerService(session).set_social_disgrace(accomplice)
-    assert not accomplice.in_social_disgrace
-
-   
-    
+    assert not accomplice.in_social_disgrace    

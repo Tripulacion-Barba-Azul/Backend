@@ -161,6 +161,12 @@ class CardService:
             return TurnAction.DELAY_THE_MURDERER
         elif card.name == "Early Train to Paddington":
             return TurnAction.EARLY_TRAIN_TO_PADDINGTON
+        elif card.name == "Dead Card Folly":
+            return TurnAction.DEAD_CARD_FOLLY_DIRECTION
+        elif card.name == "Card Trade":
+            return TurnAction.CARD_TRADE_SELECTION
+        elif card.name == "Point Your Suspicions":
+            return TurnAction.POINT_YOUR_SUSPICIONS
         else:
             return TurnAction.NO_ACTION
 
