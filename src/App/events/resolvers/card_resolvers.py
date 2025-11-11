@@ -288,3 +288,24 @@ class CardTradeResolver(BaseEventResolver):
         self._db.commit()
 
         return turn_action
+
+class PointYourSuspicionsResolver(BaseEventResolver):
+
+    def resolve(self):
+        game = self.event.game
+        player = self.event.main_player
+        card = self.event.played_card
+
+        turn_action = CardService(self._db).select_event_type(game, player, card)
+        for p in game.players:
+            p.turn_action = turn_action
+        if turn_action in [TurnAction.NO_ACTION, TurnAction.NO_EFFECT]:
+            player.turn_status = TurnStatus.DISCARDING_OPT
+        else:
+            player.turn_status = TurnStatus.TAKING_ACTION
+            player.turn_action = turn_action
+
+        self._db.flush()
+        self._db.commit()
+
+        return turn_action

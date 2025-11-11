@@ -6,7 +6,8 @@ from App.events.resolvers.card_resolvers import (
     DeadCardFollyResolver, 
     DelayTheMurderersEscapeResolver, 
     EarlyTrainToPaddingtonResolver,
-    LookIntoTheAshesResolver
+    LookIntoTheAshesResolver,
+    PointYourSuspicionsResolver
 )
 
 
@@ -18,8 +19,8 @@ CARD_RESOLVER_MAP = {
     "Card Trade": CardTradeResolver,
     "And There was One More...": AndThereWasOneMoreResolver,
     "Delay the Muderer's Escape": DelayTheMurderersEscapeResolver,
-    "Early Train to Paddington": EarlyTrainToPaddingtonResolver
-    #"Point Your Suspicions"
+    "Early Train to Paddington": EarlyTrainToPaddingtonResolver,
+    "Point Your Suspicions": PointYourSuspicionsResolver
 }
 
 def get_card_resolver(event, db):

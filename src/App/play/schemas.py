@@ -200,3 +200,10 @@ class PayloadSelectHiddenSecret(BaseModel):
 class NotifierSelectHiddenSecret(BaseModel):
     event: str = "selectHiddenSecret"
     payload: PayloadSelectHiddenSecret
+class PayloadPointYourSuspicious(BaseModel):
+    playersSelections: list[tuple[int,int]]
+    selectedPlayerId: int
+
+class NotifierPointYourSuspicious(BaseModel):
+    event: str = "notifierPointYourSuspicious"
+    payload: PayloadPointYourSuspicious

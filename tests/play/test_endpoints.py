@@ -1042,32 +1042,52 @@ def test_add_detective_endpoint(client: TestClient, session: Session, seed_start
     assert public_update_received, "No se recibió publicUpdate tras add-detective"
 
 
-def test_select_hidden_secret(client:TestClient, session:Session, seed_started_game):
-
+def test_select_hidden_secret_endpoint(client:TestClient, session:Session, seed_started_game):
+    event_manager = EventManager(session)
     game = seed_started_game(3)
-    main_player = game.players[1]
-    selected_player = game.players[2]
-
-    secret = selected_player.secrets[0]
-    secret.revealed = False
-
-    main_player.turn_status = TurnStatus.TAKING_ACTION
-    main_player.turn_action = TurnAction.SELECT_HIDDEN_SECRET
+    player = game.players[0]
+    player_card = CardService(session).create_devious_card("Blackmailed!", "")
+    player.cards[0] = player_card
+    selected_player = game.players[1]
+    selected_player_card = selected_player.cards[5]
 
     session.flush()
     session.commit()
 
-    receivedNotifier = False
-    receivedPublicUpdate = False
-    receivedPrivateUpdate = False
+    first_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=player,
+        played_card=player_card,
+    )
 
-    with client.websocket_connect(f"/ws/{game.id}/{main_player.id}") as websocket:
+    second_event = event_manager.create(
+        type=EventType.PLAY_CARD,
+        game=game,
+        main_player=selected_player,
+        played_card=selected_player_card
+    )
+
+
+    PlayService(session).resolver_card_trade(game, [first_event, second_event])
+
+    devious_event = event_manager.get_unresolved_events_by_event_type(game.id, EventType.RECEIVE_DEVIOUS)[0]
+    PlayService(session).resolve_devious_event(game, devious_event)
+    session.flush()
+    session.commit()
+
+    assert player.turn_action == TurnAction.SELECT_HIDDEN_SECRET
+    player.turn_status = TurnStatus.TAKING_ACTION
+
+    session.flush()
+    session.commit()
+
+    with client.websocket_connect(f"/ws/{game.id}/{player.id}") as websocket:
         response = client.post(
             f"/play/{game.id}/actions/select-hidden-secret",
             json = {
-                "playerId": main_player.id,
-                "selectedPlayerId" : selected_player.id,
-                "secretId": secret.id
+                "playerId": selected_player.id,
+                "secretId": selected_player.secrets[0].id
             }
         )
         data = response.json()
@@ -1080,10 +1100,10 @@ def test_select_hidden_secret(client:TestClient, session:Session, seed_started_g
                 receivedPublicUpdate = True
             elif result.get("event") == "privateUpdate":
                 receivedPrivateUpdate = True
-            elif result.get("event") == "notifierSelectHiddenSecret":
-                assert payload["playerId"] == main_player.id
-                assert payload["selectedPlayerId"] == selected_player.id
-                assert payload["secretId"] == secret.id
+            elif result.get("event") == "notifierBlackmailedCard":
+                assert payload["playerId"] == selected_player.id
+                assert payload["secretName"] == selected_player.secrets[0].name
+                assert payload["secretId"] == selected_player.secrets[0].id
                 receivedNotifier = True
 
     assert receivedNotifier

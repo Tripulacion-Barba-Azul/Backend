@@ -10,7 +10,7 @@ from App.games.services import GameService
 from App.play.services import PlayService
 from App.players.dtos import PlayerDTO
 from App.players.models import Player
-from App.players.enums import PlayerRole
+from App.players.enums import PlayerRole, TurnStatus
 
 
 @pytest.fixture(name="sample_player")
@@ -75,8 +75,12 @@ def seed_game_player2_draw(session: Session, seed_game_player2_discard):
     game = seed_game_player2_discard[0]
     player = seed_game_player2_discard[1]
     cards_id = [card.id for card in player.cards]
+
     PlayService(session).discard(game, player.id, cards_id)
-    
+    player.turn_status = TurnStatus.DRAWING
+    session.flush()
+    session.commit()
+
     return game, player
 
 @pytest.fixture(name="seed_game_player2_select_any_player_cards_off_the_table")
