@@ -1,18 +1,18 @@
 from sqlalchemy.orm import Session
 
-from App.card.services import CardService
-from App.players.models import Player
-from App.games.models import Game
-from App.events.enums import EventType, Direction
-from App.events.models import Event
-from App.events.resolvers.factory import get_resolver
-from App.card.models import Card
-from App.sets.models import DetectiveSet
-from App.sets.enums import DetectiveSetType
-from App.games.enums import ActionStatus
-from App.games.services import GameService
-from App.players.enums import TurnAction, TurnStatus
-from App.decks.discard_deck_service import DiscardDeckService
+from src.App.card.services import CardService
+from src.App.players.models import Player
+from src.App.games.models import Game
+from src.App.events.enums import EventType, Direction
+from src.App.events.models import Event
+from src.App.events.resolvers.factory import get_resolver
+from src.App.card.models import Card
+from src.App.sets.models import DetectiveSet
+from src.App.sets.enums import DetectiveSetType
+from src.App.games.enums import ActionStatus
+from src.App.games.services import GameService
+from src.App.players.enums import TurnAction, TurnStatus
+from src.App.decks.discard_deck_service import DiscardDeckService
 
 
 class EventManager:
@@ -190,3 +190,4 @@ class EventManager:
             "canceled_events": canceled
         } """
         
+
