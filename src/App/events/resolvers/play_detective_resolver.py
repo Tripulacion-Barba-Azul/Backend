@@ -1,6 +1,6 @@
-from App.events.resolvers.base_resolver import BaseEventResolver
-from App.players.enums import TurnAction, TurnStatus
-from App.sets.services import DetectiveSetService
+from src.App.events.resolvers.base_resolver import BaseEventResolver
+from src.App.players.enums import TurnAction, TurnStatus
+from src.App.sets.services import DetectiveSetService
 
 
 class PlayDetectiveResolver(BaseEventResolver):
@@ -42,3 +42,4 @@ class PlayDetectiveResolver(BaseEventResolver):
         self._db.commit()
 
         return turn_action
+
