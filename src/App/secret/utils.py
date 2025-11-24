@@ -1,7 +1,7 @@
 
 
-from App.secret.models import Secret
-from App.secret.schemas import SecretPrivateInfo, SecretPublicInfo
+from src.App.secret.models import Secret
+from src.App.secret.schemas import SecretPrivateInfo, SecretPublicInfo
 
 
 
