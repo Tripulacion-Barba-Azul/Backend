@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.models.db import Base, engine
-from src.api import api_router
-from src.ws_service import websocket_router
+from models.db import Base, engine
+from api import api_router
+from ws_service import websocket_router
 
 app = FastAPI()
 
