@@ -1,10 +1,10 @@
 
 from pydantic import BaseModel
 
-from App.card.schemas import CardGameInfo, CardPublicInfo
-from App.events.enums import Direction
-from App.players.schemas import CardsPlayedInfo, PlayerGameInfo
-from App.card.schemas import CardGameInfo
+from src.App.card.schemas import CardGameInfo, CardPublicInfo
+from src.App.events.enums import Direction
+from src.App.players.schemas import CardsPlayedInfo, PlayerGameInfo
+from src.App.card.schemas import CardGameInfo
     
 class PlayCardInfo(BaseModel):
     event: str = "play_card"
