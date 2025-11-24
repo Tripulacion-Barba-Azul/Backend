@@ -1,15 +1,13 @@
-"""Application main module."""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from App.models.db import Base, engine
+from models.db import Base, engine
 from api import api_router
-from App.websockets import websocket_router
+from ws_service import websocket_router
 
 app = FastAPI()
 
-origins = ["http://localhost:5173"]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
