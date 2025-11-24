@@ -1039,7 +1039,7 @@ class PlayService:
         return event
       
     def select_own_card(self, game: Game, player_id: int, card_id: int) -> tuple[bool, EventType, Card | None, Card | None, Player | None, Player | None]:
-        from App.events.services import EventManager
+        from src.App.events.services import EventManager
         player = self._db.query(Player).filter(Player.id == player_id).first()
         if not player:
             raise PlayerNotFoundError(f"Player {player_id} not found")
