@@ -1,11 +1,11 @@
 from datetime import date
 from pydantic import BaseModel
 
-from App.card.schemas import CardPrivateInfo, CardPublicInfo
-from App.players.dtos import PlayerDTO
-from App.players.enums import TurnStatus
-from App.secret.schemas import SecretPrivateInfo, SecretPublicInfo
-from App.sets.schemas import SetPublicInfo
+from src.App.card.schemas import CardPrivateInfo, CardPublicInfo
+from src.App.players.dtos import PlayerDTO
+from src.App.players.enums import TurnStatus
+from src.App.secret.schemas import SecretPrivateInfo, SecretPublicInfo
+from src.App.sets.schemas import SetPublicInfo
 
 class PlayerCreate(BaseModel):
     """
@@ -79,3 +79,4 @@ class PlayerPlayedDetectiveInfo(BaseModel):
 class DetectiveCardsPlayedInfo(BaseModel):
     event: str = "notifierCardsPlayed"
     payload: PlayerPlayedDetectiveInfo
+
