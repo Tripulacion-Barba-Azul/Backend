@@ -2,17 +2,17 @@ import asyncio
 import json
 from typing import Annotated
 from venv import create
-from App.events.enums import EventType
-from App.events.services import EventManager
-from App.play.schemas import PayloadSelectHiddenSecret, NotifierSelectHiddenSecret
+from src.App.events.enums import EventType
+from src.App.events.services import EventManager
+from src.App.play.schemas import PayloadSelectHiddenSecret, NotifierSelectHiddenSecret
 from fastapi import APIRouter,Cookie, Depends, HTTPException, Response, status
 
-from App.card.utils import db_card_2_card_info
-from App.games.enums import GameStatus
-from App.games.models import Game
-from App.games.schemas import GameCreate, GameDeletedInfo, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
-from App.games.services import GameService
-from App.games.utils import (
+from src.App.card.utils import db_card_2_card_info
+from src.App.games.enums import GameStatus
+from src.App.games.models import Game
+from src.App.games.schemas import GameCreate, GameDeletedInfo, GameEndInfo, GameInfo, GameInfoPlayer, GameLobbyInfo, GameWaitingInfo, NotifierPlayerExit, PlayerExitInfo, PrivateUpdate, PublicUpdate, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
+from src.App.games.services import GameService
+from src.App.games.utils import (
     db_game_2_game_end_info,
     db_game_2_game_info,
     db_game_2_game_info_player,
@@ -20,13 +20,13 @@ from App.games.utils import (
     db_game_2_game_public_info,
     db_game_2_game_wtg_info
 )
-from App.models.db import get_db
-from App.play.services import PlayService
-from App.players.models import Player
-from App.players.schemas import PlayerCreate, PlayerPlaysIn, PlayerPrivateInfo
-from App.players.utils import db_player_2_player_private_info, turn_action_enum_2_str
-from App.websockets import manager
-from App.exceptions import (
+from src.App.models.db import get_db
+from src.App.play.services import PlayService
+from src.App.players.models import Player
+from src.App.players.schemas import PlayerCreate, PlayerPlaysIn, PlayerPrivateInfo
+from src.App.players.utils import db_player_2_player_private_info, turn_action_enum_2_str
+from src.App.websockets import manager
+from src.App.exceptions import (
     GameNotFoundError,
     GameFullError,
     GameAlreadyStartedError,
@@ -35,7 +35,7 @@ from App.exceptions import (
     OwnerMustntLeave,
     PlayerNotFoundError,
 )
-from App.players.enums import TurnAction
+from src.App.players.enums import TurnAction
 
 
 games_router = APIRouter()
@@ -352,3 +352,4 @@ async def delete_game(
         )
 
     return
+
