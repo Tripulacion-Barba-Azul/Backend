@@ -5,11 +5,11 @@ from sqlalchemy import (Boolean, Integer, Table, String , Date, ForeignKey,
         Column, Enum as SqlEnum)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List
-from App.models.db import Base
-from App.card.models import Card
-from App.players.enums import PlayerRole, TurnAction, TurnStatus
-from App.secret.models import Secret
-from App.sets.models import DetectiveSet
+from src.App.models.db import Base
+from src.App.card.models import Card
+from src.App.players.enums import PlayerRole, TurnAction, TurnStatus
+from src.App.secret.models import Secret
+from src.App.sets.models import DetectiveSet
 
 player_cards_association = Table(
         "player_cards_association",
@@ -65,4 +65,5 @@ class Player(Base):
         "DetectiveSet",
         back_populates="player"
     )
+
 
