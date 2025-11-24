@@ -1,4 +1,4 @@
-from App.events.resolvers.card_resolvers import (
+from src.App.events.resolvers.card_resolvers import (
     AndThereWasOneMoreResolver,
     AnotherVictimResolver,
     CardTradeResolver,
@@ -29,3 +29,4 @@ def get_card_resolver(event, db):
     if not resolver_cls:
         return None
     return resolver_cls(event, db)
+
