@@ -1,21 +1,21 @@
 from sqlalchemy.orm import Session
 
-from App.decks.discard_deck_model import DiscardDeck
-from App.decks.discard_deck_service import DiscardDeckService
-from App.decks.draft_deck_service import DraftDeckService
-from App.decks.reposition_deck_model import RepositionDeck
-from App.games.models import Game
-from App.card.services import CardService
-from App.games.models import Game
+from src.App.decks.discard_deck_model import DiscardDeck
+from src.App.decks.discard_deck_service import DiscardDeckService
+from src.App.decks.draft_deck_service import DraftDeckService
+from src.App.decks.reposition_deck_model import RepositionDeck
+from src.App.games.models import Game
+from src.App.card.services import CardService
+from src.App.games.models import Game
 import random
-from App.decks.constants import (
+from src.App.decks.constants import (
     detective_cards,
     event_cards,
     devious_cards,
     event_cards_2,
     devious_cards_2
 )
-from App.players.models import Player
+from src.App.players.models import Player
 
 
 class RepositionDeckService:
