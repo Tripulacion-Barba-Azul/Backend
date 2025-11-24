@@ -1,14 +1,14 @@
 
-from App.card.services import CardService
-from App.decks.discard_deck_service import DiscardDeckService
-from App.events.resolvers.base_resolver import BaseEventResolver
-from App.exceptions import GameNotFoundError, NotPlayersTurnError
-from App.games.enums import GameStatus, Winners
-from App.games.models import Game
-from App.games.services import GameService
-from App.players.enums import PlayerRole, TurnAction, TurnStatus
-from App.players.models import Player
-from App.secret.enums import SecretType
+from src.App.card.services import CardService
+from src.App.decks.discard_deck_service import DiscardDeckService
+from src.App.events.resolvers.base_resolver import BaseEventResolver
+from src.App.exceptions import GameNotFoundError, NotPlayersTurnError
+from src.App.games.enums import GameStatus, Winners
+from src.App.games.models import Game
+from src.App.games.services import GameService
+from src.App.players.enums import PlayerRole, TurnAction, TurnStatus
+from src.App.players.models import Player
+from src.App.secret.enums import SecretType
 
 
 class DiscardETTPResolver(BaseEventResolver):
