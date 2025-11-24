@@ -3,8 +3,8 @@
 from sqlalchemy import  Integer, String, Enum as SqlEnum, Boolean
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Mapped
-from App.models.db import Base
-from App.secret.enums import SecretType
+from src.App.models.db import Base
+from src.App.secret.enums import SecretType
 
 
 
