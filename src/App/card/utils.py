@@ -1,5 +1,5 @@
-from App.card.models import Card
-from App.card.schemas import CardPrivateInfo, CardPublicInfo
+from src.App.card.models import Card
+from src.App.card.schemas import CardPrivateInfo, CardPublicInfo
 
 
 def db_card_2_card_info(db_card: Card)-> CardPublicInfo:
