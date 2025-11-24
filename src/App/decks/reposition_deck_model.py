@@ -2,8 +2,8 @@
 
 from sqlalchemy import Integer, Table, ForeignKey, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from App.models.db import Base
-from App.card.models import Card
+from src.App.models.db import Base
+from src.App.card.models import Card
 
 
 reposition_cards_association = Table(
