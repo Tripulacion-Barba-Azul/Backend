@@ -4,8 +4,8 @@
 from sqlalchemy import Integer, Table, ForeignKey, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List
-from App.models.db import Base
-from App.card.models import Card
+from src.App.models.db import Base
+from src.App.card.models import Card
 
 
 draft_cards_association = Table(
