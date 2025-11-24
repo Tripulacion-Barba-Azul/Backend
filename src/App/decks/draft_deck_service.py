@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from App.decks.draft_deck_model import DraftDeck
-from App.games.models import Game
+from src.App.decks.draft_deck_model import DraftDeck
+from src.App.games.models import Game
 
 class DraftDeckService: 
     def __init__(self, db: Session):
