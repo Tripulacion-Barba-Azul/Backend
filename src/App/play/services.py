@@ -1,14 +1,14 @@
 import random
 from sqlalchemy.orm import Session
 
-from App.card.services import CardService
-from App.decks.discard_deck_service import DiscardDeckService
-from App.card.services import CardService
-from App.decks.draft_deck_service import DraftDeckService
-from App.events.enums import Direction, EventType
-from App.events.services import EventManager
-from App.events.models import Event as GameEvent
-from App.exceptions import (
+from src.App.card.services import CardService
+from src.App.decks.discard_deck_service import DiscardDeckService
+from src.App.card.services import CardService
+from src.App.decks.draft_deck_service import DraftDeckService
+from src.App.events.enums import Direction, EventType
+from src.App.events.services import EventManager
+from src.App.events.models import Event as GameEvent
+from src.App.exceptions import (
     GameIsBlocked,
     GameNotFoundError,
     InSocialDisgraceException,
@@ -24,22 +24,22 @@ from App.exceptions import (
     SecretAlreadyRevealedError,
     SecretNotFoundError,
     SecretNotRevealed)
-from App.games.models import Game
-from App.games.services import GameService
-from App.games.enums import ActionStatus, GameStatus, Winners
-from App.players.utils import sort_players
-from App.secret.enums import SecretType
-from App.secret.services import get_secret, relate_secret_player, reveal_secret, unrelate_secret_player
-from App.players.models import Player
-from App.players.enums import PlayerRole, TurnAction, TurnStatus
-from App.players.services import PlayerService
-from App.sets.enums import DetectiveSetType
-from App.sets.models import DetectiveSet
-from App.sets.services import DetectiveSetService
-from App.card.models import Card, Devious, Instant, Event as EventCard
-from App.events.services import EventManager
-from App.events.enums import EventType
-from App.sets.enums import DetectiveSetType
+from src.App.games.models import Game
+from src.App.games.services import GameService
+from src.App.games.enums import ActionStatus, GameStatus, Winners
+from src.App.players.utils import sort_players
+from src.App.secret.enums import SecretType
+from src.App.secret.services import get_secret, relate_secret_player, reveal_secret, unrelate_secret_player
+from src.App.players.models import Player
+from src.App.players.enums import PlayerRole, TurnAction, TurnStatus
+from src.App.players.services import PlayerService
+from src.App.sets.enums import DetectiveSetType
+from src.App.sets.models import DetectiveSet
+from src.App.sets.services import DetectiveSetService
+from src.App.card.models import Card, Devious, Instant, Event as EventCard
+from src.App.events.services import EventManager
+from src.App.events.enums import EventType
+from src.App.sets.enums import DetectiveSetType
 
 class PlayService:
 
