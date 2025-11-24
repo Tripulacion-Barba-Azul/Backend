@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
-from App.decks.discard_deck_model import DiscardDeck
-from App.games.models import Game
+from src.App.decks.discard_deck_model import DiscardDeck
+from src.App.games.models import Game
 
 class DiscardDeckService:
 
