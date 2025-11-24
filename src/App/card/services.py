@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from App.card.models import Card, Devious, Detective, Instant, Event
-from App.decks.reposition_deck_model import RepositionDeck
-from App.players.models import Player
-from App.players.enums import TurnAction
+from src.App.card.models import Card, Devious, Detective, Instant, Event
+from src.App.decks.reposition_deck_model import RepositionDeck
+from src.App.players.models import Player
+from src.App.players.enums import TurnAction
 
 
 class CardService:
