@@ -3,11 +3,11 @@
 from sqlalchemy import (Integer, Table, ForeignKey, 
         Column, Enum as SqlEnum)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from App.card.models import Card
+from src.App.card.models import Card
 
 
-from App.sets.enums import DetectiveSetType
-from App.models.db import Base
+from src.App.sets.enums import DetectiveSetType
+from src.App.models.db import Base
 
 set_cards_association = Table(
         "set_cards_association",
@@ -36,5 +36,6 @@ class DetectiveSet(Base):
         secondary="set_cards_association",
         backref="detective_sets"
     )
+
 
 
