@@ -2,9 +2,9 @@ import asyncio
 from anyio import NoEventLoopError, sleep
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from App.card.utils import db_card_2_card_info
-from App.events.enums import EventType
-from App.exceptions import (
+from src.App.card.utils import db_card_2_card_info
+from src.App.events.enums import EventType
+from src.App.exceptions import (
     GameIsBlocked,
     GameNotFoundError,
     InSocialDisgraceException,
@@ -20,12 +20,12 @@ from App.exceptions import (
     SecretNotFoundError,
     SecretNotRevealed)
 
-from App.games.enums import ActionStatus, GameStatus
-from App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
-from App.games.services import GameService
+from src.App.games.enums import ActionStatus, GameStatus
+from src.App.games.schemas import GameEndInfo, NotifierRevealSecret, PrivateUpdate, PublicUpdate, SecretRevealedInfo, TopFiveDelayTheMurder, TopFiveLookIntoTheAshes
+from src.App.games.services import GameService
 
-from App.games.utils import db_game_2_game_end_info, db_game_2_game_public_info
-from App.play.schemas import (
+from src.App.games.utils import db_game_2_game_end_info, db_game_2_game_public_info
+from src.App.play.schemas import (
     AddDetectiveInfo,
     AndThenThereWasOneMoreInfo, 
     DelayTheMurderInfo, 
@@ -70,25 +70,25 @@ from App.play.schemas import (
     RevealSecretInfo, NotifierStealSet, StealSetInfo, SelectAnyPlayerInfo,
     TimeInfo)
 
-from App.models.db import get_db
+from src.App.models.db import get_db
 
-from App.play.services import PlayService
-from App.players.enums import TurnAction
-from App.players.models import Player
+from src.App.play.services import PlayService
+from src.App.players.enums import TurnAction
+from src.App.players.models import Player
 
-from App.players.utils import db_player_2_discarded_cards_info, db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_played_detective_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
+from src.App.players.utils import db_player_2_discarded_cards_info, db_player_2_played_card_info, db_player_2_played_cards_played_info, db_player_2_played_detective_info, db_player_2_player_private_info, db_player_2_reveal_secret_force, db_player_2_satterthquin_info, db_player_cards_off_the_tables_info, turn_action_enum_2_str
 
 
-from App.secret.models import Secret
-from App.websockets import manager
-from App.play.enums import ActionType
-from App.sets.services import DetectiveSetService
-from App.games.models import Game
-from App.events.models import Event
-from App.events.services import EventManager
-from App.sets.enums import DetectiveSetType
-from App.events.enums import EventType
-from App.card.services import CardService
+from src.App.secret.models import Secret
+from src.App.websockets import manager
+from src.App.play.enums import ActionType
+from src.App.sets.services import DetectiveSetService
+from src.App.games.models import Game
+from src.App.events.models import Event
+from src.App.events.services import EventManager
+from src.App.sets.enums import DetectiveSetType
+from src.App.events.enums import EventType
+from src.App.card.services import CardService
 
 play_router = APIRouter()
 
