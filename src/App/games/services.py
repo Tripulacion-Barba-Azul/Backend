@@ -1,22 +1,22 @@
-from App.card.schemas import CardGameInfo
-from App.games.utils import db_game_2_game_public_info
-from App.decks.reposition_deck_services import RepositionDeckService
-from App.games.enums import GameStatus
-from App.games.schemas import GameStartInfo
-from App.players.schemas import PlayerGameInfo
-from App.secret.schemas import SecretGameInfo
+from src.App.card.schemas import CardGameInfo
+from src.App.games.utils import db_game_2_game_public_info
+from src.App.decks.reposition_deck_services import RepositionDeckService
+from src.App.games.enums import GameStatus
+from src.App.games.schemas import GameStartInfo
+from src.App.players.schemas import PlayerGameInfo
+from src.App.secret.schemas import SecretGameInfo
 from sqlalchemy.orm import Session
-from App import players
-from App.games.dtos import GameDTO
-from App.games.models import Game, Player
-from App.games.enums import GameStatus
-from App.players.dtos import PlayerDTO
-from App.players.enums import PlayerRole, TurnStatus
-from App.players.services import PlayerService
-from App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame, OwnerMustntLeave, PlayerNotFoundError
-from App.players.utils import sort_players
-from App.secret.enums import SecretType
-from App.secret.services import create_and_draw_secrets
+from src.App import players
+from src.App.games.dtos import GameDTO
+from src.App.games.models import Game, Player
+from src.App.games.enums import GameStatus
+from src.App.players.dtos import PlayerDTO
+from src.App.players.enums import PlayerRole, TurnStatus
+from src.App.players.services import PlayerService
+from src.App.exceptions import GameNotFoundError, GameFullError, GameAlreadyStartedError, NotEnoughPlayers, NotTheOwnerOfTheGame, OwnerMustntLeave, PlayerNotFoundError
+from src.App.players.utils import sort_players
+from src.App.secret.enums import SecretType
+from src.App.secret.services import create_and_draw_secrets
 
 
 class GameService:
@@ -208,4 +208,5 @@ class GameService:
 
         self._db.delete(game)
         self._db.commit()
+
 
