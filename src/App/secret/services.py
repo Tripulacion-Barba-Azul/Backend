@@ -1,10 +1,10 @@
 import secrets
 from sqlalchemy.orm import Session
 
-from App.secret.models import Secret
-from App.games.models import Game
-from App.games.models import Player
-from App.secret.enums import SecretType
+from src.App.secret.models import Secret
+from src.App.games.models import Game
+from src.App.games.models import Player
+from src.App.secret.enums import SecretType
 import random
 
 generic_secrets=[
