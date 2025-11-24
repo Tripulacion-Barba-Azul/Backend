@@ -1,14 +1,14 @@
 from sqlalchemy.orm import Session
 
-from App.card.models import Card, Detective
-from App.card.services import CardService
-from App.players.services import PlayerService
-from App.sets.enums import DetectiveSetType
-from App.exceptions import NotCardInHand, PlayerNotFoundError
-from App.players.models import Player
-from App.sets.models import DetectiveSet
-from App.players.enums import TurnAction
-from App.games.models import Game
+from src.App.card.models import Card, Detective
+from src.App.card.services import CardService
+from src.App.players.services import PlayerService
+from src.App.sets.enums import DetectiveSetType
+from src.App.exceptions import NotCardInHand, PlayerNotFoundError
+from src.App.players.models import Player
+from src.App.sets.models import DetectiveSet
+from src.App.players.enums import TurnAction
+from src.App.games.models import Game
 
 
 class DetectiveSetService:
@@ -242,4 +242,5 @@ def validate_siblings_beresford(cards: list[Card]) -> bool:
         return False
 
     return True
+
 
