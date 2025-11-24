@@ -1,13 +1,13 @@
 
-from App.card.utils import db_card_2_card_info
-from App.games.enums import Winners
-from App.games.models import Game
+from src.App.card.utils import db_card_2_card_info
+from src.App.games.enums import Winners
+from src.App.games.models import Game
 
-from App.games.schemas import GameInfo, GameInfoPlayer, GameLobbyInfo, GamePublicInfo, GameWaitingInfo
-from App.players.enums import PlayerRole
-from App.players.models import Player
-from App.players.schemas import PlayerWinInfo
-from App.players.utils import db_player_2_player_info, db_player_2_player_public_info
+from src.App.games.schemas import GameInfo, GameInfoPlayer, GameLobbyInfo, GamePublicInfo, GameWaitingInfo
+from src.App.players.enums import PlayerRole
+from src.App.players.models import Player
+from src.App.players.schemas import PlayerWinInfo
+from src.App.players.utils import db_player_2_player_info, db_player_2_player_public_info
 
 
 def db_game_2_game_info(db_game: Game) -> GameInfo:
@@ -72,4 +72,5 @@ def db_game_2_game_end_info(db_game: Game) -> list[PlayerWinInfo]:
                 name=player.name,
                 role=player.role.value
             ) for player in db_game.players if player.role != PlayerRole.DETECTIVE]
+
 
