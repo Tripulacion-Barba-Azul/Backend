@@ -4,13 +4,13 @@ from sqlalchemy import (
     Column, Table, Integer, String, ForeignKey, Enum as SqlEnum
     )
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-from App.decks.discard_deck_model import DiscardDeck
-from App.decks.draft_deck_model import DraftDeck
-from App.models.db import Base
-from App.games.enums import ActionStatus, GameStatus, Winners
-from App.players.models import Player
-from App.decks.reposition_deck_model import RepositionDeck
-from App.events.models import Event
+from src.App.decks.discard_deck_model import DiscardDeck
+from src.App.decks.draft_deck_model import DraftDeck
+from src.App.models.db import Base
+from src.App.games.enums import ActionStatus, GameStatus, Winners
+from src.App.players.models import Player
+from src.App.decks.reposition_deck_model import RepositionDeck
+from src.App.events.models import Event
 
 
 game_players_association = Table(
@@ -90,4 +90,5 @@ class Game(Base):
         self.min_players = min_players
         self.max_players = max_players
         self.players = [owner]
+
     
