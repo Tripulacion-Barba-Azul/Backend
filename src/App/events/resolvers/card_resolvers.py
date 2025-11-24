@@ -1,15 +1,15 @@
-from App.events.resolvers.base_resolver import BaseEventResolver
-from App.players.enums import PlayerRole, TurnAction, TurnStatus
-from App.card.services import CardService
-from App.decks.discard_deck_service import DiscardDeckService
-from App.exceptions import DeckNotFoundError, GameNotFoundError, NotPlayersTurnError, PlayerNotFoundError, SecretNotFoundError, SecretNotRevealed
-from App.games.enums import GameStatus, Winners
-from App.games.models import Game
-from App.games.services import GameService
-from App.players.models import Player
-from App.players.services import PlayerService
-from App.secret.enums import SecretType
-from App.secret.services import relate_secret_player, unrelate_secret_player
+from src.App.events.resolvers.base_resolver import BaseEventResolver
+from src.App.players.enums import PlayerRole, TurnAction, TurnStatus
+from src.App.card.services import CardService
+from src.App.decks.discard_deck_service import DiscardDeckService
+from src.App.exceptions import DeckNotFoundError, GameNotFoundError, NotPlayersTurnError, PlayerNotFoundError, SecretNotFoundError, SecretNotRevealed
+from src.App.games.enums import GameStatus, Winners
+from src.App.games.models import Game
+from src.App.games.services import GameService
+from src.App.players.models import Player
+from src.App.players.services import PlayerService
+from src.App.secret.enums import SecretType
+from src.App.secret.services import relate_secret_player, unrelate_secret_player
 
 
 class CardsOffTheTableResolver(BaseEventResolver):
@@ -307,5 +307,6 @@ class PointYourSuspicionsResolver(BaseEventResolver):
 
         self._db.flush()
         self._db.commit()
+
 
         return turn_action
