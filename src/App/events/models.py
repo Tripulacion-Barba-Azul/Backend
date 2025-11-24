@@ -4,11 +4,11 @@ from sqlalchemy import (
     Column, Table, Integer,Boolean, String, ForeignKey, Enum as SqlEnum
     )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from App.models.db import Base
-from App.events.enums import Direction, EventType
-from App.players.models import Player
-from App.card.models import Card
-from App.sets.models import DetectiveSet
+from src.App.models.db import Base
+from src.App.events.enums import Direction, EventType
+from src.App.players.models import Player
+from src.App.card.models import Card
+from src.App.sets.models import DetectiveSet
 
 class Event(Base):
     """
@@ -37,3 +37,4 @@ class Event(Base):
     selected_player: Mapped[Player] = relationship('Player', foreign_keys=[selected_player_id]) # actor secundario del evento
     played_card: Mapped[Card] = relationship('Card', foreign_keys=[played_card_id])
     dset: Mapped[DetectiveSet] = relationship('DetectiveSet', foreign_keys=[dset_id])
+
