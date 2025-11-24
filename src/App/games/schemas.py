@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
 
-from App.card.schemas import CardGameInfo, CardPublicInfo
-from App.games.dtos import GameDTO
-from App.players.schemas import PlayerGameInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo, PlayerWinInfo
-from App.secret.schemas import SecretGameInfo
+from src.App.card.schemas import CardGameInfo, CardPublicInfo
+from src.App.games.dtos import GameDTO
+from src.App.players.schemas import PlayerGameInfo, PlayerInfo, PlayerPrivateInfo, PlayerPublicInfo, PlayerWinInfo
+from src.App.secret.schemas import SecretGameInfo
 
 class GameCreate(BaseModel):
     """
@@ -106,4 +106,5 @@ class PlayerExitInfo(BaseModel):
 class NotifierPlayerExit(BaseModel):
     event: str = "playerExit"
     payload: PlayerExitInfo
+
 
