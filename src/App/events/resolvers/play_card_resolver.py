@@ -1,5 +1,5 @@
-from App.events.resolvers.base_resolver import BaseEventResolver
-from App.events.resolvers.card_factory import get_card_resolver
+from src.App.events.resolvers.base_resolver import BaseEventResolver
+from src.App.events.resolvers.card_factory import get_card_resolver
 
 class PlayCardResolver(BaseEventResolver):
     
@@ -9,3 +9,4 @@ class PlayCardResolver(BaseEventResolver):
             raise ValueError(f"No resolver found for card type {self.event.played_card.name}")
 
         return resolver.resolve()
+
