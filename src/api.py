@@ -1,8 +1,8 @@
 """Defines API."""
 
 from fastapi import APIRouter
-from App.games.endpoints import games_router
-from App.play.endpoints import play_router
+from src.App.games.endpoints import games_router
+from src.App.play.endpoints import play_router
 
 
 api_router = APIRouter()
