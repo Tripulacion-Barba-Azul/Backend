@@ -1,11 +1,11 @@
 from sqlalchemy.orm import Session
 
-from App.card.models import Card
-from App.players.dtos import PlayerDTO
-from App.players.models import Player
-from App.secret.models import Secret
-from App.players.enums import PlayerRole
-from App.secret.enums import SecretType
+from src.App.card.models import Card
+from src.App.players.dtos import PlayerDTO
+from src.App.players.models import Player
+from src.App.secret.models import Secret
+from src.App.players.enums import PlayerRole
+from src.App.secret.enums import SecretType
 
 class PlayerService:
 
@@ -66,4 +66,5 @@ class PlayerService:
 
         return in_social_disgrace
     
+
     
