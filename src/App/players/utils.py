@@ -2,21 +2,21 @@ from datetime import date
 import random
 
 from sqlalchemy.orm import Session
-from App import players
-from App.card.utils import db_card_2_card_info, db_card_2_card_private_info
-from App.games.models import Game
-from App.models import db
-from App.play.schemas import CardsOffTheTableInfo, DiscardEventInfo, NotifierCardsOffTheTable, PayloadCardTrade, PayloadDiscardEvent, PayloadRevealSecretForce, PayloadSatterthwaiteWild
-from App.players.enums import PlayerRole, TurnAction
-from App.players.models import Player
-from App.players.schemas import AllyInfo, CardsPlayedInfo, DetectiveCardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPlayedDetectiveInfo, PlayerPrivateInfo, PlayerPublicInfo
-from App.secret.utils import db_secret_2_secret_private_info, db_secret_2_secret_public_info
-from App.sets.utils import db_dset_2_set_public_info
-from App.card.schemas import CardPublicInfo
-from App.play.enums import ActionType
-from App.sets.models import DetectiveSet
-from App.card.models import Card
-from App.secret.models import Secret
+from src.App import players
+from src.App.card.utils import db_card_2_card_info, db_card_2_card_private_info
+from src.App.games.models import Game
+from src.App.models import db
+from src.App.play.schemas import CardsOffTheTableInfo, DiscardEventInfo, NotifierCardsOffTheTable, PayloadCardTrade, PayloadDiscardEvent, PayloadRevealSecretForce, PayloadSatterthwaiteWild
+from src.App.players.enums import PlayerRole, TurnAction
+from src.App.players.models import Player
+from src.App.players.schemas import AllyInfo, CardsPlayedInfo, DetectiveCardsPlayedInfo, PlayerInfo, PlayerPlayedCardsInfo, PlayerPlayedDetectiveInfo, PlayerPrivateInfo, PlayerPublicInfo
+from src.App.secret.utils import db_secret_2_secret_private_info, db_secret_2_secret_public_info
+from src.App.sets.utils import db_dset_2_set_public_info
+from src.App.card.schemas import CardPublicInfo
+from src.App.play.enums import ActionType
+from src.App.sets.models import DetectiveSet
+from src.App.card.models import Card
+from src.App.secret.models import Secret
 
 
 def db_player_2_player_info(db_player: Player) -> PlayerInfo:
@@ -221,4 +221,5 @@ def turn_action_enum_2_str(turn_action: TurnAction) -> str:
     elif turn_action == TurnAction.POINT_YOUR_SUSPICIONS_REVEAL:
         return "revealOwnSecret"
     else:
+
         return turn_action.value
